@@ -30,7 +30,9 @@ export type DeviceType = "mobile" | "tablet" | "desktop";
 
 // Add Express.Multer type declarations if not already declared
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Multer {
       interface File {
         fieldname: string;

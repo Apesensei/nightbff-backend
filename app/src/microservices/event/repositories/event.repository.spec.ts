@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+// import { Repository } from "typeorm"; // Removed unused import
 import { EventRepository } from "./event.repository";
 import { Event } from "../entities/event.entity";
 import { EventAttendee } from "../entities/event-attendee.entity";
