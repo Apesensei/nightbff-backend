@@ -4,13 +4,10 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
   OneToMany,
   Index,
 } from "typeorm";
 import { EventVisibility } from "../enums/event-visibility.enum";
-import { Type } from "class-transformer";
 
 @Entity("events")
 export class Event {

@@ -13,7 +13,6 @@ import {
   Logger,
   Header,
   Headers,
-  HttpCode,
   Res,
 } from "@nestjs/common";
 import { Response } from "express";
@@ -32,7 +31,6 @@ import { Roles } from "../../auth/decorators/roles.decorator";
 import { UserRole } from "../../auth/entities/user.entity";
 import { VenueService } from "../services/venue.service";
 import { VenueImageService } from "../services/venue-image.service";
-import { Venue } from "../entities/venue.entity";
 import { VenuePhoto } from "../entities/venue-photo.entity";
 import { AdminVenueUpdateDto } from "../dto/admin-venue-update.dto";
 import { AdminVenueResponseDto } from "../dto/admin-venue-response.dto";
@@ -42,6 +40,7 @@ import {
   AdminSetPrimaryPhotoDto,
   AdminPhotoUploadDto,
 } from "../dto/admin-photo-management.dto";
+import * as crypto from "crypto";
 
 @ApiTags("Admin Venue Management")
 @Controller("admin/venues")
@@ -274,7 +273,7 @@ export class VenueAdminController {
    * Generate an ETag hash for caching
    */
   private generateETag(buffer: Buffer): string {
-    const hash = require("crypto").createHash("md5");
+    const hash = crypto.createHash("md5");
     hash.update(buffer);
     return `"${hash.digest("hex")}"`;
   }

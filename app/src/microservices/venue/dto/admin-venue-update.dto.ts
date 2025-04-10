@@ -1,10 +1,8 @@
 import {
   IsString,
   IsOptional,
-  IsNumber,
   IsBoolean,
   IsArray,
-  IsEnum,
   IsLatitude,
   IsLongitude,
 } from "class-validator";

@@ -344,7 +344,7 @@ export class ChatService {
       throw new BadRequestException("Cannot downgrade message status");
     }
 
-    return this.chatRepository.updateMessageStatus(updateStatusDto, userId);
+    return this.chatRepository.updateMessageStatus(updateStatusDto);
   }
 
   async deleteMessage(messageId: string, userId: string): Promise<boolean> {

@@ -1,6 +1,5 @@
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EventRepository } from "../../repositories/event.repository";
 import { Event } from "../../entities/event.entity";
 import { EventAttendee } from "../../entities/event-attendee.entity";
@@ -9,8 +8,6 @@ import { EventVisibility } from "../../enums/event-visibility.enum";
 
 describe("EventRepository", () => {
   let eventRepository: EventRepository;
-  let eventModel: Repository<Event>;
-  let attendeeModel: Repository<EventAttendee>;
 
   const mockEventModel = {
     create: jest.fn(),
@@ -56,10 +53,6 @@ describe("EventRepository", () => {
     }).compile();
 
     eventRepository = moduleRef.get<EventRepository>(EventRepository);
-    eventModel = moduleRef.get<Repository<Event>>(getRepositoryToken(Event));
-    attendeeModel = moduleRef.get<Repository<EventAttendee>>(
-      getRepositoryToken(EventAttendee),
-    );
   });
 
   describe("create", () => {
@@ -109,7 +102,7 @@ describe("EventRepository", () => {
       expect(mockAttendeeModel.save).toHaveBeenCalledWith(createdAttendee);
       expect(mockEventModel.findOne).toHaveBeenCalledWith({
         where: { id: createdEvent.id },
-        relations: ["attendees"],
+        relations: ["attendees", "venue"],
       });
       expect(result).toEqual(createdEvent);
     });

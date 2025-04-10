@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -15,7 +15,6 @@ import { User } from "../../user/entities/user.entity";
 describe("Chat API (e2e)", () => {
   let app: INestApplication;
   let chatRepository: Repository<Chat>;
-  let messageRepository: Repository<Message>;
   let userRepository: Repository<User>;
   let jwtToken: string;
   let testUser: User;
@@ -47,7 +46,6 @@ describe("Chat API (e2e)", () => {
     await app.init();
 
     chatRepository = moduleFixture.get("ChatRepository");
-    messageRepository = moduleFixture.get("MessageRepository");
     userRepository = moduleFixture.get("UserRepository");
 
     // Create test user

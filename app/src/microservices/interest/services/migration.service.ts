@@ -202,7 +202,7 @@ export class InterestMigrationService {
   /**
    * Migrate event interests (if they exist)
    */
-  async migrateEventInterests(dryRun = false): Promise<void> {
+  async migrateEventInterests(): Promise<void> {
     this.logger.log("Starting event interests migration");
 
     // Commenting out the problematic logic
@@ -299,7 +299,7 @@ export class InterestMigrationService {
     await this.populatePredefinedInterests(predefinedInterests);
     await this.migrateUserInterests(dryRun);
     // await this.migratePostInterests(dryRun); // Removed call - Method deleted
-    await this.migrateEventInterests(dryRun);
+    await this.migrateEventInterests();
     this.logger.log("Finished interest data migration");
   }
 }

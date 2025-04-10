@@ -5,16 +5,12 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
-  WsResponse,
   ConnectedSocket,
   MessageBody,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import { UseGuards } from "@nestjs/common";
-import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
 import { ChatService } from "../services/chat.service";
 import { MessageService } from "../services/message.service";
-import { SendMessageDto } from "../dto/send-message.dto";
 import { UpdateMessageStatusDto } from "../dto/update-message-status.dto";
 import { OnEvent } from "@nestjs/event-emitter";
 import { ParseSocketJwtPipe } from "../pipes/parse-socket-jwt.pipe";
@@ -49,7 +45,7 @@ export class ChatGateway
     private readonly parseJwt: ParseSocketJwtPipe,
   ) {}
 
-  afterInit(server: Server) {
+  afterInit() {
     console.log("Chat WebSocket Gateway initialized");
   }
 

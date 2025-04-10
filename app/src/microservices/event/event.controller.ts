@@ -107,7 +107,6 @@ export class EventController {
   @ApiQuery({ name: "startDate", required: false, type: String })
   @ApiQuery({ name: "endDate", required: false, type: String })
   @ApiQuery({ name: "venueId", required: false, type: String })
-  @ApiQuery({ name: "categoryId", required: false, type: String })
   async findAll(
     @Request() req: RequestWithUser,
     @Query("limit") limit?: number,
@@ -116,7 +115,6 @@ export class EventController {
     @Query("startDate") startDate?: string,
     @Query("endDate") endDate?: string,
     @Query("venueId") venueId?: string,
-    @Query("categoryId") categoryId?: string,
   ): Promise<{ events: EventResponseDto[]; total: number }> {
     const userId = req.user?.id;
 

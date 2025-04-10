@@ -10,7 +10,9 @@ import { AuthRepository } from "../../auth/repositories/auth.repository";
 
 // Add Express.Multer type declarations
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
+    // eslint-disable-next-line @typescript-eslint/no-namespace -- TODO: Explore replacing global augmentation with local types/casting if feasible without altering behavior
     namespace Multer {
       interface File {
         fieldname: string;

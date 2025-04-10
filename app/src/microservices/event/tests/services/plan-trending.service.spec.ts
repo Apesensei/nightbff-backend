@@ -6,7 +6,6 @@ import { PlanTrendingService } from "../../services/plan-trending.service";
 import { PlanAnalyticsService } from "../../services/plan-analytics.service";
 import { EventRepository } from "../../repositories/event.repository";
 import { EventAttendee } from "../../entities/event-attendee.entity";
-import { Event } from "../../entities/event.entity";
 
 describe("PlanTrendingService", () => {
   let service: PlanTrendingService;
@@ -148,7 +147,6 @@ describe("PlanTrendingService", () => {
   describe("refreshAllTrendingScores", () => {
     it("should update trending scores for all active plans in batches", async () => {
       // Arrange
-      const now = new Date();
       const mockPlans = [{ id: "plan1" }, { id: "plan2" }, { id: "plan3" }];
       eventRepository.findAll.mockResolvedValue([mockPlans, mockPlans.length]);
 

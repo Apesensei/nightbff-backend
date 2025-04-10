@@ -55,9 +55,9 @@ export class RateLimiterService {
       const key = `ratelimit:${operation}`;
 
       // Get current points and TTL
-      const [currentPoints, ttl] = await Promise.all([
+      const [currentPoints] = await Promise.all([
         this.redis.get(key),
-        this.redis.ttl(key),
+        // this.redis.ttl(key), // Comment out the unused call if not needed elsewhere
       ]);
 
       // If key doesn't exist, create it

@@ -154,20 +154,20 @@ export class VenueController {
   @Get("recent-searches")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Get recent venue searches for the current user" })
+  @ApiOperation({ summary: "Get recently viewed venues" })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: "List of recent searches",
-    type: [String],
+    description: "List of recently viewed venues",
+    type: [VenueResponseDto],
   })
   async getRecentSearches(
     @Req() req: RequestWithUser,
     @Query("limit") limit: number = 5,
-  ): Promise<string[]> {
+  ): Promise<VenueResponseDto[]> {
     if (!req.user) {
       throw new UnauthorizedException();
     }
-    return this.venueService.getRecentSearches(req.user.id, limit);
+    return this.venueService.getRecentlyViewedVenues(req.user.id, limit);
   }
 
   // IMPORTANT: Keep /:id endpoint last to avoid capturing other routes

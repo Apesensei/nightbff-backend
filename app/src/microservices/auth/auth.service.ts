@@ -122,7 +122,7 @@ export class AuthService {
         success: true,
         message: "User signed out successfully",
       };
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException("Failed to sign out");
     }
   }

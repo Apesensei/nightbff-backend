@@ -1,11 +1,4 @@
-import {
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsUUID,
-  ValidateIf,
-} from "class-validator";
-import { MessageType } from "../entities/message.entity";
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from "class-validator";
 
 export class UpdateMessageDto {
   @IsUUID()

@@ -1,14 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import {
-  Repository,
-  FindOptionsWhere,
-  In,
-  MoreThan,
-  LessThan,
-  Like,
-  Between,
-} from "typeorm";
+import { Repository } from "typeorm";
 import { Event } from "../entities/event.entity";
 import { EventAttendee } from "../entities/event-attendee.entity";
 import { EventAttendeeStatus } from "../enums/event-attendee-status.enum";

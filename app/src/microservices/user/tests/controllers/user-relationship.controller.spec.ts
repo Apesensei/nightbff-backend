@@ -15,7 +15,7 @@ jest.mock("../../../auth/decorators/current-user.decorator", () => ({
   CurrentUser:
     () => (target: any, key: string, descriptor: PropertyDescriptor) => {
       const originalMethod = descriptor.value;
-      descriptor.value = function (user: any) {
+      descriptor.value = function () {
         // Replace the user object with just the ID for the controller
         return originalMethod.apply(this, ["user1"]);
       };

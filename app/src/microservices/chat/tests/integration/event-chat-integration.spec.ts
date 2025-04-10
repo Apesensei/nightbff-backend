@@ -5,14 +5,13 @@ import { EventChatIntegrationService } from "../../services/event-chat-integrati
 import { ChatService } from "../../services/chat.service";
 import { Chat, ChatType } from "../../entities/chat.entity";
 import { Repository } from "typeorm";
-import { ConfigModule, ConfigService } from "@nestjs/config";
+import { ConfigModule } from "@nestjs/config";
 import { User } from "../../../auth/entities/user.entity";
 
 describe("Event-Chat Integration (Integration Tests)", () => {
   let eventEmitter: EventEmitter2;
   let chatService: ChatService;
   let chatRepository: Repository<Chat>;
-  let integrationService: EventChatIntegrationService;
 
   const mockEvent = {
     id: "event-id-123",
@@ -68,9 +67,6 @@ describe("Event-Chat Integration (Integration Tests)", () => {
     eventEmitter = module.get<EventEmitter2>(EventEmitter2);
     chatService = module.get<ChatService>(ChatService);
     chatRepository = module.get<Repository<Chat>>(getRepositoryToken(Chat));
-    integrationService = module.get<EventChatIntegrationService>(
-      EventChatIntegrationService,
-    );
   });
 
   describe("End-to-end event-chat integration", () => {

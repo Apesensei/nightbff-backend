@@ -375,7 +375,7 @@ export class UserRelationshipService {
     }
 
     // Count existing connections for free users
-    const [connections, total] =
+    const [, total] =
       await this.userRelationshipRepository.findUserRelationships(
         userId,
         RelationshipType.ACCEPTED,

@@ -3,9 +3,6 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Logger } from "@nestjs/common";
 
 import { InterestRepository } from "../repositories/interest.repository";
-import { Interest } from "../entities/interest.entity";
-import { UserInterest } from "../entities/user-interest.entity";
-import { EventInterest } from "../entities/event-interest.entity";
 import {
   InterestResponseDto,
   CreateInterestDto,

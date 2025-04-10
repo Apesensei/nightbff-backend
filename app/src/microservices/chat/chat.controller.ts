@@ -10,7 +10,6 @@ import {
   Patch,
   HttpCode,
   HttpStatus,
-  UnauthorizedException,
   UseInterceptors,
   ClassSerializerInterceptor,
 } from "@nestjs/common";

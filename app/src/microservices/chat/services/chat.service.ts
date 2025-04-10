@@ -14,12 +14,6 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { User } from "../../auth/entities/user.entity";
 import { MessageResponseDto } from "../dto/message-response.dto";
 
-// Define types for the entities we need
-interface Event {
-  id: string;
-  title: string;
-}
-
 @Injectable()
 export class ChatService {
   constructor(

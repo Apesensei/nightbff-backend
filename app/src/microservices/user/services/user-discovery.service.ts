@@ -6,7 +6,6 @@ import {
 import { UserRelationshipRepository } from "../repositories/user-relationship.repository";
 import { ProfileViewRepository } from "../repositories/profile-view.repository";
 import { RelationshipType } from "../entities/user-relationship.entity";
-import { ProfileView } from "../entities/profile-view.entity";
 
 export interface ViewerWithTimestamp extends UserWithDistance {
   viewedAt: Date;
@@ -122,16 +121,12 @@ export class UserDiscoveryService {
       throw new BadRequestException("User location not available");
     }
 
-    // Get friends to boost similar users
-    const [friends] =
-      await this.userRelationshipRepository.findUserRelationships(
-        userId,
-        RelationshipType.ACCEPTED,
-      );
-
-    const friendIds = friends.map((r) =>
-      r.requesterId === userId ? r.recipientId : r.requesterId,
-    );
+    // Get friends to boost similar users - // TODO: Implement scoring based on friends
+    // const [friends] = // Removed unused variable and call
+    //   await this.userRelationshipRepository.findUserRelationships(
+    //     userId,
+    //     RelationshipType.ACCEPTED,
+    //   );
 
     // For now, use the nearby users functionality as base
     // and implement additional scoring/filtering in future versions
@@ -156,10 +151,9 @@ export class UserDiscoveryService {
     options?: {
       limit?: number;
       offset?: number;
-      daysBack?: number;
     },
   ): Promise<{ users: ViewerWithTimestamp[]; total: number }> {
-    const { limit = 20, offset = 0, daysBack = 30 } = options || {};
+    const { limit = 20, offset = 0 } = options || {};
 
     // Get profile views
     const [views] = await this.profileViewRepository.getViewsForUser(

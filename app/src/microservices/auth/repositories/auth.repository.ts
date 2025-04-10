@@ -121,7 +121,7 @@ export class AuthRepository {
       }
 
       return data as User;
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException(
         "Failed to update user age verification status",
       );
@@ -149,7 +149,7 @@ export class AuthRepository {
       }
 
       return data as User;
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException("Failed to update user profile");
     }
   }
@@ -172,7 +172,7 @@ export class AuthRepository {
       }
 
       return data as User;
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException("Failed to update user photo");
     }
   }

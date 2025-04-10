@@ -23,7 +23,11 @@ export class VenueReviewRepository {
     return review;
   }
 
-  async findByVenueId(venueId: string): Promise<VenueReview[]> {
+  async findByVenueId(
+    venueId: string,
+    limit?: number,
+    offset?: number,
+  ): Promise<VenueReview[]> {
     return this.reviewRepository.find({
       where: {
         venueId,
@@ -33,6 +37,8 @@ export class VenueReviewRepository {
       order: {
         createdAt: "DESC",
       },
+      take: limit,
+      skip: offset,
     });
   }
 

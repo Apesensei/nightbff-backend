@@ -26,13 +26,11 @@ export class ProfileService {
   }
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
-    let profile;
-
     try {
-      profile = await this.profileRepository.findByUserId(userId);
+      await this.profileRepository.findByUserId(userId);
     } catch (error) {
       if (error instanceof NotFoundException) {
-        profile = await this.initProfile(userId);
+        await this.initProfile(userId);
       } else {
         throw error;
       }

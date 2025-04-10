@@ -1,16 +1,12 @@
 import { Test } from "@nestjs/testing";
 import { BadRequestException } from "@nestjs/common";
-import {
-  UserDiscoveryService,
-  ViewerWithTimestamp,
-} from "../../services/user-discovery.service";
+import { UserDiscoveryService } from "../../services/user-discovery.service";
 import {
   UserRepository,
   UserWithDistance,
 } from "../../repositories/user.repository";
 import { UserRelationshipRepository } from "../../repositories/user-relationship.repository";
 import { ProfileViewRepository } from "../../repositories/profile-view.repository";
-import { RelationshipType } from "../../entities/user-relationship.entity";
 import { User } from "../../../auth/entities/user.entity";
 import { ProfileView } from "../../entities/profile-view.entity";
 

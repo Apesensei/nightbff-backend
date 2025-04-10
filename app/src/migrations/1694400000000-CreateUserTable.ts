@@ -2,8 +2,8 @@ import {
   MigrationInterface,
   QueryRunner,
   Table,
-  TableIndex,
-  TableForeignKey,
+  // TableIndex, // Removed unused import
+  // TableForeignKey, // Removed unused import
 } from "typeorm";
 
 export class CreateUserTable1694400000000 implements MigrationInterface {

@@ -5,7 +5,6 @@ import { Venue } from "../entities/venue.entity";
 import { VenueType } from "../entities/venue-type.entity";
 import { VenueSearchDto, VenueSortBy } from "../dto/venue-search.dto";
 import { VenueTypeRepository } from "../repositories/venue-type.repository";
-import { In } from "typeorm";
 
 @Injectable()
 export class VenueMapService {

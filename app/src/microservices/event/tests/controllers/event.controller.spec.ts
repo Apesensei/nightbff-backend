@@ -2,34 +2,11 @@ import { Test } from "@nestjs/testing";
 import { EventController } from "../../event.controller";
 import { EventService } from "../../event.service";
 import { CreateEventDto } from "../../dto/create-event.dto";
-import { UpdateEventDto } from "../../dto/update-event.dto";
 import { JoinEventDto } from "../../dto/join-event.dto";
-import { EventResponseDto } from "../../dto/event-response.dto";
 import { AttendeeResponseDto } from "../../dto/attendee-response.dto";
 import { EventVisibility } from "../../enums/event-visibility.enum";
 import { EventAttendeeStatus } from "../../enums/event-attendee-status.enum";
 import { PlanTrendingService } from "../../services/plan-trending.service";
-import { Request } from "express";
-
-// Add mock for Request interface
-class MockRequest {
-  user?: {
-    id: string;
-    [key: string]: any;
-  };
-  // Add required Request properties
-  url: string = "";
-  method: string = "GET";
-  headers: Record<string, string> = {};
-}
-
-// Define RequestWithUser using the controller definition
-interface RequestWithUser extends Request {
-  user?: {
-    id: string;
-    [key: string]: any;
-  };
-}
 
 describe("EventController", () => {
   let eventController: EventController;
@@ -260,11 +237,7 @@ describe("EventController", () => {
         .spyOn(eventService, "getTrendingPlans")
         .mockResolvedValue(mockResponse);
 
-      // Mock the request to avoid type issues
-      const mockReq = { user: { id: "test-user" } } as any;
-
       // Act
-      // Use the spy to verify if the controller would pass the right parameters
       await eventService.getTrendingPlans(mockQueryDto, "test-user");
 
       // Assert

@@ -193,7 +193,6 @@ describe("UserDiscoveryController", () => {
         mockUser,
         20,
         0,
-        30,
       );
 
       expect(result).toEqual(mockResponse);
@@ -202,7 +201,6 @@ describe("UserDiscoveryController", () => {
         {
           limit: 20,
           offset: 0,
-          daysBack: 30,
         },
       );
     });
@@ -216,7 +214,7 @@ describe("UserDiscoveryController", () => {
         .mockRejectedValue(new Error("Database error"));
 
       await expect(
-        userDiscoveryController.getProfileViewers(mockUser, 20, 0, 30),
+        userDiscoveryController.getProfileViewers(mockUser, 20, 0),
       ).rejects.toThrow(BadRequestException);
     });
   });

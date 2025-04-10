@@ -74,13 +74,11 @@ export class UserDiscoveryController {
     @CurrentUser() user: User,
     @Query("limit", new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query("offset", new DefaultValuePipe(0), ParseIntPipe) offset: number,
-    @Query("daysBack", new DefaultValuePipe(30), ParseIntPipe) daysBack: number,
   ): Promise<{ users: ViewerWithTimestamp[]; total: number }> {
     try {
       return this.userDiscoveryService.getProfileViewers(user.id, {
         limit,
         offset,
-        daysBack,
       });
     } catch (error) {
       throw new BadRequestException(error.message);

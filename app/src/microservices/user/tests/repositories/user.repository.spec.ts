@@ -1,10 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import {
-  UserRepository,
-  UserWithDistance,
-} from "../../repositories/user.repository";
+import { UserRepository } from "../../repositories/user.repository";
 import { User } from "../../../auth/entities/user.entity";
 import {
   UserRelationship,

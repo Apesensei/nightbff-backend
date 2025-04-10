@@ -7,14 +7,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import {
   Repository,
   In,
-  Between,
   Not,
   IsNull,
   MoreThan,
   FindOptionsWhere,
 } from "typeorm";
 import { Venue } from "../entities/venue.entity";
-import { VenueType } from "../entities/venue-type.entity";
 import { VenueSortBy } from "../dto/venue-search.dto";
 
 @Injectable()

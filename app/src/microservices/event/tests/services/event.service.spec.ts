@@ -1,22 +1,16 @@
-import { Test, TestingModule } from "@nestjs/testing";
+import { Test } from "@nestjs/testing";
 import { EventService } from "../../event.service";
 import { EventRepository } from "../../repositories/event.repository";
-import { PlanAnalyticsService } from "../../services/plan-analytics.service";
-import { PlanTrendingService } from "../../services/plan-trending.service";
-import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
 } from "@nestjs/common";
-import { Event } from "../../entities/event.entity";
-import { EventAttendee } from "../../entities/event-attendee.entity";
 import { EventVisibility } from "../../enums/event-visibility.enum";
 import { EventAttendeeStatus } from "../../enums/event-attendee-status.enum";
 
 describe("EventService", () => {
   let eventService: EventService;
-  let eventRepository: EventRepository;
 
   const mockEvent: any = {
     id: "event-id",
@@ -56,7 +50,6 @@ describe("EventService", () => {
     }).compile();
 
     eventService = moduleRef.get<EventService>(EventService);
-    eventRepository = moduleRef.get<EventRepository>(EventRepository);
   });
 
   describe("create", () => {

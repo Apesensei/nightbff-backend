@@ -15,7 +15,9 @@ import { EventRepository } from "../repositories/event.repository";
 
 // Add Express.Multer type declarations if not already declared
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
+    // eslint-disable-next-line @typescript-eslint/no-namespace -- TODO: Explore replacing global augmentation with local types/casting if feasible without altering behavior
     namespace Multer {
       interface File {
         fieldname: string;

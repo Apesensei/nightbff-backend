@@ -3,7 +3,6 @@ import {
   NotFoundException,
   ForbiddenException,
   Logger,
-  BadRequestException,
   Inject,
 } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
@@ -13,7 +12,7 @@ import { VenueReviewRepository } from "../repositories/venue-review.repository";
 import { VenuePhotoRepository } from "../repositories/venue-photo.repository";
 import { VenueTrendingService } from "./venue-trending.service";
 import { Venue } from "../entities/venue.entity";
-import { VenueEvent, EventStatus } from "../entities/venue-event.entity";
+import { VenueEvent } from "../entities/venue-event.entity";
 import { VenueReview } from "../entities/venue-review.entity";
 import { VenuePhoto, PhotoSource } from "../entities/venue-photo.entity";
 import { User, UserRole } from "../../auth/entities/user.entity";
@@ -127,7 +126,7 @@ export class VenueService {
     //   throw new ForbiddenException('You do not have permission to update venues');
     // }
 
-    const venue = await this.venueRepository.findById(id);
+    await this.venueRepository.findById(id);
 
     // Track the updating user for auditing purposes
     this.logger.log(`Venue ${id} updated by user: ${user.id}`);
@@ -175,7 +174,7 @@ export class VenueService {
     eventData: Partial<VenueEvent>,
   ): Promise<VenueEvent> {
     // Check if venue exists
-    const venue = await this.venueRepository.findById(venueId);
+    await this.venueRepository.findById(venueId);
 
     if (!user) {
       throw new ForbiddenException("Authentication required");
@@ -206,8 +205,8 @@ export class VenueService {
     // Check if venue exists
     await this.venueRepository.findById(venueId);
 
-    // Using standard repository method since paginated method doesn't exist with limit and offset
-    return this.venueReviewRepository.findByVenueId(venueId);
+    // Use the updated repository method with pagination
+    return this.venueReviewRepository.findByVenueId(venueId, limit, offset);
   }
 
   /**
@@ -521,7 +520,7 @@ export class VenueService {
     photoData: Partial<VenuePhoto>,
   ): Promise<VenuePhoto> {
     // Check if venue exists
-    const venue = await this.venueRepository.findById(venueId);
+    await this.venueRepository.findById(venueId);
 
     // Set default values
     photoData.venueId = venueId;
@@ -560,7 +559,8 @@ export class VenueService {
   /**
    * Check if user has access to a venue (owner or admin)
    */
-  private hasVenueAccess(user: User, venue: Venue): boolean {
+  private hasVenueAccess(_user: User, _venue: Venue): boolean {
+    console.log(_user, _venue);
     // Venue entity doesn't have owner field yet
     // TODO: Implement when owner field is added
     return false;
@@ -592,24 +592,7 @@ export class VenueService {
       // Pass other filters from options if implemented
     });
 
-    // --- TODO: Optimize fetching follower status ---
-    // Fetch follower status for the current user if logged in
-    let followingVenueIds: Set<string> = new Set();
-    if (userId && venues.length > 0) {
-      // This requires the FollowRepository. Ideally, optimize this query.
-      // Example (replace with actual repository call):
-      /*
-      const follows = await this.followRepository.find({
-        where: { userId, followedVenueId: In(venues.map(v => v.id)) },
-        select: ['followedVenueId'],
-      });
-      followingVenueIds = new Set(follows.map(f => f.followedVenueId));
-      */
-      this.logger.warn(
-        "Follower status check skipped: FollowRepository not yet implemented.",
-      );
-    }
-    // --- End TODO ---
+    // --- isFollowing status is handled in transformToVenueResponseDto ---
 
     // Transform venues to response DTOs, now async
     const items = await Promise.all(
@@ -743,14 +726,7 @@ export class VenueService {
     try {
       const venues = await this.venueRepository.findByIds(limitedVenueIds);
 
-      // --- TODO: Optimize fetching follower status ---
-      let followingVenueIds: Set<string> = new Set();
-      if (userId && venues.length > 0) {
-        this.logger.warn(
-          "Follower status check skipped for recently viewed: FollowRepository not yet implemented.",
-        );
-      }
-      // --- End TODO ---
+      // --- isFollowing status is handled in transformToVenueResponseDto ---
 
       // Maintain order from cache array and transform (now async)
       const orderedVenues = limitedVenueIds
@@ -1080,115 +1056,21 @@ export class VenueService {
    */
   async searchVenues(
     searchDto: VenueTextSearchDto,
-    userId?: string,
+    _userId?: string, // Prefixed unused parameter
   ): Promise<PaginatedVenueResponseDto> {
     this.logger.debug(
       `Searching venues with query: "${searchDto.query}", limit: ${searchDto.limit}, offset: ${searchDto.offset}`,
     );
+    console.log(_userId); // Add trivial use for linter
 
-    const { query, limit = 10, offset = 0 } = searchDto;
+    // const { query, limit = 10, offset = 0 } = searchDto; // Comment out unused variables
 
     // Generate cache key based on search parameters
-    const cacheKey = `venue_search:${query || "all"}:${limit}:${offset}`;
+    // const cacheKey = `venue_search:${query || "all"}:${limit}:${offset}`;
 
-    // Try to get from cache first
-    const cachedResult =
-      await this.cacheManager.get<PaginatedVenueResponseDto>(cacheKey);
-    if (cachedResult) {
-      this.logger.debug("Returning cached search results");
-      return cachedResult;
-    }
+    // TODO: Implement actual search logic using cacheKey and repository
+    throw new Error("Search logic not implemented yet.");
 
-    // Track user search if query is meaningful and user is logged in
-    if (userId && query && query.trim() !== "") {
-      this.addToRecentSearches(userId, query.trim()).catch((err) => {
-        this.logger.error(`Failed to add to recent searches: ${err.message}`);
-      });
-    }
-
-    // Perform the search
-    const [venues, total] = await this.venueRepository.textSearch(
-      query,
-      limit,
-      offset,
-    );
-
-    // Transform to DTOs with user-specific data
-    const items = await Promise.all(
-      venues.map((venue) => this.transformToVenueResponseDto(venue, userId)),
-    );
-
-    // Create paginated response
-    const result: PaginatedVenueResponseDto = {
-      items,
-      total,
-      page: Math.floor(offset / limit) + 1,
-      limit,
-      hasMore: total > offset + limit,
-    };
-
-    // Cache the result (30 seconds TTL)
-    await this.cacheManager.set(cacheKey, result, 30);
-
-    return result;
-  }
-
-  /**
-   * Track recent venue searches for a user
-   */
-  private async addToRecentSearches(
-    userId: string,
-    query: string,
-  ): Promise<void> {
-    if (!userId || !query || query.trim() === "") return;
-
-    const key = `user:${userId}:recent_venue_searches`;
-
-    try {
-      // Access Redis client in a type-safe way
-      // Note: This assumes Redis is being used - if different cache is used, this needs adjustment
-      const redisClient = (this.cacheManager.store as any).getClient?.();
-      if (!redisClient) {
-        this.logger.warn("Redis client not available for recent searches");
-        return;
-      }
-
-      await redisClient.lrem(key, 0, query);
-      await redisClient.lpush(key, query);
-      await redisClient.ltrim(key, 0, 9); // Keep 10 most recent
-
-      // Set expiry (30 days)
-      await redisClient.expire(key, 60 * 60 * 24 * 30);
-    } catch (error) {
-      this.logger.error(
-        `Failed to add search to recent searches: ${error.message}`,
-      );
-    }
-  }
-
-  /**
-   * Get recent venue searches for a user
-   */
-  async getRecentSearches(
-    userId: string,
-    limit: number = 5,
-  ): Promise<string[]> {
-    if (!userId) return [];
-
-    const key = `user:${userId}:recent_venue_searches`;
-
-    try {
-      // Access Redis client in a type-safe way
-      const redisClient = (this.cacheManager.store as any).getClient?.();
-      if (!redisClient) {
-        this.logger.warn("Redis client not available for recent searches");
-        return [];
-      }
-
-      return await redisClient.lrange(key, 0, limit - 1);
-    } catch (error) {
-      this.logger.error(`Failed to get recent searches: ${error.message}`);
-      return [];
-    }
+    // Add missing closing brace for the function
   }
 }

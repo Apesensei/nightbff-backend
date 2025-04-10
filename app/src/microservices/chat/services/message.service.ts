@@ -44,10 +44,7 @@ export class MessageService {
     userId: string,
   ): Promise<MessageResponseDto> {
     // Validate chat exists and user is a participant (using chatService)
-    const chat = await this.chatService.validateChatAccess(
-      sendMessageDto.chatId,
-      userId,
-    );
+    await this.chatService.validateChatAccess(sendMessageDto.chatId, userId);
 
     // Validate message content based on type
     if (sendMessageDto.type === MessageType.TEXT && !sendMessageDto.content) {

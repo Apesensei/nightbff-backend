@@ -1,8 +1,7 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DeleteResult, Not, IsNull } from "typeorm";
 import { Follow } from "../entities/follow.entity";
-import { User } from "../../auth/entities/user.entity"; // Assuming User entity is needed
 
 @Injectable()
 export class FollowRepository {

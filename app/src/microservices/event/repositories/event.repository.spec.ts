@@ -9,8 +9,6 @@ import { EventVisibility } from "../enums/event-visibility.enum";
 
 describe("EventRepository", () => {
   let eventRepository: EventRepository;
-  let eventModel: Repository<Event>;
-  let attendeeModel: Repository<EventAttendee>;
 
   const mockEventModel = {
     create: jest.fn(),
@@ -56,10 +54,6 @@ describe("EventRepository", () => {
     }).compile();
 
     eventRepository = moduleRef.get<EventRepository>(EventRepository);
-    eventModel = moduleRef.get<Repository<Event>>(getRepositoryToken(Event));
-    attendeeModel = moduleRef.get<Repository<EventAttendee>>(
-      getRepositoryToken(EventAttendee),
-    );
   });
 
   describe("create", () => {

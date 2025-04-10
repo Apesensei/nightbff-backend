@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, In, FindOptionsWhere, Not, IsNull } from "typeorm";
+import { Repository, In, Not, IsNull } from "typeorm";
 import { Chat, ChatType } from "./entities/chat.entity";
-import { Message, MessageStatus, MessageType } from "./entities/message.entity";
+import { Message, MessageStatus } from "./entities/message.entity";
 import { CreateChatDto } from "./dto/create-chat.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { UpdateMessageDto } from "./dto/update-message.dto";
@@ -138,7 +138,6 @@ export class ChatRepository {
 
   async updateMessageStatus(
     updateStatusDto: UpdateMessageStatusDto,
-    userId: string,
   ): Promise<boolean> {
     const result = await this.messageRepository.update(
       { id: updateStatusDto.messageId },

@@ -31,13 +31,11 @@ export class PreferenceService {
     userId: string,
     updatePreferencesDto: UpdatePreferencesDto,
   ) {
-    let preferences;
-
     try {
-      preferences = await this.preferenceRepository.findByUserId(userId);
+      await this.preferenceRepository.findByUserId(userId);
     } catch (error) {
       if (error instanceof NotFoundException) {
-        preferences = await this.initPreferences(userId);
+        await this.initPreferences(userId);
       } else {
         throw error;
       }

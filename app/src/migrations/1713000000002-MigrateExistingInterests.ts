@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Not, IsNull } from "typeorm";
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 interface Interest {
   id: string;
@@ -177,8 +177,9 @@ export class MigrateExistingInterests1713000000002
     }
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
+  public async down(_queryRunner: QueryRunner): Promise<void> {
     // No need to implement rollback for data migration
+    console.log(_queryRunner);
     console.log(
       "Note: Data migration rollback not implemented. Manual intervention required.",
     );

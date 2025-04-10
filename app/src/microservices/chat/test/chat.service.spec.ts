@@ -7,12 +7,8 @@ import {
   BadRequestException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { Chat, ChatType } from "../entities/chat.entity";
-import {
-  Message,
-  MessageType,
-  MessageStatus,
-} from "../entities/message.entity";
+import { ChatType } from "../entities/chat.entity";
+import { MessageType, MessageStatus } from "../entities/message.entity";
 import { User } from "../../user/entities/user.entity";
 import { Event } from "../../event/entities/event.entity";
 import { CreateChatDto } from "../dto/create-chat.dto";

@@ -8,7 +8,7 @@ export class OptionalJwtAuthGuard extends AuthGuard("jwt") {
     return super.canActivate(context);
   }
 
-  handleRequest(err: any, user: any, info: any) {
+  handleRequest(err: any, user: any) {
     // If authentication fails, return null instead of throwing an error
     if (err || !user) {
       return null;
