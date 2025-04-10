@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15 # Use a specific Postgres version (e.g., 15)
+    container_name: nightbff_postgres_dev
+    restart: always
+    environment:
+      POSTGRES_USER: nightbff_user
+      POSTGRES_PASSWORD: your_strong_password # <-- CHANGE THIS!
+      POSTGRES_DB: nightbff_dev
+    ports:
+      - "5433:5432" # Map container port 5432 to host port 5433 (avoids conflicts)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nightbff_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  nightbff_network:
+    driver: bridge 
