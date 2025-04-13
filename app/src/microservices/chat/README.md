@@ -1,195 +1,77 @@
-# Chat Service
+# Chat Module
 
-This module handles messaging functionality for the NightBFF application, including direct messages, group chats, and event chat rooms.
+## 1. Purpose
 
-## Key Components
+Handles real-time messaging functionality, including direct messages, group chats, and event-specific chat rooms, using WebSockets.
 
-- `ChatService`: Manages chat rooms and participants
-- `MessageService`: Handles the creation and management of messages
-- `ChatGateway`: WebSocket gateway for real-time messaging
-- `EventChatIntegrationService`: Automatically manages chat rooms for events
+## 2. Key Components
 
-## Features
+- **Entities:**
+  - `Chat.entity.ts`: Represents a chat room (direct, group, event), tracks participants, and metadata.
+  - `Message.entity.ts`: Represents a single message within a chat (text, image, location), including sender and status.
+- **Services:**
+  - `ChatService.ts`: Manages chat room creation, participant management (add/remove), and metadata updates.
+  - `MessageService.ts`: Handles message creation, updates (editing), deletion, and status tracking (sent, delivered, read).
+  - `EventChatIntegrationService.ts`: Listens for events from the `EventModule` to automatically create/manage event chat rooms and add/remove participants.
+  - `MediaUploadService.ts`: Handles image uploads for messages.
+- **Repositories:**
+  - `ChatRepository.ts`: CRUD for `Chat` entities.
+  - `MessageRepository.ts`: CRUD for `Message` entities.
+- **Gateways:**
+  - `ChatGateway.ts`: WebSocket gateway handling real-time connections, message broadcasting, typing indicators, read receipts, and online status.
+- **Controllers:**
+  - `ChatController.ts`: REST endpoints for managing chats (create, list, get, delete).
+  - `MessageController.ts`: REST endpoints for managing messages (potentially for history retrieval, though primary interaction is via WebSocket).
+  - `ChatParticipantsController.ts`: REST endpoints for managing chat participants.
+  - `MediaUploadController.ts`: REST endpoint for uploading media for messages.
+- **DTOs:**
+  - `dto/`: DTOs for API requests/responses and WebSocket event payloads.
 
-### Chat Types
+## 3. API Endpoints
 
-- **Direct Chats**: One-on-one conversations between users
-- **Group Chats**: Conversations between multiple users
-- **Event Chats**: Automatically created for events where event attendees can chat
+- `POST /chat`: Create a new chat (likely direct or group).
+- `GET /chat`: Get chats for the current user.
+- `GET /chat/:id`: Get details of a specific chat.
+- `DELETE /chat/:id`: Delete/leave a chat.
+- `POST /chat/:id/participants`: Add participants.
+- `DELETE /chat/:id/participants/:userId`: Remove a participant.
+- `POST /chat/message`: (Potentially for initial message or REST fallback) Send a message.
+- `PATCH /chat/message`: Update a message.
+- `DELETE /chat/message/:id`: Delete a message.
+- `POST /chat/media`: Upload media for a chat message.
 
-### Real-time Messaging
+## 4. Dependencies
 
-The chat system uses WebSockets for real-time messaging, providing:
+- **Internal Modules:**
+  - `AuthModule`: For user authentication and getting user IDs.
+  - `UserModule`: Potentially for fetching participant details.
+  - `EventModule`: Required for event-chat integration.
+  - `EventEmitterModule`: Used by `EventChatIntegrationService` to listen for events.
+  - `JwtModule`: For validating WebSocket connection tokens.
+  - `ConfigModule`: For configuration values.
+- **External Libraries:**
+  - `TypeORM`: Database interaction.
+  - `@nestjs/websockets`, `@nestjs/platform-socket.io`: For WebSocket implementation.
+  - `MulterModule`: For media uploads.
+- **External Services:**
+  - None directly.
 
-- Instant message delivery
-- Read receipts
-- Typing indicators
-- Online status tracking
+## 5. Testing
 
-### Event-Chat Integration
+Tests for this module are located in `src/microservices/chat/tests/` (or `/test/`).
 
-The system automatically creates and manages chat rooms for events:
-
-- When an event is created, a chat room is automatically created
-- When users join an event, they are automatically added to the event's chat room
-- When users leave an event, they are automatically removed from the chat room
-- When an event is updated (e.g., title changed), the chat room is updated accordingly
-- When an event is deleted, the chat room is deactivated but chat history is preserved
-
-## API Endpoints
-
-### Chat Management
-
-- `POST /chat`: Create a new chat
-- `GET /chat`: Get all chats for the current user
-- `GET /chat/:id`: Get a specific chat by ID
-- `DELETE /chat/:id`: Delete/deactivate a chat
-
-### Message Management
-
-- `POST /chat/message`: Send a message to a chat
-- `PATCH /chat/message`: Update a message
-- `DELETE /chat/message/:id`: Delete a message
-- `PATCH /chat/message/status`: Update message status (read/delivered)
-
-### Chat Participants
-
-- `POST /chat/:id/participants`: Add participants to a chat
-- `DELETE /chat/:id/participants/:userId`: Remove a participant from a chat
-
-## WebSocket Events
-
-### Server to Client
-
-- `message:new`: New message received
-- `message:updated`: Message was updated
-- `message:deleted`: Message was deleted
-- `message:status`: Message status updated
-- `chat:new`: New chat created
-- `chat:participants`: Participants added/removed from chat
-- `chat:typing`: User is typing
-- `chat:joined`: Current user was added to a chat
-- `chat:left`: Current user was removed from a chat
-
-### Client to Server
-
-- `message:send`: Send a new message
-- `message:update`: Update a message
-- `message:delete`: Delete a message
-- `message:status`: Update message status
-- `typing:start`: User started typing
-- `typing:stop`: User stopped typing
-
-## Event Listeners
-
-The `EventChatIntegrationService` listens for the following events:
-
-- `event.created`: Create a new chat room for the event
-- `event.updated`: Update the chat room title/metadata
-- `event.deleted`: Mark the chat room as inactive
-- `event.joined`: Add user to the event chat room
-- `event.left`: Remove user from the event chat room
-
-## Architecture
-
-The Chat Service follows the NestJS microservice architecture pattern with the following components:
-
-1. **Entities**: 
-   - `Chat`: Represents a chat room (direct, group, or event)
-   - `Message`: Represents messages in a chat
-
-2. **DTOs**:
-   - Request DTOs: Validation and transformation of incoming data
-   - Response DTOs: Properly formatted API responses
-
-3. **Services**:
-   - `ChatService`: Business logic for chat operations
-   - `MessageService`: Business logic for message operations
-   - `MediaUploadService`: Handling image uploads
-
-4. **Controllers**:
-   - `ChatController`: REST endpoints for chat management
-   - `MessageController`: REST endpoints for messaging
-   - `ChatParticipantsController`: REST endpoints for managing chat participants
-   - `MediaUploadController`: REST endpoints for media uploads
-
-5. **Gateway**:
-   - `ChatGateway`: WebSocket gateway for real-time communication
-
-## Integration Points
-
-- **User Service**: User lookup and validation
-- **Event Service**: Event chat creation and participant synchronization
-- **Notification Service**: Push notifications for new messages
-
-## Database Schema
-
-### Chat Table
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| type | enum | Chat type (DIRECT, GROUP, EVENT) |
-| title | string | Chat title (optional) |
-| imageUrl | string | Chat image URL (optional) |
-| creatorId | uuid | User who created the chat |
-| eventId | uuid | Associated event ID (optional) |
-| isActive | boolean | Whether the chat is active |
-| createdAt | timestamp | Creation time |
-| updatedAt | timestamp | Last update time |
-| lastActivityAt | timestamp | Last activity time |
-
-### Message Table
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| chatId | uuid | Chat ID |
-| senderId | uuid | Sender user ID |
-| type | enum | Message type (TEXT, IMAGE, LOCATION) |
-| content | string | Text content |
-| mediaUrl | string | Media URL |
-| locationLatitude | float | Location latitude |
-| locationLongitude | float | Location longitude |
-| status | enum | Message status (SENT, DELIVERED, READ) |
-| isEdited | boolean | Whether the message has been edited |
-| createdAt | timestamp | Creation time |
-| updatedAt | timestamp | Last update time |
-| deletedAt | timestamp | Soft delete time |
-
-## Setup Instructions
-
-1. Install dependencies:
-```
-npm install
+Run all tests for this module:
+```bash
+npm test -- --testPathPattern=src/microservices/chat
 ```
 
-2. Configure environment variables:
-```
-# Chat service configuration
-UPLOAD_DIR=uploads/chat
-MAX_UPLOAD_SIZE=5242880  # 5MB
-API_URL=http://localhost:3000
-```
+## 6. Environment Variables
 
-3. Run migrations:
-```
-npm run migration:run
-```
+- `UPLOAD_DIR`: Directory for chat media uploads (e.g., `uploads/chat`).
+- `MAX_UPLOAD_SIZE`: Max file size for uploads (e.g., `5242880`).
 
-4. Start the service:
-```
-npm run start:dev
-```
+## 7. Notes / Design Decisions
 
-## Testing
-
-Run unit tests:
-```
-npm run test
-```
-
-Run integration tests:
-```
-npm run test:e2e
-``` 
+- **Real-time:** Core functionality relies on WebSockets (`ChatGateway`). REST endpoints supplement for management tasks.
+- **Event Integration:** Event chats are managed automatically based on events from the `EventModule`.
+- **Message Status:** Supports sent, delivered, and read status tracking via WebSockets. 

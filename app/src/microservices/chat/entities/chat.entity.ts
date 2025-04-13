@@ -23,7 +23,7 @@ export class Chat {
   id: string;
 
   @Column({
-    type: "enum",
+    type: "text",
     enum: ChatType,
     default: ChatType.DIRECT,
   })
@@ -44,13 +44,17 @@ export class Chat {
   @Column({ default: true })
   isActive: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({
+    /* type: 'timestamp with time zone' */
+  })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({
+    /* type: 'timestamp with time zone' */
+  })
   updatedAt: Date;
 
-  @Column({ nullable: true, type: "timestamp" })
+  @Column({ nullable: true /* type: 'timestamp with time zone' */ })
   lastActivityAt: Date;
 
   @OneToMany(() => Message, (message) => message.chat)

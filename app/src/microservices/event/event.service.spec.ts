@@ -9,6 +9,8 @@ import {
 } from "@nestjs/common";
 import { EventVisibility } from "./enums/event-visibility.enum";
 import { EventAttendeeStatus } from "./enums/event-attendee-status.enum";
+import { PlanAnalyticsService } from "./services/plan-analytics.service";
+import { PlanTrendingService } from "./services/plan-trending.service";
 
 describe("EventService", () => {
   let eventService: EventService;
@@ -37,10 +39,23 @@ describe("EventService", () => {
     isAttendee: jest.fn(),
     getAttendeeCount: jest.fn(),
     getEventsAttendedByUser: jest.fn(),
+    incrementViewCount: jest.fn(),
   };
 
   const mockEventsEmitter = {
     emit: jest.fn(),
+  };
+
+  const mockPlanAnalyticsService = {
+    trackEventCreation: jest.fn(),
+    trackEventJoin: jest.fn(), // This might be trackPlanJoin - needs verification
+    trackEventView: jest.fn(), // This might be trackPlanView - needs verification
+    trackPlanView: jest.fn(), // Added missing mock method
+    trackPlanJoin: jest.fn(), // Added missing mock method
+  };
+
+  const mockPlanTrendingService = {
+    updatePlanTrendingScore: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -54,6 +69,14 @@ describe("EventService", () => {
         {
           provide: EventEmitter2,
           useValue: mockEventsEmitter,
+        },
+        {
+          provide: PlanAnalyticsService,
+          useValue: mockPlanAnalyticsService,
+        },
+        {
+          provide: PlanTrendingService,
+          useValue: mockPlanTrendingService,
         },
       ],
     }).compile();

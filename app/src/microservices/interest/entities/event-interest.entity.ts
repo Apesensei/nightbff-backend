@@ -33,6 +33,6 @@ export class EventInterest {
   @JoinColumn({ name: "interest_id" })
   interest: Interest;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 }

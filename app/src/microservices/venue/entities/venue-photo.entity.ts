@@ -10,6 +10,12 @@ import {
 import { Venue } from "./venue.entity";
 import { User } from "../../auth/entities/user.entity";
 
+export enum VenuePhotoStatus {
+  ACTIVE = "active",
+  INACTIVE = "inactive",
+  PENDING = "pending",
+}
+
 export type PhotoSource = "google" | "admin" | "user";
 
 @Entity("venue_photos")
@@ -66,9 +72,16 @@ export class VenuePhoto {
   })
   source: PhotoSource;
 
-  @CreateDateColumn({ name: "created_at" })
+  @Column({
+    type: "text",
+    enum: VenuePhotoStatus,
+    default: VenuePhotoStatus.ACTIVE,
+  })
+  status: VenuePhotoStatus;
+
+  @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamp with time zone" })
   updatedAt: Date;
 }

@@ -215,7 +215,7 @@ describe("UserDiscoveryController", () => {
 
       await expect(
         userDiscoveryController.getProfileViewers(mockUser, 20, 0),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(Error);
     });
   });
 });

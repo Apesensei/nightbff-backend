@@ -8,6 +8,10 @@ import {
 } from "@nestjs/common";
 import { EventVisibility } from "../../enums/event-visibility.enum";
 import { EventAttendeeStatus } from "../../enums/event-attendee-status.enum";
+import { PlanAnalyticsService } from "../../services/plan-analytics.service";
+import { PlanTrendingService } from "../../services/plan-trending.service";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
 
 describe("EventService", () => {
   let eventService: EventService;
@@ -36,16 +40,34 @@ describe("EventService", () => {
     isAttendee: jest.fn(),
     getAttendeeCount: jest.fn(),
     getEventsAttendedByUser: jest.fn(),
+    incrementViewCount: jest.fn(),
+  };
+
+  const mockPlanAnalyticsService = {
+    trackPlanView: jest.fn(),
+    trackPlanJoin: jest.fn(),
+  };
+  const mockPlanTrendingService = {
+    updatePlanTrendingScore: jest.fn().mockResolvedValue(undefined),
+  };
+  const mockEventEmitter = {
+    emit: jest.fn(),
+  };
+  const mockCacheManager = {
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
   };
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         EventService,
-        {
-          provide: EventRepository,
-          useValue: mockEventRepository,
-        },
+        { provide: EventRepository, useValue: mockEventRepository },
+        { provide: PlanAnalyticsService, useValue: mockPlanAnalyticsService },
+        { provide: PlanTrendingService, useValue: mockPlanTrendingService },
+        { provide: EventEmitter2, useValue: mockEventEmitter },
+        { provide: CACHE_MANAGER, useValue: mockCacheManager },
       ],
     }).compile();
 

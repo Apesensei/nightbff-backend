@@ -23,9 +23,11 @@ export class Follow {
   @Index()
   userId: string; // ID of the user performing the follow action
 
-  @Column({ type: "enum", enum: FollowType })
-  @Index()
-  type: FollowType; // Type of entity being followed (user or venue)
+  @Column({ name: "following_id" })
+  followingId: string;
+
+  @Column({ type: "text" }) // Changed from string to text
+  type: FollowType;
 
   @Column({ nullable: true }) // Only populated if type is USER
   @Index()
@@ -35,6 +37,6 @@ export class Follow {
   @Index()
   followedVenueId?: string; // Link to Venue.id
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 }

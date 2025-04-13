@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { DataSource } from "typeorm";
+import { DataSource, DataSourceOptions } from "typeorm";
 // Remove ConfigModule/ConfigService imports as they cause issues outside Nest context
 // import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as dotenv from "dotenv"; // Import dotenv
@@ -7,60 +7,78 @@ import * as path from "path"; // Import path module
 // Remove ES Module specific imports
 // import { fileURLToPath } from 'url';
 
-// Dynamically load environment variables based on NODE_ENV
-const envFilePath =
-  process.env.NODE_ENV === "production"
-    ? ".env.production"
-    : ".env.development";
+// Dynamically determine the environment and load the appropriate .env file
+const nodeEnv = process.env.NODE_ENV || "development"; // Default to development
+const isTest = nodeEnv === "test";
+const isProduction = nodeEnv === "production";
 
-// Load environment variables relative to the project root (wherever the command is run from)
-// Assumes CLI is run from the 'app' directory.
+// Load environment variables relative to the project root
 const projectRoot = process.cwd();
-// Correct the path and keep the assignment
-const envConfig = dotenv.config({
-  path: path.resolve(projectRoot, envFilePath),
-});
+const envFilePath = path.resolve(
+  projectRoot,
+  isTest ? ".env.test" : isProduction ? ".env.production" : ".env.development",
+);
+
+const envConfig = dotenv.config({ path: envFilePath });
 
 if (envConfig.error) {
-  console.warn(`Warning: Could not load ${envFilePath} file.`, envConfig.error);
-}
-
-// Ensure DATABASE_URL is loaded before defining options
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  console.error(
-    "Error: DATABASE_URL environment variable is not set or could not be loaded.",
+  console.warn(
+    `Warning: Could not load ${path.basename(envFilePath)} file.`,
+    envConfig.error,
   );
-  // Optionally throw an error to halt the process if URL is absolutely required
-  // throw new Error('DATABASE_URL environment variable is not set.');
 }
 
-// Configuration for TypeORM CLI and runtime
-export const dataSourceOptions = {
-  type: "postgres",
-  url: databaseUrl,
-  synchronize: false, // Always false when using migrations
-  logging: process.env.NODE_ENV === "development",
-  entities: [
-    // Use path relative to CWD (app), pointing to compiled JS files in dist
-    path.join(projectRoot, "dist/**/*.entity.js"),
-  ],
-  migrations: [
-    // Use path relative to CWD (app), pointing to compiled JS files in dist
-    path.join(projectRoot, "dist/migrations/*.js"),
-  ],
-  migrationsTableName: "typeorm_migrations",
-  // Conditionally apply SSL based on NODE_ENV or a specific check
-  // Enable SSL for non-development environments (like production connecting to Supabase)
-  ssl:
-    process.env.NODE_ENV !== "development"
-      ? { rejectUnauthorized: false }
-      : false,
-};
+// Define base entity and migration paths
+const entitiesPath = path.join(
+  projectRoot,
+  isTest ? "src/**/*.entity.ts" : "dist/**/*.entity.js", // Use TS files for tests
+);
+const migrationsPath = path.join(
+  projectRoot,
+  isTest ? "src/migrations/*.ts" : "dist/migrations/*.js", // Use TS files for tests
+);
 
-// Export a DataSource instance for the CLI
-// Use type assertion carefully
-const AppDataSource = new DataSource(dataSourceOptions as any);
+// Configuration options for TypeORM
+let options: DataSourceOptions;
+
+if (isTest) {
+  // Configuration for SQLite (Testing)
+  options = {
+    type: "sqlite",
+    database: ":memory:", // Use in-memory database for tests
+    synchronize: true, // Auto-create schema for tests
+    logging: false, // Disable logging for tests
+    entities: [entitiesPath],
+    migrations: [migrationsPath], // Include migrations even for sync mode if needed for data seeding
+    migrationsTableName: "typeorm_migrations_test", // Use separate table for test migrations if run
+    dropSchema: true, // Drop schema before starting test runs
+  };
+} else {
+  // Configuration for PostgreSQL (Development/Production)
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    const errorMessage = `Error: DATABASE_URL environment variable is not set or could not be loaded from ${path.basename(
+      envFilePath,
+    )}.`;
+    console.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+
+  options = {
+    type: "postgres",
+    url: databaseUrl,
+    synchronize: false, // Never synchronize in dev/prod, use migrations
+    logging: !isProduction, // Log SQL in development
+    entities: [entitiesPath],
+    migrations: [migrationsPath],
+    migrationsTableName: "typeorm_migrations",
+    ssl: isProduction ? { rejectUnauthorized: false } : false, // Enable SSL only in production
+  };
+}
+
+export const dataSourceOptions: DataSourceOptions = options;
+
+// Export a DataSource instance for the CLI and application use
+const AppDataSource = new DataSource(dataSourceOptions);
 
 export default AppDataSource;

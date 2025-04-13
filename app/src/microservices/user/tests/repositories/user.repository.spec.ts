@@ -1,4 +1,4 @@
-import { Test } from "@nestjs/testing";
+import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { UserRepository } from "../../repositories/user.repository";
@@ -7,55 +7,70 @@ import {
   UserRelationship,
   RelationshipType,
 } from "../../entities/user-relationship.entity";
+import { UserProfile } from "../../entities/user-profile.entity";
+import {
+  NotFoundException,
+  InternalServerErrorException,
+} from "@nestjs/common";
 
 describe("UserRepository", () => {
   let userRepository: UserRepository;
-  let typeOrmRepository: Repository<User>;
-  let relationshipRepository: Repository<UserRelationship>;
+  let typeOrmRepository: jest.Mocked<Repository<User>>;
+  let relationshipRepository: jest.Mocked<Repository<UserRelationship>>;
+  let userProfileRepositoryMock: jest.Mocked<Repository<UserProfile>>;
+  // let mockDataSource: DeepMocked<DataSource>; // Commented out as DeepMocked is causing issues
+  // let mockUserProfileRepository: DeepMocked<Repository<UserProfile>>; // Commented out as DeepMocked is causing issues
 
-  const mockUserRepository = () => ({
-    createQueryBuilder: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      addSelect: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      offset: jest.fn().mockReturnThis(),
-      getRawAndEntities: jest.fn(),
-      getCount: jest.fn(),
-      findOne: jest.fn(),
-    })),
+  const mockQueryBuilder = {
+    select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    offset: jest.fn().mockReturnThis(),
+    getRawAndEntities: jest.fn(),
+    getCount: jest.fn(),
     findOne: jest.fn(),
-    save: jest.fn(),
-  });
-
-  const mockRelationshipRepository = () => ({
-    find: jest.fn(),
-  });
+  };
 
   beforeEach(async () => {
-    const moduleRef = await Test.createTestingModule({
+    const mockTypeOrmRepository = {
+      findOne: jest.fn(),
+      save: jest.fn(),
+      create: jest.fn(),
+      existsBy: jest.fn(),
+      createQueryBuilder: jest.fn(() => mockQueryBuilder),
+    };
+    const mockRelationshipRepository = { find: jest.fn() };
+    const mockUserProfileRepository = {
+      findOne: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserRepository,
         {
           provide: getRepositoryToken(User),
-          useFactory: mockUserRepository,
+          useValue: mockTypeOrmRepository,
         },
         {
           provide: getRepositoryToken(UserRelationship),
-          useFactory: mockRelationshipRepository,
+          useValue: mockRelationshipRepository,
+        },
+        {
+          provide: getRepositoryToken(UserProfile),
+          useValue: mockUserProfileRepository,
         },
       ],
     }).compile();
 
-    userRepository = moduleRef.get<UserRepository>(UserRepository);
-    typeOrmRepository = moduleRef.get<Repository<User>>(
-      getRepositoryToken(User),
-    );
-    relationshipRepository = moduleRef.get<Repository<UserRelationship>>(
-      getRepositoryToken(UserRelationship),
-    );
+    userRepository = module.get<UserRepository>(UserRepository);
+    typeOrmRepository = module.get(getRepositoryToken(User));
+    relationshipRepository = module.get(getRepositoryToken(UserRelationship));
+    userProfileRepositoryMock = module.get(getRepositoryToken(UserProfile));
   });
 
   describe("findById", () => {
@@ -64,7 +79,7 @@ describe("UserRepository", () => {
       mockUser.id = "test-id";
       mockUser.username = "testuser";
 
-      jest.spyOn(typeOrmRepository, "findOne").mockResolvedValue(mockUser);
+      typeOrmRepository.findOne.mockResolvedValue(mockUser);
 
       const result = await userRepository.findById("test-id");
 
@@ -75,7 +90,7 @@ describe("UserRepository", () => {
     });
 
     it("should return null if user not found", async () => {
-      jest.spyOn(typeOrmRepository, "findOne").mockResolvedValue(null);
+      typeOrmRepository.findOne.mockResolvedValue(null);
 
       const result = await userRepository.findById("non-existent-id");
 
@@ -83,9 +98,7 @@ describe("UserRepository", () => {
     });
 
     it("should throw InternalServerErrorException on database error", async () => {
-      jest
-        .spyOn(typeOrmRepository, "findOne")
-        .mockRejectedValue(new Error("DB error"));
+      typeOrmRepository.findOne.mockRejectedValue(new Error("DB error"));
 
       await expect(userRepository.findById("test-id")).rejects.toThrow();
     });
@@ -107,20 +120,15 @@ describe("UserRepository", () => {
           locationLongitude: -74.1,
         },
       ];
+      const mockRawData = [{ distance: 1000 }, { distance: 2000 }];
 
-      const mockRawData = [
-        { distance: 1000 }, // 1 km
-        { distance: 2000 }, // 2 km
-      ];
-
-      const queryBuilderMock = typeOrmRepository.createQueryBuilder() as any;
-      queryBuilderMock.getRawAndEntities.mockResolvedValue({
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
         entities: mockUsers,
         raw: mockRawData,
       });
-      queryBuilderMock.getCount.mockResolvedValue(mockUsers.length);
+      mockQueryBuilder.getCount.mockResolvedValue(mockUsers.length);
 
-      jest.spyOn(relationshipRepository, "find").mockResolvedValue([]);
+      relationshipRepository.find.mockResolvedValue([]);
 
       const params = {
         latitude: 40.7128,
@@ -130,19 +138,20 @@ describe("UserRepository", () => {
         limit: 20,
         offset: 0,
       };
-
       const [users, count] = await userRepository.findNearbyUsers(
         params,
         "current-user-id",
       );
 
+      expect(typeOrmRepository.createQueryBuilder).toHaveBeenCalledWith("user");
+      expect(mockQueryBuilder.getRawAndEntities).toHaveBeenCalled();
       expect(count).toBe(2);
       expect(users).toHaveLength(2);
-      expect(users[0].distance).toBe(1.0); // 1000m -> 1.0km
-      expect(users[1].distance).toBe(2.0); // 2000m -> 2.0km
-      expect(queryBuilderMock.andWhere).toHaveBeenCalledWith(
+      expect(users[0].distance).toBe(1.0);
+      expect(users[1].distance).toBe(2.0);
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         expect.stringContaining("ST_Distance_Sphere"),
-        expect.objectContaining({ radius: 5000 }), // 5km -> 5000m
+        expect.objectContaining({ radius: 5000 }),
       );
     });
 
@@ -152,16 +161,13 @@ describe("UserRepository", () => {
       blockedRelationship.recipientId = "blocked-user-id";
       blockedRelationship.type = RelationshipType.BLOCKED;
 
-      jest
-        .spyOn(relationshipRepository, "find")
-        .mockResolvedValue([blockedRelationship]);
-
-      const queryBuilderMock = typeOrmRepository.createQueryBuilder() as any;
-      queryBuilderMock.getRawAndEntities.mockResolvedValue({
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
         entities: [],
         raw: [],
       });
-      queryBuilderMock.getCount.mockResolvedValue(0);
+      mockQueryBuilder.getCount.mockResolvedValue(0);
+
+      relationshipRepository.find.mockResolvedValue([blockedRelationship]);
 
       const params = {
         latitude: 40.7128,
@@ -171,11 +177,11 @@ describe("UserRepository", () => {
         limit: 20,
         offset: 0,
       };
-
       await userRepository.findNearbyUsers(params, "current-user-id");
 
-      // Verify that blocked-user-id is in the excludedIds
-      expect(queryBuilderMock.where).toHaveBeenCalledWith(
+      expect(typeOrmRepository.createQueryBuilder).toHaveBeenCalledWith("user");
+      expect(mockQueryBuilder.getRawAndEntities).toHaveBeenCalled();
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
         "user.id NOT IN (:...excludedIds)",
         expect.objectContaining({
           excludedIds: expect.arrayContaining([
@@ -197,19 +203,15 @@ describe("UserRepository", () => {
           locationLongitude: -74.0,
         },
       ];
+      const mockRawData = [{ distance: 1000 }];
 
-      const mockRawData = [
-        { distance: 1000 }, // 1 km
-      ];
-
-      const queryBuilderMock = typeOrmRepository.createQueryBuilder() as any;
-      queryBuilderMock.getRawAndEntities.mockResolvedValue({
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
         entities: mockUsers,
         raw: mockRawData,
       });
-      queryBuilderMock.getCount.mockResolvedValue(mockUsers.length);
+      mockQueryBuilder.getCount.mockResolvedValue(mockUsers.length);
 
-      jest.spyOn(relationshipRepository, "find").mockResolvedValue([]);
+      relationshipRepository.find.mockResolvedValue([]);
 
       const params = {
         latitude: 40.7128,
@@ -219,18 +221,18 @@ describe("UserRepository", () => {
         limit: 20,
         offset: 0,
       };
-
       const [users, count] = await userRepository.findActiveNearbyUsers(
         params,
         "current-user-id",
-        30, // active within 30 minutes
+        30,
       );
 
-      expect(queryBuilderMock.andWhere).toHaveBeenCalledWith(
+      expect(typeOrmRepository.createQueryBuilder).toHaveBeenCalledWith("user");
+      expect(mockQueryBuilder.getRawAndEntities).toHaveBeenCalled();
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         "user.last_active >= :activeAfter",
         expect.objectContaining({ activeAfter: expect.any(Date) }),
       );
-
       expect(users).toHaveLength(1);
       expect(count).toBe(1);
     });
@@ -242,8 +244,8 @@ describe("UserRepository", () => {
       mockUser.id = "test-id";
       mockUser.username = "testuser";
 
-      jest.spyOn(userRepository, "findById").mockResolvedValue(mockUser);
-      jest.spyOn(typeOrmRepository, "save").mockResolvedValue({
+      typeOrmRepository.findOne.mockResolvedValue(mockUser);
+      typeOrmRepository.save.mockResolvedValue({
         ...mockUser,
         locationLatitude: 40.7128,
         locationLongitude: -74.006,
@@ -255,8 +257,9 @@ describe("UserRepository", () => {
         -74.006,
       );
 
-      expect(updatedUser.locationLatitude).toBe(40.7128);
-      expect(updatedUser.locationLongitude).toBe(-74.006);
+      expect(typeOrmRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "test-id" },
+      });
       expect(typeOrmRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           id: "test-id",
@@ -264,14 +267,109 @@ describe("UserRepository", () => {
           locationLongitude: -74.006,
         }),
       );
+      expect(updatedUser.locationLatitude).toBe(40.7128);
+      expect(updatedUser.locationLongitude).toBe(-74.006);
     });
 
     it("should throw NotFoundException if user not found", async () => {
-      jest.spyOn(userRepository, "findById").mockResolvedValue(null);
+      typeOrmRepository.findOne.mockResolvedValue(null);
 
       await expect(
         userRepository.updateUserLocation("non-existent-id", 40.7128, -74.006),
-      ).rejects.toThrow();
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // New describe block for createUserProfile tests
+  describe("createUserProfile", () => {
+    it("should create a user profile successfully", async () => {
+      const userId = "existing-user-id";
+      const profileData = {
+        country: "United States",
+        // Add other fields from UserProfile if necessary for the test
+      };
+      const mockUserProfile = {
+        id: "new-profile-id",
+        userId: userId,
+        ...profileData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as UserProfile;
+
+      // Mock dependencies
+      typeOrmRepository.existsBy.mockResolvedValue(true); // Assume user exists
+      userProfileRepositoryMock.create.mockReturnValue(mockUserProfile); // Mock create
+      userProfileRepositoryMock.save.mockResolvedValue(mockUserProfile); // Mock save
+
+      const result = await userRepository.createUserProfile(
+        userId,
+        profileData,
+      );
+
+      // Assertions
+      expect(typeOrmRepository.existsBy).toHaveBeenCalledWith({ id: userId });
+      expect(userProfileRepositoryMock.create).toHaveBeenCalledWith({
+        userId,
+        ...profileData,
+      });
+      expect(userProfileRepositoryMock.save).toHaveBeenCalledWith(
+        mockUserProfile,
+      );
+      expect(result).toEqual(mockUserProfile);
+    });
+
+    it("should throw InternalServerErrorException if user does not exist", async () => {
+      const userId = "non-existent-user-id";
+      const profileData = { country: "Canada" };
+
+      // Mock dependencies
+      typeOrmRepository.existsBy.mockResolvedValue(false); // User does not exist
+
+      // Assertions
+      await expect(
+        userRepository.createUserProfile(userId, profileData),
+      ).rejects.toThrow(
+        new InternalServerErrorException(
+          `Error creating user profile: Cannot create profile for non-existent user ${userId}`,
+        ),
+      );
+      expect(userProfileRepositoryMock.create).not.toHaveBeenCalled();
+      expect(userProfileRepositoryMock.save).not.toHaveBeenCalled();
+    });
+
+    it("should throw InternalServerErrorException on database error during save", async () => {
+      const userId = "existing-user-id";
+      const profileData = { country: "Mexico" };
+      const mockUserProfile = {
+        id: "new-profile-id",
+        userId: userId,
+        ...profileData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as UserProfile;
+
+      // Mock dependencies
+      typeOrmRepository.existsBy.mockResolvedValue(true); // Assume user exists
+      userProfileRepositoryMock.create.mockReturnValue(mockUserProfile); // Mock create
+      userProfileRepositoryMock.save.mockRejectedValue(
+        new Error("DB save error"),
+      ); // Mock save failure
+
+      // Assertions
+      await expect(
+        userRepository.createUserProfile(userId, profileData),
+      ).rejects.toThrow(
+        new InternalServerErrorException(
+          `Error creating user profile: DB save error`,
+        ),
+      );
+      expect(userProfileRepositoryMock.create).toHaveBeenCalledWith({
+        userId,
+        ...profileData,
+      });
+      expect(userProfileRepositoryMock.save).toHaveBeenCalledWith(
+        mockUserProfile,
+      );
     });
   });
 });

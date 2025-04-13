@@ -5,7 +5,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  ManyToMany,
+  OneToMany,
 } from "typeorm";
+import { User } from "../../auth/entities/user.entity";
+import { UserInterest } from "./user-interest.entity";
+import { EventInterest } from "./event-interest.entity";
 
 @Entity("interests")
 export class Interest {
@@ -38,9 +43,24 @@ export class Interest {
   @Index()
   sortOrder: number; // For admin-controlled ordering
 
-  @CreateDateColumn({ name: "created_at" })
+  @Column({ name: "icon_url", nullable: true })
+  iconUrl: string;
+
+  @ManyToMany(
+    () => User,
+    (user) => user.interests, // Assuming 'interests' relation exists on User
+  )
+  users: User[];
+
+  @OneToMany(() => UserInterest, (userInterest) => userInterest.interest)
+  userInterests: UserInterest[];
+
+  @OneToMany(() => EventInterest, (eventInterest) => eventInterest.interest)
+  eventInterests: EventInterest[];
+
+  @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamp with time zone" })
   updatedAt: Date;
 }

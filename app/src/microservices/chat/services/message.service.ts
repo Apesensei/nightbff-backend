@@ -105,6 +105,10 @@ export class MessageService {
     // Validate chat exists and user is a participant (using chatService)
     await this.chatService.validateChatAccess(chatId, userId);
 
+    // Explicitly handle pagination parameters, ensuring they are numbers
+    const take = Number(limit) || 50;
+    const skip = Number(offset) || 0;
+
     // Get the messages
     const messages = await this.messageRepository.find({
       where: {
@@ -112,8 +116,8 @@ export class MessageService {
         deletedAt: IsNull(),
       },
       order: { createdAt: "DESC" },
-      take: limit,
-      skip: offset,
+      take: take,
+      skip: skip, // Use the validated numeric skip value
     });
 
     // Get all unique sender IDs

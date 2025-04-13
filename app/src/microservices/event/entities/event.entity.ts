@@ -32,11 +32,13 @@ export class Event {
   @Column({ nullable: true })
   customLocation?: string;
 
-  @Column({ type: "timestamp with time zone" })
+  @Column({
+    /* type: 'timestamp with time zone' */
+  })
   @Index() // Add index for date filtering
   startTime: Date;
 
-  @Column({ type: "timestamp with time zone", nullable: true })
+  @Column({ /* type: 'timestamp with time zone', */ nullable: true })
   endTime?: Date;
 
   @Column({ nullable: true })
@@ -46,7 +48,7 @@ export class Event {
   attendeeLimit?: number;
 
   @Column({
-    type: "enum",
+    type: "text",
     enum: EventVisibility,
     default: EventVisibility.PUBLIC,
   })
@@ -66,11 +68,16 @@ export class Event {
   @OneToMany("EventAttendee", "event", { cascade: true })
   attendees: any[]; // Will be typed as EventAttendee[] at runtime
 
-  @CreateDateColumn({ type: "timestamp with time zone" })
+  @CreateDateColumn({
+    /* type: 'timestamp with time zone' */
+  })
   @Index() // Add index for sorting by creation date
   createdAt: Date;
 
-  @UpdateDateColumn({ type: "timestamp with time zone" })
+  @Index()
+  @UpdateDateColumn({
+    /* type: 'timestamp with time zone' */
+  })
   updatedAt: Date;
 
   // We'll add these as actual relations once we have the repository implementations

@@ -39,6 +39,13 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
     AgeVerificationRepository,
     JwtStrategy,
   ],
-  exports: [AuthService, JwtStrategy, PassportModule, AuthRepository],
+  exports: [
+    AuthService,
+    JwtStrategy,
+    PassportModule,
+    AuthRepository,
+    TypeOrmModule.forFeature([User]),
+    JwtModule,
+  ],
 })
 export class AuthModule {}

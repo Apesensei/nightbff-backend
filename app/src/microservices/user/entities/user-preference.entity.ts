@@ -44,7 +44,7 @@ export class UserPreference {
 
   @Column({
     name: "notification_type",
-    type: "enum",
+    type: "text",
     enum: NotificationType,
     default: NotificationType.PUSH,
   })
@@ -55,7 +55,7 @@ export class UserPreference {
 
   @Column({
     name: "theme_mode",
-    type: "enum",
+    type: "text",
     enum: ThemeMode,
     default: ThemeMode.SYSTEM,
   })
@@ -70,9 +70,9 @@ export class UserPreference {
   @Column({ name: "search_radius_mi", default: 10 })
   searchRadiusMi: number;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamp with time zone" })
   updatedAt: Date;
 }

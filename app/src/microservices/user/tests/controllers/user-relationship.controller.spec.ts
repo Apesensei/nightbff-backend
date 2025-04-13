@@ -1,27 +1,15 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { UserRelationshipController } from "../../controllers/user-relationship.controller";
 import { UserRelationshipService } from "../../services/user-relationship.service";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ExecutionContext } from "@nestjs/common";
 import { RelationshipType } from "../../entities/user-relationship.entity";
 import { ConnectionResponseStatus } from "../../dto/connection-response.dto";
-import { User, UserStatus, UserRole } from "../../../auth/entities/user.entity"; // Corrected relative path
+import { User, UserStatus, UserRole } from "../../../auth/entities/user.entity";
+import { JwtAuthGuard } from "../../../auth/guards/jwt-auth.guard";
 import {
   AgeVerification,
   AgeVerificationStatus,
-} from "../../../auth/entities/age-verification.entity"; // Import entity and enum
-
-// Create mock of CurrentUser decorator that simply returns the user ID
-jest.mock("../../../auth/decorators/current-user.decorator", () => ({
-  CurrentUser:
-    () => (target: any, key: string, descriptor: PropertyDescriptor) => {
-      const originalMethod = descriptor.value;
-      descriptor.value = function () {
-        // Replace the user object with just the ID for the controller
-        return originalMethod.apply(this, ["user1"]);
-      };
-      return descriptor;
-    },
-}));
+} from "../../../auth/entities/age-verification.entity";
 
 describe("UserRelationshipController", () => {
   let controller: UserRelationshipController;
@@ -97,7 +85,7 @@ describe("UserRelationshipController", () => {
   };
 
   beforeEach(async () => {
-    // Mock service
+    // Mock service (ensure expectations use mockUser.id)
     userRelationshipService = {
       sendConnectionRequest: jest
         .fn()
@@ -112,6 +100,13 @@ describe("UserRelationshipController", () => {
       getBlockedUsers: jest.fn().mockResolvedValue(mockPaginatedResponse),
     };
 
+    // Define the mock canActivate function
+    const mockCanActivate = (context: ExecutionContext) => {
+      const req = context.switchToHttp().getRequest();
+      req.user = mockUser; // Attach the mock user
+      return true; // Simulate successful authentication
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UserRelationshipController],
       providers: [
@@ -120,7 +115,11 @@ describe("UserRelationshipController", () => {
           useValue: userRelationshipService,
         },
       ],
-    }).compile();
+    })
+      // Override the guard
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: mockCanActivate })
+      .compile();
 
     controller = module.get<UserRelationshipController>(
       UserRelationshipController,
@@ -140,7 +139,7 @@ describe("UserRelationshipController", () => {
 
       expect(
         userRelationshipService.sendConnectionRequest,
-      ).toHaveBeenCalledWith("user1", dto);
+      ).toHaveBeenCalledWith(mockUser.id, dto);
       expect(result).toEqual(mockRelationshipResponse);
     });
 
@@ -163,7 +162,7 @@ describe("UserRelationshipController", () => {
       const result = await controller.getConnections(mockUser, 1, 20);
 
       expect(userRelationshipService.getConnections).toHaveBeenCalledWith(
-        "user1",
+        mockUser.id,
         1,
         20,
       );
@@ -177,7 +176,7 @@ describe("UserRelationshipController", () => {
       const result = await controller.getPendingRequests(mockUser);
 
       expect(userRelationshipService.getPendingRequests).toHaveBeenCalledWith(
-        "user1",
+        mockUser.id,
       );
       expect(result).toEqual([mockRelationshipResponse]);
     });
@@ -194,7 +193,7 @@ describe("UserRelationshipController", () => {
       const result = await controller.respondToRequest(mockUser, "rel1", dto);
 
       expect(userRelationshipService.respondToRequest).toHaveBeenCalledWith(
-        "user1",
+        mockUser.id,
         dto,
       );
       expect(result).toEqual(mockRelationshipResponse);
@@ -209,7 +208,7 @@ describe("UserRelationshipController", () => {
       const result = await controller.blockUser(mockUser, dto);
 
       expect(userRelationshipService.blockUser).toHaveBeenCalledWith(
-        "user1",
+        mockUser.id,
         dto,
       );
       expect(result).toEqual(mockRelationshipResponse);
@@ -222,7 +221,7 @@ describe("UserRelationshipController", () => {
       const result = await controller.unblockUser(mockUser, "user2");
 
       expect(userRelationshipService.unblockUser).toHaveBeenCalledWith(
-        "user1",
+        mockUser.id,
         "user2",
       );
       expect(result).toEqual({ success: true });
@@ -235,7 +234,7 @@ describe("UserRelationshipController", () => {
       const result = await controller.getBlockedUsers(mockUser, 1, 20);
 
       expect(userRelationshipService.getBlockedUsers).toHaveBeenCalledWith(
-        "user1",
+        mockUser.id,
         1,
         20,
       );

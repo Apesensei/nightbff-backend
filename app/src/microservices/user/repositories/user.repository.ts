@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "../../auth/entities/user.entity";
+import { UserProfile } from "../entities/user-profile.entity";
 import {
   UserRelationship,
   RelationshipType,
@@ -30,9 +31,61 @@ export class UserRepository {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(UserProfile)
+    private readonly userProfileRepository: Repository<UserProfile>,
     @InjectRepository(UserRelationship)
     private readonly userRelationshipRepository: Repository<UserRelationship>,
   ) {}
+
+  async findUserWithProfile(
+    userId: string,
+  ): Promise<{ user: User; profile: UserProfile | null } | null> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return null;
+      }
+
+      const profile = await this.userProfileRepository.findOne({
+        where: { userId: userId },
+      });
+
+      return { user, profile };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error fetching user with profile: ${error.message}`,
+      );
+    }
+  }
+
+  async createUserProfile(
+    userId: string,
+    profileData: Partial<UserProfile>,
+  ): Promise<UserProfile> {
+    try {
+      const userExists = await this.userRepository.existsBy({ id: userId });
+
+      if (!userExists) {
+        throw new NotFoundException(
+          `Cannot create profile for non-existent user ${userId}`,
+        );
+      }
+
+      const profile = this.userProfileRepository.create({
+        userId,
+        ...profileData,
+      });
+
+      return await this.userProfileRepository.save(profile);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error creating user profile: ${error.message}`,
+      );
+    }
+  }
 
   async findById(userId: string): Promise<User | null> {
     try {

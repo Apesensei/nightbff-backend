@@ -15,7 +15,15 @@ import { VenueHour } from "./venue-hour.entity";
 import { VenueReview } from "./venue-review.entity";
 import { VenuePhoto } from "./venue-photo.entity";
 
-export type VenueVerificationStatus = "pending" | "approved" | "rejected";
+// Restore inline enum if it was here - Assuming it was for VenueStatus
+export enum VenueStatus {
+  PENDING = "pending",
+  ACTIVE = "active",
+  REJECTED = "rejected",
+  CLOSED = "closed", // Add other statuses as needed
+}
+
+// export type VenueVerificationStatus = "pending" | "approved" | "rejected"; // Keeping previous type alias commented out
 
 @Entity("venues")
 export class Venue {
@@ -56,11 +64,11 @@ export class Venue {
   isFeatured: boolean;
 
   @Column({
-    type: "enum",
-    enum: ["pending", "approved", "rejected"],
-    default: "pending",
+    type: "text", // Keep type change
+    enum: VenueStatus, // Use restored inline enum
+    default: VenueStatus.PENDING,
   })
-  verificationStatus: VenueVerificationStatus;
+  status: VenueStatus;
 
   @Column({ nullable: true, length: 255 })
   website?: string;
@@ -72,15 +80,15 @@ export class Venue {
   isOpenNow?: boolean;
 
   // Admin overrides - store fields modified by admins
-  @Column({ type: "json", nullable: true })
+  @Column({ type: "simple-json", nullable: true })
   adminOverrides?: Record<string, any>;
 
   // Audit fields for tracking admin modifications
   @Column({ name: "last_modified_by", nullable: true })
   lastModifiedBy?: string;
 
-  @Column({ name: "last_modified_at", type: "timestamp", nullable: true })
-  lastModifiedAt?: Date;
+  @Column({ type: "timestamp with time zone", nullable: true })
+  lastModifiedAt: Date;
 
   @ManyToMany(() => VenueType)
   @JoinTable({
@@ -126,9 +134,15 @@ export class Venue {
   @Column({ name: "is_active", default: true })
   isActive: boolean;
 
-  @CreateDateColumn()
+  @Column({ type: "simple-json", nullable: true })
+  metadata: Record<string, any>;
+
+  @Column({ type: "timestamp with time zone", nullable: true })
+  lastRefreshed?: Date;
+
+  @CreateDateColumn({ type: "timestamp with time zone" })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: "timestamp with time zone" })
   updatedAt: Date;
 }

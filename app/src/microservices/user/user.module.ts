@@ -3,8 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { UserController } from "./user.controller";
 import { UserService } from "./user.service";
 import { UserRepository } from "./repositories/user.repository";
-import { User } from "../auth/entities/user.entity";
-import { Profile } from "./entities/profile.entity";
+// import { User } from "../auth/entities/user.entity"; // Removed unused import
 import { UserPreference } from "./entities/user-preference.entity";
 import { ProfileRepository } from "./repositories/profile.repository";
 import { UserPreferenceRepository } from "./repositories/user-preference.repository";
@@ -25,12 +24,13 @@ import { MulterModule } from "@nestjs/platform-express";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { Follow } from "./entities/follow.entity";
 import { FollowRepository } from "./repositories/follow.repository";
+import { UserProfile } from "./entities/user-profile.entity";
+import { ConfigModule } from "@nestjs/config";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      User,
-      Profile,
+      UserProfile,
       UserPreference,
       UserRelationship,
       ProfileView,
@@ -41,6 +41,7 @@ import { FollowRepository } from "./repositories/follow.repository";
     }),
     EventEmitterModule.forRoot(),
     AuthModule,
+    ConfigModule,
   ],
   controllers: [
     UserController,

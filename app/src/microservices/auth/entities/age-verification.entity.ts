@@ -4,6 +4,8 @@ import {
   JoinColumn,
   OneToOne,
   PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from "typeorm";
 import { User } from "./user.entity";
 
@@ -32,9 +34,10 @@ export class AgeVerification {
   onfidoCheckId: string;
 
   @Column({
-    type: "enum",
+    type: "text",
     enum: AgeVerificationStatus,
-    default: AgeVerificationStatus.PENDING,
+    // Temporarily remove default to test SQLite issue
+    // default: AgeVerificationStatus.PENDING,
   })
   status: AgeVerificationStatus;
 
@@ -43,20 +46,17 @@ export class AgeVerification {
 
   @Column({
     name: "created_at",
-    type: "timestamp",
-    default: () => "CURRENT_TIMESTAMP",
   })
+  @CreateDateColumn()
   createdAt: Date;
 
   @Column({
     name: "updated_at",
-    type: "timestamp",
-    default: () => "CURRENT_TIMESTAMP",
-    onUpdate: "CURRENT_TIMESTAMP",
   })
+  @UpdateDateColumn()
   updatedAt: Date;
 
-  @Column({ name: "verified_at", type: "timestamp", nullable: true })
+  @Column({ name: "verified_at", nullable: true })
   verifiedAt: Date;
 
   @Column({ name: "rejection_reason", nullable: true })

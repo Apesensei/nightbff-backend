@@ -18,8 +18,10 @@ import { SendMessageDto } from "../dto/send-message.dto";
 import { UpdateMessageDto } from "../dto/update-message.dto";
 import { UpdateMessageStatusDto } from "../dto/update-message-status.dto";
 import { MessageResponseDto } from "../dto/message-response.dto";
+import { MessageStatus } from "../entities/message.entity";
 import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../../auth/decorators/current-user.decorator";
+import { User } from "../../auth/entities/user.entity";
 import {
   ApiTags,
   ApiOperation,
@@ -45,7 +47,7 @@ export class MessageController {
   async sendMessage(
     @Param("chatId") chatId: string,
     @Body() messageData: Omit<SendMessageDto, "chatId">,
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
   ): Promise<MessageResponseDto> {
     // Combine the path parameter with the body to create the complete DTO
     const sendMessageDto: SendMessageDto = {
@@ -53,7 +55,7 @@ export class MessageController {
       ...messageData,
     };
 
-    return this.messageService.sendMessage(sendMessageDto, userId);
+    return this.messageService.sendMessage(sendMessageDto, currentUser.id);
   }
 
   @Get("chats/:chatId/messages")
@@ -65,11 +67,16 @@ export class MessageController {
   })
   async getChatMessages(
     @Param("chatId") chatId: string,
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
     @Query("limit") limit?: number,
     @Query("offset") offset?: number,
   ): Promise<MessageResponseDto[]> {
-    return this.messageService.getChatMessages(chatId, userId, limit, offset);
+    return this.messageService.getChatMessages(
+      chatId,
+      currentUser.id,
+      limit,
+      offset,
+    );
   }
 
   @Patch("messages/:messageId")
@@ -82,7 +89,7 @@ export class MessageController {
   async updateMessage(
     @Param("messageId") messageId: string,
     @Body() updateData: Omit<UpdateMessageDto, "messageId">,
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
   ): Promise<MessageResponseDto> {
     // Combine the path parameter with the body to create the complete DTO
     const updateMessageDto: UpdateMessageDto = {
@@ -90,7 +97,7 @@ export class MessageController {
       ...updateData,
     };
 
-    return this.messageService.updateMessage(updateMessageDto, userId);
+    return this.messageService.updateMessage(updateMessageDto, currentUser.id);
   }
 
   @Post("messages/:messageId/read")
@@ -102,16 +109,16 @@ export class MessageController {
   @HttpCode(HttpStatus.OK)
   async markMessageAsRead(
     @Param("messageId") messageId: string,
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
   ): Promise<{ success: boolean }> {
     const updateStatusDto: UpdateMessageStatusDto = {
       messageId,
-      status: "READ" as any, // Type will be properly validated by the service
+      status: MessageStatus.READ,
     };
 
     const result = await this.messageService.updateMessageStatus(
       updateStatusDto,
-      userId,
+      currentUser.id,
     );
     return { success: result };
   }
@@ -125,9 +132,12 @@ export class MessageController {
   @HttpCode(HttpStatus.OK)
   async deleteMessage(
     @Param("messageId") messageId: string,
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
   ): Promise<{ success: boolean }> {
-    const result = await this.messageService.deleteMessage(messageId, userId);
+    const result = await this.messageService.deleteMessage(
+      messageId,
+      currentUser.id,
+    );
     return { success: result };
   }
 }

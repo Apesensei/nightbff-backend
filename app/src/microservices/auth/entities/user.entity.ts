@@ -1,4 +1,31 @@
-import { Column, Entity, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+/**
+ * User Entity
+ *
+ * This is the canonical User entity used across the application for authentication
+ * and core user data. It is owned by the auth module but shared with other modules
+ * through proper dependency injection (via AuthModule).
+ *
+ * It contains core identity, authentication details, status, roles, and basic
+ * profile information shared across multiple domains (like display name, bio).
+ *
+ * Relations:
+ * - OneToOne with AgeVerification (defined here)
+ * - OneToOne with UserProfile (defined in UserProfile entity, user module)
+ * - OneToMany with Chat (participants) (defined in Chat entity, chat module)
+ * - OneToMany with Message (sender) (defined in Message entity, chat module)
+ * - OneToMany with UserInterest (defined in UserInterest entity, interest module)
+ * - OneToMany with Follow (follower/following) (defined in Follow entity, user module)
+ * - OneToMany with ProfileView (viewer/viewed) (defined in ProfileView entity, user module)
+ * - ... potentially others
+ */
+import {
+  Column,
+  Entity,
+  OneToOne,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from "typeorm";
 import { AgeVerification } from "./age-verification.entity";
 
 export enum UserStatus {
@@ -59,7 +86,7 @@ export class User {
   locationLongitude?: number;
 
   @Column({
-    type: "enum",
+    type: "text",
     enum: UserStatus,
     default: UserStatus.ACTIVE,
   })
@@ -72,18 +99,13 @@ export class User {
   })
   roles: string[];
 
-  @Column({
+  @CreateDateColumn({
     name: "created_at",
-    type: "timestamp",
-    default: () => "CURRENT_TIMESTAMP",
   })
   createdAt: Date;
 
-  @Column({
+  @UpdateDateColumn({
     name: "updated_at",
-    type: "timestamp",
-    default: () => "CURRENT_TIMESTAMP",
-    onUpdate: "CURRENT_TIMESTAMP",
   })
   updatedAt: Date;
 
