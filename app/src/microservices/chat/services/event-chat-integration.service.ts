@@ -31,6 +31,7 @@ export class EventChatIntegrationService {
     creatorId: string;
     visibility: string;
   }) {
+    console.log("handleEventCreated triggered with payload:", payload);
     // Check if a chat for this event already exists
     const existingChat = await this.chatService.findEventChat(payload.eventId);
 
@@ -59,6 +60,7 @@ export class EventChatIntegrationService {
     title: string;
     creatorId: string;
   }) {
+    console.log("handleEventUpdated triggered with payload:", payload);
     // Find the chat for this event
     const eventChat = await this.chatService.findEventChat(payload.eventId);
 
@@ -79,6 +81,7 @@ export class EventChatIntegrationService {
    */
   @OnEvent("event.deleted")
   async handleEventDeleted(payload: { eventId: string; creatorId: string }) {
+    console.log("handleEventDeleted triggered with payload:", payload);
     // Find the chat for this event
     const eventChat = await this.chatService.findEventChat(payload.eventId);
 
@@ -100,6 +103,7 @@ export class EventChatIntegrationService {
     userId: string;
     status: string;
   }) {
+    console.log("handleEventJoined triggered with payload:", payload);
     // Find the chat for this event
     const eventChat = await this.chatService.findEventChat(payload.eventId);
 
@@ -130,6 +134,7 @@ export class EventChatIntegrationService {
    */
   @OnEvent("event.left")
   async handleEventLeft(payload: { eventId: string; userId: string }) {
+    console.log("handleEventLeft triggered with payload:", payload);
     // Find the chat for this event
     const eventChat = await this.chatService.findEventChat(payload.eventId);
 

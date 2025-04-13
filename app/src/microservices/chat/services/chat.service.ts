@@ -30,11 +30,22 @@ export class ChatService {
   ): Promise<ChatResponseDto> {
     // Validate participants exist using proper TypeORM In() operator
     const allUserIds = [creatorId, ...dto.participantIds];
+    console.log("ChatService.createChat: Validating User IDs:", allUserIds);
     const participants = await this.userRepository.findBy({
       id: In(allUserIds),
     });
+    console.log(
+      "ChatService.createChat: Found Participants:",
+      participants.map((p) => p.id),
+    );
 
     if (participants.length !== allUserIds.length) {
+      console.error(
+        "ChatService.createChat: Participant count mismatch! Expected:",
+        allUserIds.length,
+        "Found:",
+        participants.length,
+      );
       throw new BadRequestException("One or more participants not found");
     }
 
@@ -63,7 +74,19 @@ export class ChatService {
     chat.participants = participants;
 
     // Save chat
-    const savedChat = await this.chatRepository.save(chat);
+    console.log(
+      "Attempting to save chat with participants:",
+      JSON.stringify(chat, null, 2),
+    );
+    let savedChat: Chat;
+    try {
+      savedChat = await this.chatRepository.save(chat);
+      console.log("Chat saved successfully:", savedChat.id);
+    } catch (error) {
+      console.error("ERROR saving chat:", error);
+      // Re-throw the error to ensure the operation fails as expected
+      throw error;
+    }
 
     // Emit chat created event
     this.eventEmitter.emit("chat.created", {
@@ -216,13 +239,28 @@ export class ChatService {
   }
 
   async findChatsByUserId(userId: string): Promise<Chat[]> {
-    return this.chatRepository
+    console.log(
+      `--- CHAT_SERVICE: findChatsByUserId called for user: ${userId}`,
+    );
+    const query = this.chatRepository
       .createQueryBuilder("chat")
       .innerJoinAndSelect("chat.participants", "participant")
       .where("participant.id = :userId", { userId })
       .andWhere("chat.isActive = :isActive", { isActive: true })
-      .orderBy("chat.lastActivityAt", "DESC")
-      .getMany();
+      .orderBy("chat.lastActivityAt", "DESC");
+
+    // Optional: Log the generated SQL (requires enabling logging in TypeORM config)
+    console.log(
+      `--- CHAT_SERVICE: findChatsByUserId Query for user ${userId}:`,
+      query.getSql(),
+    );
+
+    const chats = await query.getMany();
+    console.log(
+      `--- CHAT_SERVICE: findChatsByUserId found ${chats.length} raw chats for user: ${userId}`,
+    );
+    // console.log(chats); // Uncomment for detailed raw chat data
+    return chats;
   }
 
   async findEventChat(eventId: string): Promise<Chat | null> {

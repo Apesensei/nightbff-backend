@@ -15,9 +15,8 @@ import {
 } from "@nestjs/common";
 import { InterestService } from "../services/interest.service";
 import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
-// Import the GetUser decorator when it's available
-// import { GetUser } from '../../auth/decorators/get-user.decorator';
-import { User } from "../../user/entities/user.entity";
+import { CurrentUser } from "../../auth/decorators/current-user.decorator";
+import { User } from "../../auth/entities/user.entity";
 import {
   ApiTags,
   ApiOperation,
@@ -137,16 +136,16 @@ export class InterestController {
   @UseGuards(JwtAuthGuard)
   @Put("user/me")
   async updateUserInterests(
-    @Req() req: Request & { user: User },
+    @CurrentUser() user: User,
     @Body() userInterestsDto: UserInterestsDto,
   ): Promise<{ success: boolean; message: string }> {
     await this.interestService.updateUserInterests(
-      req.user.id,
+      user.id,
       userInterestsDto.interestIds,
     );
     return {
       success: true,
-      message: `Updated interests for user ${req.user.id}`,
+      message: `Updated interests for user ${user.id}`,
     };
   }
 
@@ -161,9 +160,9 @@ export class InterestController {
   @UseGuards(JwtAuthGuard)
   @Get("recommendations")
   async getRecommendedInterests(
-    @Req() req: Request & { user: User },
+    @CurrentUser() user: User,
     @Query("limit", new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ): Promise<InterestResponseDto[]> {
-    return this.interestService.getRecommendedInterests(req.user.id, limit);
+    return this.interestService.getRecommendedInterests(user.id, limit);
   }
 }

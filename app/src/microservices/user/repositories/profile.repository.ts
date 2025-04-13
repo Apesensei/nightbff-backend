@@ -1,21 +1,21 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { Profile } from "../entities/profile.entity";
+import { UserProfile } from "../entities/user-profile.entity";
 
 @Injectable()
 export class ProfileRepository {
   constructor(
-    @InjectRepository(Profile)
-    private readonly profileRepository: Repository<Profile>,
+    @InjectRepository(UserProfile)
+    private readonly profileRepository: Repository<UserProfile>,
   ) {}
 
-  async createProfile(userId: string): Promise<Profile> {
+  async createProfile(userId: string): Promise<UserProfile> {
     const profile = this.profileRepository.create({ userId });
     return this.profileRepository.save(profile);
   }
 
-  async findByUserId(userId: string): Promise<Profile> {
+  async findByUserId(userId: string): Promise<UserProfile> {
     const profile = await this.profileRepository.findOne({
       where: { userId },
     });
@@ -31,8 +31,8 @@ export class ProfileRepository {
 
   async updateProfile(
     userId: string,
-    profileData: Partial<Profile>,
-  ): Promise<Profile> {
+    profileData: Partial<UserProfile>,
+  ): Promise<UserProfile> {
     const profile = await this.findByUserId(userId);
     const updatedProfile = this.profileRepository.merge(profile, profileData);
     return this.profileRepository.save(updatedProfile);

@@ -45,7 +45,7 @@ export class Message {
   sender: User;
 
   @Column({
-    type: "enum",
+    type: "text",
     enum: MessageType,
     default: MessageType.TEXT,
   })
@@ -64,7 +64,7 @@ export class Message {
   locationLongitude?: number;
 
   @Column({
-    type: "enum",
+    type: "text",
     enum: MessageStatus,
     default: MessageStatus.SENT,
   })

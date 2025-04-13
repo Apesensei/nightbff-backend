@@ -1,14 +1,84 @@
 # Interest Module
 
-## Overview
+## 1. Purpose
 
-The Interest module manages user and event interests in the NightBFF application. This module provides comprehensive functionality for:
+Manages user and event interests, including predefined interest definitions, user-interest associations, event-interest associations, interest discovery (popular, trending), and recommendations.
 
-- Storing and managing predefined interests
-- Associating interests with users and events
-- Tracking interest popularity and trends
-- Providing recommendations based on user preferences
-- Supporting both emoji and image representation of interests
+## 2. Key Components
+
+- **Entities:**
+  - `Interest.entity.ts`: Core entity representing an interest (name, icon/image, description, usage count, active status).
+  - `UserInterest.entity.ts`: Join table mapping Users (from AuthModule) to Interests.
+  - `EventInterest.entity.ts`: Join table mapping Events (from EventModule) to Interests.
+- **Services:**
+  - `InterestService.ts`: Core CRUD for interests, managing user/event associations.
+  - `InterestDisplayService.ts`: Handles context-aware display logic for interests.
+  - `InterestAnalyticsService.ts`: Tracks interest usage and calculates trends.
+  - `InterestMigrationService.ts`: Supports migrating legacy string-based interests.
+- **Repositories:**
+  - `InterestRepository.ts`: CRUD for `Interest` entities.
+  - `UserInterestRepository.ts`: Manages user-interest links.
+  - `EventInterestRepository.ts`: Manages event-interest links.
+- **Controllers:**
+  - `InterestController.ts`: Public API endpoints for retrieving interests, managing user interests, and getting recommendations.
+  - `InterestAdminController.ts`: Admin-only endpoints for managing the master list of interests (CRUD, sorting, migration).
+- **DTOs:**
+  - `dto/`: DTOs for API requests/responses (e.g., `CreateInterestDto`, `UserInterestsDto`, `PaginatedInterestResponseDto`).
+
+## 3. API Endpoints
+
+(See detailed API documentation below or in separate API spec file)
+
+- **Public:**
+  - `GET /interests`: Get all/search interests (paginated).
+  - `GET /interests/:id`: Get specific interest by ID.
+  - `GET /interests/popular`: Get popular interests.
+  - `GET /interests/trending`: Get trending interests.
+  - `GET /interests/user/me`: Get current user's interests.
+  - `PUT /interests/user/me`: Update current user's interests.
+  - `GET /interests/recommendations`: Get recommended interests for the current user.
+- **Admin:**
+  - `GET /admin/interests`: Get all interests (admin view, includes inactive).
+  - `POST /admin/interests`: Create a new interest.
+  - `PUT /admin/interests/:id`: Update an existing interest.
+  - `DELETE /admin/interests/:id`: Delete an interest.
+  - `PUT /admin/interests/sort-order`: Update the display sort order.
+  - `GET /admin/interests/analytics`: Get usage statistics.
+  - `POST /admin/interests/migrate`: Run the interest migration process.
+
+## 4. Dependencies
+
+- **Internal Modules:**
+  - `AuthModule`: To link interests to users.
+  - `EventModule`: To link interests to events.
+  - `CacheModule`: For caching frequently accessed interest data.
+- **External Libraries:**
+  - `TypeORM`: Database interaction.
+- **External Services:**
+  - None.
+
+## 5. Testing
+
+Tests for this module are located in `src/microservices/interest/tests/`.
+
+Run all tests for this module:
+```bash
+npm test -- --testPathPattern=src/microservices/interest
+```
+
+## 6. Environment Variables
+
+- `INTEREST_CACHE_TTL`: TTL for interest caches (default: 3600s).
+- `INTEREST_MAX_USER_INTERESTS`: Max interests per user (default: 20).
+- `INTEREST_MAX_EVENT_INTERESTS`: Max interests per event (default: 5).
+
+## 7. Notes / Design Decisions
+
+- **Emoji vs. Image:** Supports both emojis and image URLs for interest representation via the `isIconEmoji` flag.
+- **Context-Aware Display:** `InterestDisplayService` allows tailoring interest presentation based on where it's shown (profile, post, etc.).
+- **Caching:** Implements caching for performance on frequently accessed endpoints.
+- **Migration:** Includes a service (`InterestMigrationService`) and admin endpoint (`POST /admin/interests/migrate`) to handle potential migration from older data formats.
+- **Detailed API Docs:** Were previously in `documentation.md` (now deleted); consider moving this detail to Swagger/OpenAPI specs or a dedicated API documentation tool.
 
 ## Architecture
 
@@ -19,26 +89,6 @@ The Interest module follows a layered architecture pattern:
 3. **Repositories**: Manage data access and persistence
 4. **Entities**: Define the data model
 5. **DTOs**: Validate input and format output data
-
-## Key Components
-
-### Entities
-
-- **Interest**: The core entity representing an interest
-- **UserInterest**: Join entity for the many-to-many relationship between users and interests
-- **EventInterest**: Join entity for the many-to-many relationship between events and interests
-
-### Services
-
-- **InterestService**: Main service for CRUD operations and business logic
-- **InterestDisplayService**: Context-aware display of interests
-- **InterestAnalyticsService**: Track and analyze interest usage
-- **InterestMigrationService**: Migrate from string-based to entity-based interests
-
-### Controllers
-
-- **InterestController**: Public API for interest-related operations
-- **InterestAdminController**: Admin-only operations for managing interests
 
 ## Implementation Details
 

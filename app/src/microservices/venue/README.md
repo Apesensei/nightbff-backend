@@ -1,161 +1,82 @@
-# Venue Microservice
+# Venue Module
 
-This microservice manages venues, including venue metadata, events, photos, reviews, and trending features.
+## 1. Purpose
 
-## Venue Trending Feature
+Manages venue data, including discovery (search, nearby), details, photos, reviews, events associated with venues, and a venue trending feature based on user engagement.
 
-The Venue Trending feature allows users to discover popular venues based on engagement metrics. Venues are ranked by a calculated trending score that considers:
+## 2. Key Components
 
-- View counts (users viewing venue details)
-- Follower counts (users following venues)
-- Associated plan counts (events/plans linked to the venue)
-- Venue age (recency factor)
+- **Entities:**
+  - `Venue.entity.ts`: Core entity representing a physical venue, including metadata, location, and trending metrics (`viewCount`, `followerCount`, `associatedPlanCount`, `trendingScore`).
+  - `VenuePhoto.entity.ts`: Stores photos associated with a venue.
+  - `VenueReview.entity.ts`: Stores user reviews and ratings for a venue.
+  - `VenueEvent.entity.ts`: Links venues to events (likely from the Event module).
+  - `Follow.entity.ts`: (Likely shared or adapted from User module) Tracks users following venues.
+- **Services:**
+  - `VenueService.ts`: Core CRUD operations, view/follow tracking, association with events.
+  - `VenueSearchService.ts`: Handles text-based search and nearby venue discovery using geospatial queries.
+  - `VenueTrendingService.ts`: Manages the calculation and refreshing of venue trending scores (runs hourly).
+  - `VenueAnalyticsService.ts`: Contains the logic/algorithm for calculating the trending score.
+- **Repositories:**
+  - `VenueRepository.ts`: CRUD for `Venue` entities, including methods for geospatial queries and updating trending counts.
+  - `VenuePhotoRepository.ts`: CRUD for `VenuePhoto`.
+  - `VenueReviewRepository.ts`: CRUD for `VenueReview`.
+  - `FollowRepository.ts`: (Likely shared) Manages follow relationships.
+- **Controllers:**
+  - `VenueController.ts`: Exposes endpoints for venue CRUD, details, photos, reviews, following.
+  - `VenueDiscoveryController.ts`: Exposes endpoints for searching and finding nearby venues.
+  - `VenueTrendingController.ts`: Exposes endpoint for getting trending venues.
+- **DTOs:**
+  - `dto/`: Various DTOs for API requests/responses (venue creation, search parameters, trending results).
 
-### Implementation Components
+## 3. API Endpoints
 
-#### Entity Structure
-The `Venue` entity includes these trending-related fields:
-- `viewCount`: Number of venue profile views
-- `followerCount`: Number of users following the venue
-- `associatedPlanCount`: Number of plans/events associated with the venue
-- `trendingScore`: Calculated score used for trending ranking (indexed)
+- `POST /venues`: Create a new venue.
+- `GET /venues`: Search/list venues (supports text search, filtering).
+- `GET /venues/nearby`: Find venues near given coordinates.
+- `GET /venues/trending`: Get venues sorted by trending score.
+- `GET /venues/:venueId`: Get details for a specific venue.
+- `PATCH /venues/:venueId`: Update a venue.
+- `DELETE /venues/:venueId`: Delete a venue.
+- `POST /venues/:venueId/photos`: Upload photos for a venue.
+- `POST /venues/:venueId/reviews`: Add a review for a venue.
+- `POST /venues/:venueId/follow`: Follow a venue.
+- `DELETE /venues/:venueId/follow`: Unfollow a venue.
 
-#### Tracking Mechanisms
+## 4. Dependencies
 
-1. **View Tracking**
-   - Direct venue views increment `viewCount` via `VenueService.viewVenue()`
-   - Plan views with venue association also increment venue `viewCount` via event listener
+- **Internal Modules:**
+  - `AuthModule`: For user authentication context (e.g., who is following/reviewing).
+  - `EventModule`: For linking venues to events.
+  - `UserModule`: Potentially for accessing user details related to follows/reviews.
+  - `EventEmitterModule`: For listening to events (e.g., `plan.view`, `plan.join`) that affect trending scores.
+- **External Libraries:**
+  - `TypeORM`: Database interaction.
+  - `nestjs/schedule`: For the hourly trending score refresh (`@Cron`).
+  - `MulterModule`: For photo uploads.
+- **External Services:**
+  - Potentially Google Maps/Foursquare API for venue data enrichment or validation.
 
-2. **Follow Tracking**
-   - Follow/unfollow actions update `followerCount` via `VenueService.followVenue()/unfollowVenue()`
-   - Uses the `Follow` entity to track user-venue relationships
+## 5. Testing
 
-3. **Plan Association Tracking**
-   - Plans created with venue association increment `associatedPlanCount`
-   - Handled via event listeners for `plan.associated_with_venue` and `plan.disassociated_from_venue`
-   - Also captures `plan.join` and `plan.view` events to update trending scores
+Tests for this module are located in `src/microservices/venue/tests/`.
 
-#### Algorithm
-
-The trending score is calculated in `VenueAnalyticsService.calculateTrendingScore()` using:
-
+Run all tests for this module:
+```bash
+npm test -- --testPathPattern=src/microservices/venue
 ```
-trendingScore = [(planCount × planWeight) + 
-                 (followerCount × followWeight) + 
-                 (viewCount × viewWeight)] × 
-                 exp(decayFactor × ageInHours)
+
+Run specific test types (e.g., trending feature):
+```bash
+npm test -- --testPathPattern=src/microservices/venue/tests/services/venue-trending.service.spec.ts
 ```
 
-Where:
-- `planWeight = 5.0`: Highest weight (plans indicate strongest intent)
-- `followWeight = 2.5`: Medium weight
-- `viewWeight = 0.5`: Lowest weight
-- `decayFactor = -0.05`: Controls time decay rate
-- `ageInHours`: Age of venue in hours
+## 6. Environment Variables
 
-This creates a score that:
-- Prioritizes venues with more associated plans
-- Factors in follower and view counts as secondary signals
-- Promotes newer venues through time decay
-- Prevents negative scores through clamping
+- `GOOGLE_MAPS_API_KEY` / `FOURSQUARE_API_KEY`: Potentially used for venue data.
 
-#### Caching Strategy
+## 7. Notes / Design Decisions
 
-1. **Individual Score Caching**
-   - Each venue's trending score is cached for 30 minutes
-   - Cache key: `venue_trending_score:{venueId}`
-   - Invalidated on significant engagement updates
-
-2. **Results Caching**
-   - Paginated trending results cached for high-traffic endpoints
-   - Cache key: `trending_venues:{params_hash}`
-   - Invalidated on periodic score refresh
-
-3. **Recently Viewed Venues**
-   - User's recently viewed venues cached client-side
-   - Helps track unique views vs. repeated visits
-
-#### Scheduled Updates
-
-The `VenueTrendingService.refreshAllTrendingScores()` method:
-- Runs hourly via `@Cron(CronExpression.EVERY_HOUR)`
-- Updates all venue trending scores in batches
-- Processes venues in batches of 100 to prevent memory issues
-- Invalidates cached trending results
-
-### Event Listeners
-
-The service implements the following event listeners:
-
-1. `@OnEvent('plan.view')`
-   - Triggered when a plan is viewed
-   - Updates venue view count if plan is associated with a venue
-   - Triggers trending score recalculation
-
-2. `@OnEvent('plan.join')`
-   - Triggered when a user joins a plan
-   - Updates trending score for associated venue
-
-3. `@OnEvent('plan.associated_with_venue')`
-   - Triggered when a plan is linked to a venue
-   - Increments the venue's `associatedPlanCount`
-   - Updates trending score
-
-4. `@OnEvent('plan.disassociated_from_venue')`
-   - Triggered when a plan is unlinked from a venue
-   - Decrements the venue's `associatedPlanCount`
-   - Updates trending score
-
-### API Endpoints
-
-1. `GET /venues/trending`
-   - Returns venues sorted by trending score
-   - Supports pagination via query parameters
-   - Uses the `TrendingVenuesRequestDto` for parameters
-   - Returns data in `PaginatedVenueResponseDto` format
-
-2. `POST /venues/:venueId/follow`
-   - Allows a user to follow a venue
-   - Updates follower count and trending score
-
-3. `DELETE /venues/:venueId/follow`
-   - Allows a user to unfollow a venue
-   - Updates follower count and trending score
-
-### Best Practices
-
-1. **Error Handling**
-   - Trending calculations are performed asynchronously to prevent API delays
-   - Non-critical tracking failures are logged but don't block user operations
-   - All count operations use atomic database transactions
-
-2. **Performance Considerations**
-   - Trending counts are stored directly on the Venue entity for fast retrieval
-   - Score calculation uses efficient formulas to minimize CPU usage
-   - Batch processing prevents memory issues during full recalculation
-
-3. **Data Integrity**
-   - Safety checks prevent negative counts (e.g., when decrementing follower count)
-   - Ensures valid input data for score calculation
-   - Uses proper database indexes for fast sorting by score
-
-## Testing
-
-The trending feature includes comprehensive tests:
-
-1. **Unit Tests**
-   - `venue-trending.service.spec.ts`: Tests score updates and batch processing
-   - `venue-analytics.service.spec.ts`: Tests trending score calculation
-   - `venue.service.spec.ts`: Tests event listener handlers
-
-2. **Integration Tests**
-   - Tests for trending endpoints with pagination
-   - Validation of view/follow count updates
-
-## Monitoring
-
-Key metrics to monitor:
-- Distribution of trending scores across venues
-- Processing time for batch score updates
-- Cache hit/miss rates for trending endpoints
-- Event listener processing times 
+- **Trending Feature:** The trending logic is detailed within the code and was previously documented extensively. Key aspects include weighted scoring based on plan associations, follows, and views, with time decay. Scores are refreshed hourly via a cron job.
+- **Permissions:** Currently has Phase 1 permissions (any authenticated user). Phase 3 requires restricting actions to VENUE_OWNER/ADMIN (See `app/docs/project/tech-debt.md#TD-1`).
+- **Geospatial Queries:** Uses PostgreSQL's `ST_Distance_Sphere` for nearby searches. 

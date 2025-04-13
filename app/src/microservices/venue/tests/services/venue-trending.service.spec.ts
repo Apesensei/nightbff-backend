@@ -193,13 +193,19 @@ describe("VenueTrendingService", () => {
     it("should handle empty venue list", async () => {
       // Arrange
       venueRepository.findAllVenueIds.mockResolvedValue([]);
+      // Create a spy on the method *before* calling the function under test
+      const updateSpy = jest.spyOn(service, "updateVenueTrendingScore");
 
       // Act
       await service.refreshAllTrendingScores();
 
       // Assert
       expect(venueRepository.findAllVenueIds).toHaveBeenCalledWith(true);
-      expect(service.updateVenueTrendingScore).not.toHaveBeenCalled();
+      // Assert on the spy
+      expect(updateSpy).not.toHaveBeenCalled();
+
+      // Restore the original implementation (good practice)
+      updateSpy.mockRestore();
     });
 
     it("should handle venue update failures", async () => {

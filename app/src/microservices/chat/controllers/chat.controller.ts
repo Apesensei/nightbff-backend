@@ -23,6 +23,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from "@nestjs/swagger";
+import { User } from "../../auth/entities/user.entity";
 
 @ApiTags("Chats")
 @ApiBearerAuth()
@@ -44,11 +45,11 @@ export class ChatController {
   })
   async createChat(
     @Body() createChatDto: CreateChatDto,
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
   ): Promise<ChatResponseDto> {
     return this.chatService.createChat(
       createChatDto,
-      userId,
+      currentUser.id,
     ) as Promise<ChatResponseDto>;
   }
 
@@ -60,9 +61,12 @@ export class ChatController {
     type: [ChatResponseDto],
   })
   async getUserChats(
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
   ): Promise<ChatResponseDto[]> {
-    const chats = await this.chatService.getUserChats(userId);
+    const chats = await this.chatService.getUserChats(currentUser.id);
+    console.log(
+      `--- CHAT_CONTROLLER: getUserChats service returned ${chats.length} chats`,
+    );
 
     // Enrich with message data
     for (const chat of chats) {
@@ -70,7 +74,7 @@ export class ChatController {
         // Get unread count
         chat.unreadCount = await this.messageService.countUnreadMessages(
           chat.id,
-          userId,
+          currentUser.id,
         );
 
         // Get last message
@@ -98,6 +102,9 @@ export class ChatController {
       }
     }
 
+    console.log(
+      `--- CHAT_CONTROLLER: getUserChats returning ${chats.length} enriched chats`,
+    );
     return chats;
   }
 
@@ -110,16 +117,16 @@ export class ChatController {
   })
   async getChatById(
     @Param("id") chatId: string,
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
   ): Promise<ChatResponseDto> {
-    const chat = await this.chatService.getChatById(chatId, userId);
+    const chat = await this.chatService.getChatById(chatId, currentUser.id);
 
     // Enrich with message data
     if (chat.id) {
       // Get unread count
       chat.unreadCount = await this.messageService.countUnreadMessages(
         chat.id,
-        userId,
+        currentUser.id,
       );
 
       // Get last message

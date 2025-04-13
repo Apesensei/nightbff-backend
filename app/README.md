@@ -92,9 +92,24 @@ src/
 
 ## Development Guidelines
 
-1. Follow the established coding standards
-2. Maintain strict separation between microservices
-3. Use the repository pattern for database operations
-4. Handle errors consistently and provide helpful error messages
-5. Write tests for all functionality
-6. Document all public methods with JSDoc comments 
+1. Follow the established coding standards (ESLint, Prettier - see `eslint.config.js`).
+2. Maintain strict separation between microservices (avoid direct cross-module imports unless necessary and clearly justified).
+3. Use the repository pattern for all database interactions.
+4. Handle errors consistently using NestJS built-in exceptions or custom exception classes. Provide helpful error messages.
+5. Write comprehensive unit and integration tests for all functionality using Jest.
+6. Document all exported classes, methods, interfaces, and complex logic using JSDoc comments. Focus on explaining the *purpose* (`@summary` or main description), parameters (`@param`), return values (`@returns`), and potential errors (`@throws`).
+
+## Documentation Structure
+
+- **This README (`app/README.md`):** High-level overview, setup, running, testing, core architecture.
+- **Module READMEs (`app/src/microservices/*/README.md`):** Details on each microservice (purpose, components, API, etc.). Follow the [template](../docs/templates/module-readme-template.md).
+- **Extended Docs (`app/docs/`):** Cross-cutting concerns, deep dives, ADRs. See the [docs README](../docs/README.md) for structure.
+
+## User Entity Architecture
+
+The application uses a single source of truth for User data:
+
+- **User Entity (auth module)**: Core user data including authentication, permissions, and shared properties (`id`, `email`, `username`, `passwordHash`, `displayName`, `status`, `roles`, `isVerified`, etc.)
+- **UserProfile Entity (user module)**: Extended profile data specific to user profile functionality (`country`, `lastActiveAt`, `gender`, `birthDate`, `profileCoverUrl`, `isPublic`, etc.)
+
+All modules that need User data should import the `AuthModule` and inject the `User` repository (`@InjectRepository(User)`) or a service that provides access to it. The `UserProfile` entity is accessed via the `UserModule`. 

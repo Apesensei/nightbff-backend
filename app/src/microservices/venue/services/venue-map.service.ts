@@ -5,6 +5,7 @@ import { Venue } from "../entities/venue.entity";
 import { VenueType } from "../entities/venue-type.entity";
 import { VenueSearchDto, VenueSortBy } from "../dto/venue-search.dto";
 import { VenueTypeRepository } from "../repositories/venue-type.repository";
+import { VenueStatus } from "../entities/venue.entity";
 
 @Injectable()
 export class VenueMapService {
@@ -172,7 +173,7 @@ export class VenueMapService {
           phone: placeDetails.formatted_phone_number,
           isOpenNow: placeDetails.opening_hours?.open_now,
           venueTypes: venueTypes,
-          verificationStatus: "pending",
+          status: VenueStatus.PENDING,
         };
 
         await this.venueRepository.create(venueData);

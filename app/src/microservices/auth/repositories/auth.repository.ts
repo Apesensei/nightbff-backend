@@ -1,14 +1,17 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { SupabaseProvider } from "@/common/database/supabase.provider";
 import { User } from "../entities/user.entity";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+// import { AuthProvider } from "../enums/auth-provider.enum"; // This is likely not needed here either, but keeping commented for now
 
 @Injectable()
 export class AuthRepository {
-  constructor(private readonly supabaseProvider: SupabaseProvider) {}
+  constructor(
+    private readonly supabaseProvider: SupabaseProvider,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
 
   async createUser(user: Partial<User>): Promise<User> {
     try {
@@ -41,57 +44,34 @@ export class AuthRepository {
     }
 
     try {
-      const supabase = this.supabaseProvider.getClient();
-
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error) {
-        if (error.code === "PGRST116") {
-          throw new NotFoundException(`User with ID ${userId} not found`);
-        }
-        throw new InternalServerErrorException(
-          `Error fetching user: ${error.message}`,
-        );
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (!user) {
+        return null;
       }
-
-      return data as User;
+      return user;
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException("Failed to fetch user");
+      console.error(
+        `AuthRepository Error in getUserById for ${userId}:`,
+        error,
+      );
+      throw new InternalServerErrorException(
+        `Failed to fetch user by ID: ${error.message}`,
+      );
     }
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
     try {
-      const supabase = this.supabaseProvider.getClient();
-
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("email", email)
-        .single();
-
-      if (error) {
-        if (error.code === "PGRST116") {
-          return null;
-        }
-        throw new InternalServerErrorException(
-          `Error fetching user: ${error.message}`,
-        );
-      }
-
-      return data as User;
+      const user = await this.userRepository.findOne({ where: { email } });
+      return user;
     } catch (error) {
-      if (error instanceof InternalServerErrorException) {
-        throw error;
-      }
-      throw new InternalServerErrorException("Failed to fetch user by email");
+      console.error(
+        `AuthRepository Error in getUserByEmail for ${email}:`,
+        error,
+      );
+      throw new InternalServerErrorException(
+        `Failed to fetch user by email: ${error.message}`,
+      );
     }
   }
 

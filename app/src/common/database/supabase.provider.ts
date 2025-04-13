@@ -2,6 +2,13 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
+/**
+ * @summary Provides an injectable instance of the Supabase client.
+ *
+ * @description This provider initializes the Supabase client using credentials
+ * (URL and Key) fetched from the ConfigService during application startup.
+ * Other services can inject this provider to get access to the initialized client.
+ */
 @Injectable()
 export class SupabaseProvider {
   private readonly client: SupabaseClient;
@@ -20,6 +27,11 @@ export class SupabaseProvider {
     this.client = createClient(url || "", key || "");
   }
 
+  /**
+   * @summary Retrieves the initialized Supabase client instance.
+   *
+   * @returns {SupabaseClient} The configured Supabase client.
+   */
   getClient(): SupabaseClient {
     return this.client;
   }

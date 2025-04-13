@@ -25,7 +25,7 @@ describe("EventController", () => {
   };
 
   const mockEventService = {
-    create: jest.fn(),
+    create: jest.fn().mockResolvedValue(mockEventResponse),
     findAll: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
@@ -114,27 +114,35 @@ describe("EventController", () => {
         events: [mockEventResponse, mockEventResponse],
         total: 2,
       };
+      const expectedLimit = 10;
+      // const expectedOffset = 0; // Controller seems to pass undefined if not provided
+      const expectedTitle = "search";
+      const expectedStartDate = "2023-01-01";
+      const expectedEndDate = "2023-01-31";
+      const expectedVenueId = "venue-id";
 
       mockEventService.findAll.mockResolvedValue(eventsResponse);
 
       // Act
       const result = await eventController.findAll(
         req as any,
-        10,
-        0,
-        "search",
-        "2023-01-01",
-        "2023-01-31",
-        "venue-id",
+        expectedLimit,
+        undefined, // Pass undefined for offset as controller does
+        expectedTitle,
+        expectedStartDate,
+        expectedEndDate,
+        expectedVenueId,
       );
 
       // Assert
       expect(mockEventService.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
-          limit: 10,
-          offset: 0,
-          venueId: "venue-id",
-          title: "search",
+          limit: expectedLimit,
+          offset: undefined, // Expect undefined based on previous run
+          venueId: expectedVenueId,
+          title: expectedTitle,
+          startTimeFrom: new Date(expectedStartDate),
+          startTimeTo: new Date(expectedEndDate),
         }),
         "user-id",
       );

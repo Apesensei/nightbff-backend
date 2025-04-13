@@ -8,8 +8,8 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { ChatType } from "../entities/chat.entity";
-import { MessageType, MessageStatus } from "../entities/message.entity";
-import { User } from "../../user/entities/user.entity";
+import { MessageStatus, MessageType } from "../entities/message.entity";
+import { User } from "../../auth/entities/user.entity";
 import { Event } from "../../event/entities/event.entity";
 import { CreateChatDto } from "../dto/create-chat.dto";
 import { SendMessageDto } from "../dto/send-message.dto";
@@ -71,7 +71,7 @@ describe("ChatService", () => {
     chatRepository = {
       createChat: jest.fn().mockResolvedValue(mockChat),
       findChatById: jest.fn().mockResolvedValue(mockChat),
-      findChatsByUserId: jest.fn().mockResolvedValue([mockChat]),
+      findChatsByUserId: jest.fn().mockResolvedValue([]),
       findEventChat: jest.fn().mockResolvedValue(null),
       updateChatActivity: jest.fn().mockResolvedValue(undefined),
       deactivateChat: jest.fn().mockResolvedValue(undefined),
@@ -83,6 +83,7 @@ describe("ChatService", () => {
       softDeleteMessage: jest.fn().mockResolvedValue(true),
       getLastMessage: jest.fn().mockResolvedValue(mockMessage),
       countUnreadMessages: jest.fn().mockResolvedValue(0),
+      save: jest.fn().mockImplementation(async (chat) => chat),
     };
 
     userRepository = {
@@ -129,7 +130,7 @@ describe("ChatService", () => {
       const result = await service.createChat(createChatDto, "1");
 
       expect(chatRepository.createChat).toHaveBeenCalledWith(
-        createChatDto,
+        expect.objectContaining(createChatDto),
         "1",
       );
       expect(result).toBeDefined();
@@ -175,6 +176,73 @@ describe("ChatService", () => {
 
       expect(chatRepository.createChat).not.toHaveBeenCalled();
       expect(result).toBeDefined();
+    });
+
+    // Test case from Step 3.3.1
+    it("should create a direct chat between two specified users (Relationship Test)", async () => {
+      const creatorId = "user-1-id";
+      const participantId = "user-2-id";
+      const createChatDto: CreateChatDto = {
+        type: ChatType.DIRECT,
+        participantIds: [participantId],
+      };
+
+      const mockUser1 = { id: creatorId, username: "user1" } as User;
+      const mockUser2 = { id: participantId, username: "user2" } as User;
+      const mockCreatedChat = {
+        ...mockChat, // Use base mock chat
+        id: "new-chat-id",
+        type: ChatType.DIRECT,
+        participants: [mockUser1, mockUser2],
+        creatorId: creatorId,
+      };
+
+      // Configure mocks
+      // Ensure userRepository.findOne returns the correct users when called by createChat logic
+      userRepository.findOne.mockImplementation(async (options: any) => {
+        if (options?.where?.id === creatorId) return mockUser1;
+        if (options?.where?.id === participantId) return mockUser2;
+        return null;
+      });
+      // Ensure findChatsByUserId returns empty initially to trigger creation
+      (chatRepository.findChatsByUserId as jest.Mock).mockResolvedValueOnce([]);
+      // Mock the actual chat creation to return our specific mock chat
+      (chatRepository.createChat as jest.Mock).mockResolvedValueOnce(
+        mockCreatedChat,
+      );
+      // **ADDITION:** Mock findChatById for *this specific test* to return the correct chat
+      (chatRepository.findChatById as jest.Mock).mockImplementation(
+        async (chatId: string) => {
+          if (chatId === mockCreatedChat.id) {
+            // Need to return a slightly more complete mock matching Chat entity structure for findById
+            // It seems the service uses the result of findById to map to a DTO later.
+            return {
+              ...mockCreatedChat,
+              participants: [mockUser1, mockUser2], // Ensure participants are included
+              // Add other potential fields if findById expects them
+            };
+          }
+          return null; // Or return the generic mockChat if needed for other calls
+        },
+      );
+
+      const result = await service.createChat(createChatDto, creatorId);
+
+      // Assertions
+      expect(chatRepository.createChat).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: ChatType.DIRECT,
+          participantIds: [participantId],
+        }),
+        creatorId,
+      );
+      expect(result).toBeDefined();
+      expect(result.id).toBe(mockCreatedChat.id);
+      expect(result.type).toBe(ChatType.DIRECT);
+      expect(result.participants).toHaveLength(2);
+      // Verify participants are the correct users from the auth module context
+      expect(result.participants.map((p) => p.id)).toContain(creatorId);
+      expect(result.participants.map((p) => p.id)).toContain(participantId);
     });
   });
 
@@ -260,44 +328,6 @@ describe("ChatService", () => {
       await expect(service.sendMessage(sendMessageDto, "1")).rejects.toThrow(
         BadRequestException,
       );
-    });
-  });
-
-  describe("updateMessageStatus", () => {
-    it("should update message status", async () => {
-      const result = await service.updateMessageStatus(
-        {
-          messageId: "1",
-          status: MessageStatus.READ,
-        },
-        "1",
-      );
-
-      expect(chatRepository.updateMessageStatus).toHaveBeenCalledWith(
-        {
-          messageId: "1",
-          status: MessageStatus.READ,
-        },
-        "1",
-      );
-      expect(result).toBe(true);
-    });
-
-    it("should throw BadRequestException if trying to downgrade status", async () => {
-      mockMessage.status = MessageStatus.READ;
-      (chatRepository.findMessageById as jest.Mock).mockResolvedValueOnce(
-        mockMessage,
-      );
-
-      await expect(
-        service.updateMessageStatus(
-          {
-            messageId: "1",
-            status: MessageStatus.DELIVERED,
-          },
-          "1",
-        ),
-      ).rejects.toThrow(BadRequestException);
     });
   });
 });

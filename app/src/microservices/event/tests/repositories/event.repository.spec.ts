@@ -9,23 +9,38 @@ import { EventVisibility } from "../../enums/event-visibility.enum";
 describe("EventRepository", () => {
   let eventRepository: EventRepository;
 
+  // Updated QueryBuilder mock
+  const mockQueryBuilder = {
+    andWhere: jest.fn().mockReturnThis(),
+    innerJoin: jest.fn().mockReturnThis(),
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    setParameter: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    // Reset calls before each test using it
+    mockClear: function () {
+      this.andWhere.mockClear();
+      this.innerJoin.mockClear();
+      this.leftJoinAndSelect.mockClear();
+      this.setParameter.mockClear();
+      this.addSelect.mockClear();
+      this.orderBy.mockClear();
+      this.take.mockClear();
+      this.skip.mockClear();
+      this.getManyAndCount.mockClear();
+    },
+  };
+
   const mockEventModel = {
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
     delete: jest.fn(),
     update: jest.fn(),
-    createQueryBuilder: jest.fn(() => ({
-      andWhere: jest.fn().mockReturnThis(),
-      innerJoin: jest.fn().mockReturnThis(),
-      leftJoinAndSelect: jest.fn().mockReturnThis(),
-      setParameter: jest.fn().mockReturnThis(),
-      addSelect: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      take: jest.fn().mockReturnThis(),
-      skip: jest.fn().mockReturnThis(),
-      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
-    })),
+    createQueryBuilder: jest.fn(() => mockQueryBuilder), // Use the updated mock
   };
 
   const mockAttendeeModel = {
@@ -38,6 +53,12 @@ describe("EventRepository", () => {
   };
 
   beforeEach(async () => {
+    // Reset query builder mocks before each test
+    mockQueryBuilder.mockClear();
+    // Reset model mocks
+    Object.values(mockEventModel).forEach((mockFn) => mockFn.mockClear());
+    Object.values(mockAttendeeModel).forEach((mockFn) => mockFn.mockClear());
+
     const moduleRef = await Test.createTestingModule({
       providers: [
         EventRepository,
@@ -102,7 +123,7 @@ describe("EventRepository", () => {
       expect(mockAttendeeModel.save).toHaveBeenCalledWith(createdAttendee);
       expect(mockEventModel.findOne).toHaveBeenCalledWith({
         where: { id: createdEvent.id },
-        relations: ["attendees", "venue"],
+        relations: ["attendees"],
       });
       expect(result).toEqual(createdEvent);
     });
@@ -111,37 +132,47 @@ describe("EventRepository", () => {
   describe("findAll", () => {
     it("should find events with default options", async () => {
       // Arrange
-      const queryBuilder = mockEventModel.createQueryBuilder();
+      // No need to get queryBuilder here, it's done by the repo method
 
       // Act
       await eventRepository.findAll();
 
       // Assert
       expect(mockEventModel.createQueryBuilder).toHaveBeenCalledWith("event");
-      expect(queryBuilder.orderBy).toHaveBeenCalled();
-      expect(queryBuilder.take).toHaveBeenCalled();
-      expect(queryBuilder.skip).toHaveBeenCalled();
-      expect(queryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+      // Verify calls on the mockQueryBuilder instance
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
+        "event.startTime",
+        "DESC",
+      );
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(10); // Default limit is 10
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0); // Default offset
+      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
         "event.attendees",
         "eventAttendees",
       );
-      expect(queryBuilder.getManyAndCount).toHaveBeenCalled();
+      // Do NOT expect venue join
+      expect(mockQueryBuilder.leftJoinAndSelect).not.toHaveBeenCalledWith(
+        "event.venue",
+        "venue",
+      );
+      expect(mockQueryBuilder.getManyAndCount).toHaveBeenCalled();
     });
 
     it("should apply venue filter when provided", async () => {
       // Arrange
       const venueId = "venue-id";
-      const queryBuilder = mockEventModel.createQueryBuilder();
 
       // Act
       await eventRepository.findAll({ venueId });
 
       // Assert
-      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         "event.venueId = :venueId",
         { venueId },
       );
     });
+
+    // Add more tests for other filters (startTimeFrom, creatorId, attendeeId)
   });
 
   describe("joinEvent", () => {

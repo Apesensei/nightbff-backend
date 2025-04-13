@@ -34,10 +34,10 @@ export class VenueEvent {
   @Column({ nullable: true })
   description: string;
 
-  @Column({ name: "start_time", type: "timestamp" })
+  @Column({ name: "start_time", type: "timestamp with time zone" })
   startTime: Date;
 
-  @Column({ name: "end_time", type: "timestamp" })
+  @Column({ name: "end_time", type: "timestamp with time zone" })
   endTime: Date;
 
   @Column({ name: "image_url", nullable: true })
@@ -53,8 +53,7 @@ export class VenueEvent {
   price: string;
 
   @Column({
-    name: "status",
-    type: "enum",
+    type: "text",
     enum: EventStatus,
     default: EventStatus.SCHEDULED,
   })
@@ -63,9 +62,9 @@ export class VenueEvent {
   @Column({ name: "attendee_count", default: 0 })
   attendeeCount: number;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamp with time zone" })
   updatedAt: Date;
 }

@@ -9,6 +9,7 @@ import {
 } from "typeorm";
 import { Venue } from "./venue.entity";
 
+// Restore inline enum
 export enum DayOfWeek {
   MONDAY = "monday",
   TUESDAY = "tuesday",
@@ -32,8 +33,7 @@ export class VenueHour {
   venue: Venue;
 
   @Column({
-    name: "day_of_week",
-    type: "enum",
+    type: "text",
     enum: DayOfWeek,
   })
   dayOfWeek: DayOfWeek;
@@ -50,9 +50,9 @@ export class VenueHour {
   @Column({ name: "is_open_24_hours", default: false })
   isOpen24Hours: boolean;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamp with time zone" })
   updatedAt: Date;
 }

@@ -25,14 +25,16 @@ export class EventAttendee {
   eventId: string;
 
   @Column({
-    type: "enum",
+    type: "text",
     enum: EventAttendeeStatus,
     default: EventAttendeeStatus.INVITED,
   })
   @Index()
   status: EventAttendeeStatus;
 
-  @CreateDateColumn({ type: "timestamp with time zone" })
+  @CreateDateColumn({
+    /* type: 'timestamp with time zone' */
+  })
   @Index()
   joinedAt: Date;
 

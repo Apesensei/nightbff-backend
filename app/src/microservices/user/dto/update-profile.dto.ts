@@ -6,7 +6,7 @@ import {
   IsBoolean,
   IsDateString,
 } from "class-validator";
-import { Gender } from "../entities/profile.entity";
+import { Gender } from "../entities/user-profile.entity";
 
 export class UpdateProfileDto {
   @IsString()

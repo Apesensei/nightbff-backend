@@ -25,7 +25,8 @@ import { ChatGateway } from "./gateways/chat.gateway";
 import { ParseSocketJwtPipe } from "./pipes/parse-socket-jwt.pipe";
 
 // Module imports
-import { UserModule } from "../user/user.module";
+// Remove UserModule if not needed
+// import { UserModule } from "../user/user.module";
 import { EventModule } from "../event/event.module";
 import { AuthModule } from "../auth/auth.module";
 
@@ -58,9 +59,9 @@ import { AuthModule } from "../auth/auth.module";
         },
       }),
     }),
-    UserModule,
+    // UserModule, // Remove this import
     EventModule,
-    AuthModule,
+    AuthModule, // Ensure AuthModule is imported (already present)
     ConfigModule,
   ],
   controllers: [

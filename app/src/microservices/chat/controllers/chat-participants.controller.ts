@@ -13,6 +13,7 @@ import {
 import { ChatService } from "../services/chat.service";
 import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../../auth/decorators/current-user.decorator";
+import { User } from "../../auth/entities/user.entity";
 import {
   ApiTags,
   ApiOperation,
@@ -42,9 +43,12 @@ export class ChatParticipantsController {
   })
   async getParticipants(
     @Param("chatId") chatId: string,
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
   ): Promise<ParticipantDto[]> {
-    const chat = await this.chatService.validateChatAccess(chatId, userId);
+    const chat = await this.chatService.validateChatAccess(
+      chatId,
+      currentUser.id,
+    );
     return chat.participants.map((participant) => ({
       id: participant.id,
       username: participant.username,
@@ -63,12 +67,10 @@ export class ChatParticipantsController {
   async addParticipants(
     @Param("chatId") chatId: string,
     @Body() addParticipantsDto: AddParticipantsDto,
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
   ): Promise<{ success: boolean }> {
-    // First validate that the requester has access to the chat
-    await this.chatService.validateChatAccess(chatId, userId);
+    await this.chatService.validateChatAccess(chatId, currentUser.id);
 
-    // Then add the participants
     await this.chatService.addParticipantsToChat(
       chatId,
       addParticipantsDto.participantIds,
@@ -86,12 +88,12 @@ export class ChatParticipantsController {
   async removeParticipant(
     @Param("chatId") chatId: string,
     @Param("participantId") participantId: string,
-    @CurrentUser("id") userId: string,
+    @CurrentUser() currentUser: User,
   ): Promise<{ success: boolean }> {
     const success = await this.chatService.removeParticipantFromChat(
       chatId,
       participantId,
-      userId,
+      currentUser.id,
     );
 
     return { success };
