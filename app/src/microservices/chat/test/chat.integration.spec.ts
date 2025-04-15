@@ -1,12 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common"; // Combined imports
 import request from "supertest";
-import { TypeOrmModule } from "@nestjs/typeorm";
+import { TypeOrmModule, getRepositoryToken, TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { JwtService } from "@nestjs/jwt";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { ConfigModule } from "@nestjs/config";
 import { DatabaseModule } from "@/common/database/database.module";
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"; // Added Testcontainers import
 // Removed unused ValidationPipe import here as it's combined above
 
 import { ChatModule } from "../chat.module";
@@ -14,7 +15,19 @@ import { Chat, ChatType } from "../entities/chat.entity";
 import { Message, MessageType } from "../entities/message.entity";
 import { User } from "../../auth/entities/user.entity";
 import { AuthModule } from "../../auth/auth.module";
-// import { EventModule } from '../../event/event.module'; // Keep commented unless needed
+import { EventModule } from '../../event/event.module'; // Added import
+
+// --- Add missing entity imports --- 
+import { Event } from "../../event/entities/event.entity";
+import { EventAttendee } from "../../event/entities/event-attendee.entity";
+import { Interest } from "../../interest/entities/interest.entity";
+import { UserInterest } from "../../interest/entities/user-interest.entity";
+import { EventInterest } from "../../interest/entities/event-interest.entity";
+// --- End missing entity imports ---
+
+// --- Add missing AgeVerification entity import ---
+import { AgeVerification } from "../../auth/entities/age-verification.entity";
+// --- End missing AgeVerification entity import ---
 
 // Remove ALL Controller and Service imports if not directly used for setup/assertions
 // import { ChatService } from "../services/chat.service";
@@ -26,10 +39,15 @@ import { AuthModule } from "../../auth/auth.module";
 // import { ChatResponseDto } from "../dto/chat-response.dto";
 // import { MessageResponseDto } from "../dto/message-response.dto";
 
-describe("Chat API (e2e)", () => {
-  jest.setTimeout(30000); // Increase timeout for diagnostics
+// --- Testcontainers Setup ---
+let postgresContainer: StartedPostgreSqlContainer;
+let app: INestApplication;
+// --- End Testcontainers Setup ---
 
-  let app: INestApplication;
+describe("Chat API (e2e)", () => {
+  // Increased timeout for Docker operations
+  jest.setTimeout(60000); 
+
   let userRepository: Repository<User>;
   let jwtToken: string;
   let testUser: User;
@@ -38,23 +56,42 @@ describe("Chat API (e2e)", () => {
   let testMessage: Message | null = null; // Initialize to null for safety
 
   beforeAll(async () => {
+    console.log("Starting PostgreSQL container...");
+    const postgresContainerInstance = new PostgreSqlContainer("postgres:15");
+    postgresContainer = await postgresContainerInstance.start();
+    console.log("PostgreSQL container started.");
+
+    console.log("Creating TypeORM options...");
+    const typeOrmOptions: TypeOrmModuleOptions = {
+      type: 'postgres',
+      host: postgresContainer.getHost(),
+      port: postgresContainer.getPort(),
+      username: postgresContainer.getUsername(),
+      password: postgresContainer.getPassword(),
+      database: postgresContainer.getDatabase(),
+      entities: [User, Chat, Message, Event, EventAttendee, Interest, UserInterest, EventInterest, AgeVerification],
+      synchronize: true, // Create schema automatically
+      dropSchema: true, // Ensure clean state for tests
+      logging: false, // Keep false unless debugging SQL
+    };
+    console.log("TypeORM options created:", {
+      host: typeOrmOptions.host,
+      port: typeOrmOptions.port,
+      username: typeOrmOptions.username,
+      database: typeOrmOptions.database,
+    });
+
     console.log("Compiling module..."); // Log before compile
     const compiledModule: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: ".env.test" }),
-        DatabaseModule,
-        TypeOrmModule.forRoot({
-          type: "sqlite",
-          database: ":memory:",
-          synchronize: true, // Re-enable synchronize for :memory: testing
-          logging: false, // Set to true for debugging DB queries
-          autoLoadEntities: true, // Recommended for testing with :memory:
-          // entities: [User, Chat, Message], // Explicit entities can be used if autoLoadEntities is false
-        }),
+        DatabaseModule, // Provides global entity registration (for non-test connections if ever needed)
+        // Replace previous TypeOrmModule.forRoot with the dynamic one
+        TypeOrmModule.forRoot(typeOrmOptions),
         EventEmitterModule.forRoot(),
         AuthModule,
         ChatModule,
-        // EventModule, // Include if chat logic depends on event listeners/emitters
+        EventModule, // Uncommented: Include EventModule and its dependencies (like InterestModule)
       ],
       // No direct providers for controllers/services needed for E2E
     }).compile();
@@ -79,9 +116,9 @@ describe("Chat API (e2e)", () => {
     await app.init();
     console.log("App initialized."); // Log after init
 
-    // Get Repositories directly from compiledModule
+    // Get Repositories needed for setup/assertions - use getRepositoryToken
     try {
-      userRepository = compiledModule.get("UserRepository");
+      userRepository = compiledModule.get(getRepositoryToken(User)); 
     } catch (e) {
       console.error("Error getting repositories in test setup:", e);
       throw e; // Fail fast if repositories can't be retrieved
@@ -128,8 +165,11 @@ describe("Chat API (e2e)", () => {
 
   afterAll(async () => {
     // Clean up database connections, etc.
-    await app.close();
-    // No need for explicit repository.clear() with app.close() and :memory:
+    await app?.close(); // Use optional chaining for safety
+    // Stop the Testcontainer
+    await postgresContainer?.stop();
+    console.log("PostgreSQL container stopped.");
+    // No need for explicit repository.clear() with dropSchema: true
   });
 
   // Reset testChat and testMessage before each describe block or test if needed
