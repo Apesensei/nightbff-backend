@@ -157,6 +157,32 @@ export class UserRelationshipRepository {
     return count > 0;
   }
 
+  /**
+   * Finds all IDs of users who are blocked by the specified user, or who have blocked the specified user.
+   * @param userId - The ID of the user whose block list (both ways) is to be retrieved.
+   * @returns A promise that resolves to an array of unique user IDs.
+   */
+  async findBlockedUserIds(userId: string): Promise<string[]> {
+    const blockedRelationships = await this.repository.find({
+      select: ["requesterId", "recipientId"], // Select only the IDs needed
+      where: [
+        { requesterId: userId, type: RelationshipType.BLOCKED },
+        { recipientId: userId, type: RelationshipType.BLOCKED },
+      ],
+    });
+
+    const blockedIds = new Set<string>();
+    for (const rel of blockedRelationships) {
+      if (rel.requesterId === userId) {
+        blockedIds.add(rel.recipientId);
+      } else {
+        blockedIds.add(rel.requesterId);
+      }
+    }
+
+    return Array.from(blockedIds);
+  }
+
   async reportUser(
     relationshipId: string,
     reason: string,

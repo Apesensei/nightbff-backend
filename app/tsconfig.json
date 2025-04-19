@@ -10,6 +10,7 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
+    "rootDir": ".",
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
@@ -30,6 +31,6 @@
     "esm": true,
     "experimentalSpecifierResolution": "node"
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "scripts/**/*"],
   "exclude": ["node_modules", "dist"]
 } 
