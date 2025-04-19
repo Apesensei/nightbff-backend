@@ -322,7 +322,7 @@ describe("EventService", () => {
       const userId = "test-user-id";
       const mockEvents = [mockEvent];
       const expectedResult = {
-        events: [ { ...mockEventResponseDto, id: mockEvent.id } ], 
+        events: [{ ...mockEventResponseDto, id: mockEvent.id }],
         total: 1,
       };
       mockEventRepository.findAll!.mockResolvedValue([mockEvents, 1]);
@@ -388,7 +388,7 @@ describe("EventService", () => {
     const baseOptions: FindEventsOptions = { limit: 10 };
     const mockEvents = [mockEvent];
     const expectedResult = {
-      events: [ { ...mockEventResponseDto, id: mockEvent.id } ],
+      events: [{ ...mockEventResponseDto, id: mockEvent.id }],
       total: 1,
     };
 

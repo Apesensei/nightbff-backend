@@ -25,6 +25,8 @@ export enum RelationshipDirection {
 
 @Entity("user_relationships")
 @Index(["requesterId", "recipientId"], { unique: true })
+@Index(["requesterId", "type"])
+@Index(["recipientId", "type"])
 export class UserRelationship {
   @PrimaryGeneratedColumn("uuid")
   id: string;

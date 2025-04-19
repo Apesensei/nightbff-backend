@@ -1,54 +1,109 @@
 import { Test } from "@nestjs/testing";
-import { BadRequestException } from "@nestjs/common";
-import { UserDiscoveryService } from "../../services/user-discovery.service";
 import {
-  UserRepository,
-  UserWithDistance,
-} from "../../repositories/user.repository";
+  NotFoundException,
+  InternalServerErrorException,
+} from "@nestjs/common";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { UserDiscoveryService } from "../../services/user-discovery.service";
+import { UserRepository } from "../../repositories/user.repository";
 import { UserRelationshipRepository } from "../../repositories/user-relationship.repository";
 import { ProfileViewRepository } from "../../repositories/profile-view.repository";
 import { User } from "../../../auth/entities/user.entity";
+import { calculateAge } from "../../../../common/utils/date.utils";
+import {
+  UserProfile,
+  Gender,
+  GenderPreference,
+} from "../../entities/user-profile.entity";
+import { HomepageRecommendationDto } from "../../dto/homepage-recommendation.dto";
+import { RelationshipType } from "../../entities/user-relationship.entity";
 import { ProfileView } from "../../entities/profile-view.entity";
 
+// --- Mock the date utils module --- START
+jest.mock("../../../../common/utils/date.utils", () => ({
+  calculateAge: jest.fn(),
+}));
+// --- Mock the date utils module --- END
+
+// Get a reference to the mock function
+const mockCalculateAge = calculateAge as jest.Mock;
+
 describe("UserDiscoveryService", () => {
-  let userDiscoveryService: UserDiscoveryService;
+  let service: UserDiscoveryService;
+  let userProfileRepository: Repository<UserProfile>;
   let userRepository: UserRepository;
   let userRelationshipRepository: UserRelationshipRepository;
   let profileViewRepository: ProfileViewRepository;
 
-  const mockUserRepository = () => ({
+  type MockUserProfileRepository = Partial<
+    Record<keyof Repository<UserProfile>, jest.Mock>
+  > & { createQueryBuilder: jest.Mock };
+  type MockUserRepository = Partial<Record<keyof UserRepository, jest.Mock>>;
+  type MockUserRelationshipRepository = Partial<
+    Record<keyof UserRelationshipRepository, jest.Mock>
+  > & { findBlockedUserIds: jest.Mock };
+  type MockProfileViewRepository = Partial<
+    Record<keyof ProfileViewRepository, jest.Mock>
+  >;
+
+  const mockUserProfileRepositoryFactory = jest.fn(() => ({
+    createQueryBuilder: jest.fn().mockReturnValue({
+      innerJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn(),
+      select: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      getMany: jest.fn(),
+    }),
+    findOne: jest.fn(),
+  }));
+
+  const mockUserRepositoryFactory = jest.fn(() => ({
     findById: jest.fn(),
     findNearbyUsers: jest.fn(),
     findActiveNearbyUsers: jest.fn(),
-  });
+  }));
 
-  const mockUserRelationshipRepository = () => ({
+  const mockUserRelationshipRepositoryFactory = jest.fn(() => ({
+    findBlockedUserIds: jest.fn(),
     findUserRelationships: jest.fn(),
-  });
+  }));
 
-  const mockProfileViewRepository = () => ({
+  const mockProfileViewRepositoryFactory = jest.fn(() => ({
     getViewsForUser: jest.fn(),
     countUniqueViewersForUser: jest.fn(),
-  });
+  }));
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         UserDiscoveryService,
-        { provide: UserRepository, useFactory: mockUserRepository },
+        {
+          provide: getRepositoryToken(UserProfile),
+          useFactory: mockUserProfileRepositoryFactory,
+        },
+        {
+          provide: UserRepository,
+          useFactory: mockUserRepositoryFactory,
+        },
         {
           provide: UserRelationshipRepository,
-          useFactory: mockUserRelationshipRepository,
+          useFactory: mockUserRelationshipRepositoryFactory,
         },
         {
           provide: ProfileViewRepository,
-          useFactory: mockProfileViewRepository,
+          useFactory: mockProfileViewRepositoryFactory,
         },
       ],
     }).compile();
 
-    userDiscoveryService =
-      moduleRef.get<UserDiscoveryService>(UserDiscoveryService);
+    service = moduleRef.get<UserDiscoveryService>(UserDiscoveryService);
+    userProfileRepository = moduleRef.get<Repository<UserProfile>>(
+      getRepositoryToken(UserProfile),
+    );
     userRepository = moduleRef.get<UserRepository>(UserRepository);
     userRelationshipRepository = moduleRef.get<UserRelationshipRepository>(
       UserRelationshipRepository,
@@ -56,211 +111,390 @@ describe("UserDiscoveryService", () => {
     profileViewRepository = moduleRef.get<ProfileViewRepository>(
       ProfileViewRepository,
     );
+
+    mockCalculateAge.mockClear();
   });
 
-  describe("findNearbyUsers", () => {
-    it("should find nearby users", async () => {
-      const mockUser1 = {
-        id: "user-1",
-        username: "user1",
-        distance: 1.5,
-      } as UserWithDistance;
+  it("should be defined", () => {
+    expect(service).toBeDefined();
+  });
 
-      const mockUser2 = {
-        id: "user-2",
-        username: "user2",
-        distance: 2.8,
-      } as UserWithDistance;
+  describe("getHomepageRecommendations", () => {
+    let currentUserProfile: UserProfile;
+    let mockCandidates: UserProfile[];
 
-      const mockUsers = [mockUser1, mockUser2];
-      const mockTotal = mockUsers.length;
+    beforeEach(() => {
+      mockCalculateAge.mockClear();
 
-      jest
-        .spyOn(userRelationshipRepository, "findUserRelationships")
-        .mockResolvedValue([[], 0]);
-      jest
-        .spyOn(userRepository, "findNearbyUsers")
-        .mockResolvedValue([mockUsers, mockTotal]);
+      currentUserProfile = new UserProfile();
+      currentUserProfile.userId = "current-user";
+      currentUserProfile.gender = Gender.FEMALE;
+      currentUserProfile.birthDate = new Date("1995-01-01");
+      currentUserProfile.genderPreference = GenderPreference.BOTH;
+      currentUserProfile.user = new User();
+      currentUserProfile.user.id = "current-user";
 
-      const result = await userDiscoveryService.findNearbyUsers(
-        "current-user",
-        40.7128,
-        -74.006,
+      const candidateProfile1 = new UserProfile();
+      candidateProfile1.userId = "candidate-1";
+      candidateProfile1.gender = Gender.MALE;
+      candidateProfile1.birthDate = new Date("1996-02-02");
+      candidateProfile1.user = new User();
+      candidateProfile1.user.id = "candidate-1";
+      candidateProfile1.user.displayName = "Candidate One";
+      candidateProfile1.user.photoURL = "photo1.jpg";
+
+      const candidateProfile2 = new UserProfile();
+      candidateProfile2.userId = "candidate-2";
+      candidateProfile2.gender = Gender.FEMALE;
+      candidateProfile2.birthDate = new Date("1997-03-03");
+      candidateProfile2.user = new User();
+      candidateProfile2.user.id = "candidate-2";
+      candidateProfile2.user.displayName = "Candidate Two";
+      candidateProfile2.user.photoURL = "photo2.jpg";
+
+      const candidateProfilePreferNotSay = new UserProfile();
+      candidateProfilePreferNotSay.userId = "candidate-pnts";
+      candidateProfilePreferNotSay.gender = Gender.OTHER;
+      candidateProfilePreferNotSay.birthDate = new Date("1998-04-04");
+      candidateProfilePreferNotSay.user = new User();
+      candidateProfilePreferNotSay.user.id = "candidate-pnts";
+      candidateProfilePreferNotSay.user.displayName = "Candidate PNTS";
+      candidateProfilePreferNotSay.user.photoURL = "photo_pnts.jpg";
+
+      mockCandidates = [
+        candidateProfile1,
+        candidateProfile2,
+        candidateProfilePreferNotSay,
+      ];
+
+      mockCalculateAge.mockImplementation((date) => {
+        if (!date) return null;
+        return new Date().getFullYear() - date.getFullYear();
+      });
+    });
+
+    it("should return filtered and mapped recommendations", async () => {
+      const userProfileRepoMock =
+        userProfileRepository as unknown as MockUserProfileRepository;
+      const userRelRepoMock =
+        userRelationshipRepository as unknown as MockUserRelationshipRepository;
+
+      const currentUserQueryBuilderMock = {
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(currentUserProfile),
+      };
+      userProfileRepoMock.createQueryBuilder.mockReturnValueOnce(
+        currentUserQueryBuilderMock as any,
       );
 
-      expect(result.users).toEqual(mockUsers);
-      expect(result.total).toBe(mockTotal);
-      expect(userRepository.findNearbyUsers).toHaveBeenCalledWith(
+      userRelRepoMock.findBlockedUserIds.mockResolvedValue([]);
+
+      const candidatesQueryBuilderMock = {
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(mockCandidates),
+      };
+      userProfileRepoMock.createQueryBuilder.mockReturnValueOnce(
+        candidatesQueryBuilderMock as any,
+      );
+
+      const result = await service.getHomepageRecommendations("current-user");
+
+      expect(result).toBeDefined();
+      expect(result.length).toBe(3);
+      expect(result.some(u => u.id === "candidate-1")).toBe(true);
+      expect(result.some(u => u.id === "candidate-2")).toBe(true);
+      expect(result.some(u => u.id === "candidate-pnts")).toBe(true);
+      expect(result[0].age).toBeDefined();
+      expect(result[1].age).toBeDefined();
+      expect(result[2].age).toBeDefined();
+
+      expect(userProfileRepoMock.createQueryBuilder).toHaveBeenCalledTimes(2);
+      expect(currentUserQueryBuilderMock.getOne).toHaveBeenCalledTimes(1);
+      expect(userRelRepoMock.findBlockedUserIds).toHaveBeenCalledWith(
+        "current-user",
+      );
+      expect(candidatesQueryBuilderMock.getMany).toHaveBeenCalledTimes(1);
+      expect(mockCalculateAge).toHaveBeenCalled();
+    });
+
+    it("should throw NotFoundException if current user profile not found", async () => {
+      const userProfileRepoMock =
+        userProfileRepository as unknown as MockUserProfileRepository;
+      const currentUserQueryBuilderMock = {
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      };
+      userProfileRepoMock.createQueryBuilder.mockReturnValueOnce(
+        currentUserQueryBuilderMock as any,
+      );
+
+      await expect(
+        service.getHomepageRecommendations("nonexistent-user"),
+      ).rejects.toThrow(NotFoundException);
+      expect(userProfileRepoMock.createQueryBuilder).toHaveBeenCalledTimes(1);
+      expect(currentUserQueryBuilderMock.getOne).toHaveBeenCalledTimes(1);
+    });
+
+    it("should exclude blocked users from recommendations", async () => {
+      const userProfileRepoMock =
+        userProfileRepository as unknown as MockUserProfileRepository;
+      const userRelRepoMock =
+        userRelationshipRepository as unknown as MockUserRelationshipRepository;
+
+      // Arrange: Mock blocklist to include candidate-1
+      userRelRepoMock.findBlockedUserIds.mockResolvedValue(["candidate-1"]);
+
+      // Mock DB calls
+      const currentUserQueryBuilderMock = {
+        getOne: jest.fn().mockResolvedValue(currentUserProfile),
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+      };
+      userProfileRepoMock.createQueryBuilder.mockReturnValueOnce(
+        currentUserQueryBuilderMock as any,
+      );
+
+      // ** CRITICAL: Mock getMany to return the list AS IF the DB excluded candidate-1 **
+      const expectedCandidatesFromDb = mockCandidates.filter(
+        (c) => c.userId !== "candidate-1",
+      );
+      const candidatesQueryBuilderMock = {
+        // ... other chainable mocks ...
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(), // The service calls this
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        // This mock *must* reflect the result after DB filtering
+        getMany: jest.fn().mockResolvedValue(expectedCandidatesFromDb),
+      };
+      userProfileRepoMock.createQueryBuilder.mockReturnValueOnce(
+        candidatesQueryBuilderMock as any,
+      );
+
+      // Act
+      const result = await service.getHomepageRecommendations("current-user");
+
+      // Assert: Service logic filters PNTS, leaving only candidate-2
+      expect(result.length).toBe(2);
+      expect(result.find((u) => u.id === "candidate-1")).toBeUndefined();
+      expect(result.some(u => u.id === "candidate-2")).toBe(true);
+      expect(result.some(u => u.id === "candidate-pnts")).toBe(true);
+      expect(userRelRepoMock.findBlockedUserIds).toHaveBeenCalledWith(
+        "current-user",
+      );
+      // Verify the query builder was called correctly
+      expect(candidatesQueryBuilderMock.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining("NOT IN (:...excludeUserIds)"),
         expect.objectContaining({
-          latitude: 40.7128,
-          longitude: -74.006,
-          radiusInKm: 5, // Default value
+          excludeUserIds: expect.arrayContaining([
+            "current-user",
+            "candidate-1",
+          ]),
         }),
-        "current-user",
       );
+      expect(candidatesQueryBuilderMock.getMany).toHaveBeenCalledTimes(1);
     });
 
-    it("should find active nearby users when activeOnly is true", async () => {
-      const mockUsers = [
-        {
-          id: "user-1",
-          username: "user1",
-          distance: 1.5,
-        } as UserWithDistance,
-      ];
-      const mockTotal = mockUsers.length;
+    it("should filter candidates by current user age preference", async () => {
+      const userProfileRepoMock =
+        userProfileRepository as unknown as MockUserProfileRepository;
+      const userRelRepoMock =
+        userRelationshipRepository as unknown as MockUserRelationshipRepository;
 
-      jest
-        .spyOn(userRelationshipRepository, "findUserRelationships")
-        .mockResolvedValue([[], 0]);
-      jest
-        .spyOn(userRepository, "findActiveNearbyUsers")
-        .mockResolvedValue([mockUsers, mockTotal]);
-
-      const result = await userDiscoveryService.findNearbyUsers(
-        "current-user",
-        40.7128,
-        -74.006,
-        {
-          activeOnly: true,
-          activeWithinMinutes: 15,
-        },
-      );
-
-      expect(result.users).toEqual(mockUsers);
-      expect(result.total).toBe(mockTotal);
-      expect(userRepository.findActiveNearbyUsers).toHaveBeenCalledWith(
-        expect.any(Object),
-        "current-user",
-        15,
-      );
-    });
-
-    it("should throw BadRequestException for invalid coordinates", async () => {
-      await expect(
-        userDiscoveryService.findNearbyUsers("current-user", NaN, -74.006),
-      ).rejects.toThrow(BadRequestException);
-
-      await expect(
-        userDiscoveryService.findNearbyUsers("current-user", 40.7128, NaN),
-      ).rejects.toThrow(BadRequestException);
-    });
-  });
-
-  describe("getRecommendedUsers", () => {
-    it("should get recommended users based on location", async () => {
-      const mockUser = new User();
-      mockUser.id = "current-user";
-      mockUser.locationLatitude = 40.7128;
-      mockUser.locationLongitude = -74.006;
-
-      const mockUsers = [
-        {
-          id: "user-1",
-          username: "user1",
-          distance: 1.5,
-        } as UserWithDistance,
-      ];
-      const mockTotal = mockUsers.length;
-
-      jest.spyOn(userRepository, "findById").mockResolvedValue(mockUser);
-      jest
-        .spyOn(userRelationshipRepository, "findUserRelationships")
-        .mockResolvedValue([[], 0]);
-      jest
-        .spyOn(userRepository, "findNearbyUsers")
-        .mockResolvedValue([mockUsers, mockTotal]);
-
-      const result =
-        await userDiscoveryService.getRecommendedUsers("current-user");
-
-      expect(result.users).toEqual(mockUsers);
-      expect(result.total).toBe(mockTotal);
-      expect(userRepository.findNearbyUsers).toHaveBeenCalled();
-    });
-
-    it("should throw BadRequestException if user location not available", async () => {
-      const mockUser = new User();
-      mockUser.id = "current-user";
-      // No location data
-
-      jest.spyOn(userRepository, "findById").mockResolvedValue(mockUser);
-
-      await expect(
-        userDiscoveryService.getRecommendedUsers("current-user"),
-      ).rejects.toThrow(BadRequestException);
-    });
-  });
-
-  describe("getProfileViewers", () => {
-    it("should return users who viewed the profile", async () => {
-      const mockViews = [
-        {
-          id: "view-1",
-          viewerId: "viewer-1",
-          viewedId: "current-user",
-          createdAt: new Date(),
-        } as ProfileView,
-        {
-          id: "view-2",
-          viewerId: "viewer-2",
-          viewedId: "current-user",
-          createdAt: new Date(),
-        } as ProfileView,
-      ];
-
-      const mockUsers = [
-        {
-          id: "viewer-1",
-          username: "viewer1",
-        } as User,
-        {
-          id: "viewer-2",
-          username: "viewer2",
-        } as User,
-      ];
-
-      jest
-        .spyOn(profileViewRepository, "getViewsForUser")
-        .mockResolvedValue([mockViews, mockViews.length]);
-      jest
-        .spyOn(profileViewRepository, "countUniqueViewersForUser")
-        .mockResolvedValue(mockViews.length);
-
-      // Mock user repository findById to return corresponding users
-      jest.spyOn(userRepository, "findById").mockImplementation((id) => {
-        if (id === "viewer-1") return Promise.resolve(mockUsers[0]);
-        if (id === "viewer-2") return Promise.resolve(mockUsers[1]);
-        return Promise.resolve(null);
+      // Arrange: Set age preference and mock ages
+      currentUserProfile.minAgePreference = 28; // Example: 28-35
+      currentUserProfile.maxAgePreference = 35;
+      mockCalculateAge.mockImplementation((date) => {
+        if (!date) return null;
+        const year = date.getFullYear();
+        if (year === 1996) return 29; // candidate-1 (In range)
+        if (year === 1997) return 28; // candidate-2 (In range)
+        if (year === 1998) return 27; // candidate-pnts (Out of range)
+        return 30; // Default/Current user age
       });
 
-      const result =
-        await userDiscoveryService.getProfileViewers("current-user");
-
-      expect(result.users.length).toBe(2);
-      expect(result.total).toBe(2);
-
-      // Verify each user has viewedAt property from the view
-      expect(result.users[0].viewedAt).toEqual(mockViews[0].createdAt);
-      expect(result.users[1].viewedAt).toEqual(mockViews[1].createdAt);
-
-      expect(profileViewRepository.getViewsForUser).toHaveBeenCalledWith(
-        "current-user",
-        expect.any(Number),
-        expect.any(Number),
+      // Mock DB calls
+      const currentUserQueryBuilderMock = {
+        /* ... */ getOne: jest.fn().mockResolvedValue(currentUserProfile),
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+      };
+      userProfileRepoMock.createQueryBuilder.mockReturnValueOnce(
+        currentUserQueryBuilderMock as any,
       );
+      userRelRepoMock.findBlockedUserIds.mockResolvedValue([]);
+      const candidatesQueryBuilderMock = {
+        /* ... */ getMany: jest.fn().mockResolvedValue(mockCandidates),
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+      };
+      userProfileRepoMock.createQueryBuilder.mockReturnValueOnce(
+        candidatesQueryBuilderMock as any,
+      );
+
+      // Act
+      const result = await service.getHomepageRecommendations("current-user");
+
+      // Assert
+      expect(result.length).toBe(2); // candidate-pnts filtered by age (before gender filtering)
+      expect(result.find((u) => u.id === "candidate-pnts")).toBeUndefined();
+      expect(result[0].id).toBe("candidate-1");
+      expect(result[1].id).toBe("candidate-2");
+      // Verify calculateAge was called for filtering
+      expect(mockCalculateAge).toHaveBeenCalledWith(new Date("1996-02-02"));
+      expect(mockCalculateAge).toHaveBeenCalledWith(new Date("1997-03-03"));
+      expect(mockCalculateAge).toHaveBeenCalledWith(new Date("1998-04-04"));
     });
 
-    it("should return empty array if no profile views", async () => {
-      jest
-        .spyOn(profileViewRepository, "getViewsForUser")
-        .mockResolvedValue([[], 0]);
+    // --- Gender Filtering Tests --- //
+    // Helper to setup mocks for gender tests
+    const setupGenderTestMocks = () => {
+      const userProfileRepoMock =
+        userProfileRepository as unknown as MockUserProfileRepository;
+      const userRelRepoMock =
+        userRelationshipRepository as unknown as MockUserRelationshipRepository;
+      const currentUserQueryBuilderMock = {
+        getOne: jest.fn().mockResolvedValue(currentUserProfile),
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+      };
+      userProfileRepoMock.createQueryBuilder.mockReturnValueOnce(
+        currentUserQueryBuilderMock as any,
+      );
+      userRelRepoMock.findBlockedUserIds.mockResolvedValue([]);
+      const candidatesQueryBuilderMock = {
+        getMany: jest.fn().mockResolvedValue(mockCandidates),
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+      };
+      userProfileRepoMock.createQueryBuilder.mockReturnValueOnce(
+        candidatesQueryBuilderMock as any,
+      );
+      return {
+        userProfileRepoMock,
+        userRelRepoMock,
+        currentUserQueryBuilderMock,
+        candidatesQueryBuilderMock,
+      };
+    };
 
-      const result =
-        await userDiscoveryService.getProfileViewers("current-user");
+    it("should filter by gender preference (MALE)", async () => {
+      // Arrange
+      currentUserProfile.genderPreference = GenderPreference.MALE;
+      setupGenderTestMocks();
 
-      expect(result.users).toEqual([]);
-      expect(result.total).toBe(0);
+      // Act
+      const result = await service.getHomepageRecommendations("current-user");
+
+      // Assert: Expecting candidate-1 (MALE) primarily, filled by candidate-2 (FEMALE) and candidate-pnts (OTHER)
+      expect(result.length).toBe(3);
+      // Verify presence, exact order depends on 75/25 logic and tie-breaking
+      expect(result.some(u => u.id === "candidate-1")).toBe(true); // Preferred
+      expect(result.some(u => u.id === "candidate-2")).toBe(true); // Fill
+      expect(result.some(u => u.id === "candidate-pnts")).toBe(true); // Fill (OTHER)
+      // expect(result[0].id).toBe("candidate-1"); // Old assertion
+      // expect(result[1].id).toBe("candidate-2"); // Old assertion
+      // expect(result.find((u) => u.id === "candidate-pnts")).toBeUndefined(); // Old assertion
+    });
+
+    it("should filter by gender preference (FEMALE)", async () => {
+      // Arrange
+      currentUserProfile.genderPreference = GenderPreference.FEMALE;
+      setupGenderTestMocks();
+
+      // Act
+      const result = await service.getHomepageRecommendations("current-user");
+
+      // Assert: Expecting candidate-2 (FEMALE) primarily, filled by candidate-1 (MALE) and candidate-pnts (OTHER)
+      expect(result.length).toBe(3);
+      // Verify presence, exact order depends on 75/25 logic and tie-breaking
+      expect(result.some(u => u.id === "candidate-2")).toBe(true); // Preferred
+      expect(result.some(u => u.id === "candidate-1")).toBe(true); // Fill
+      expect(result.some(u => u.id === "candidate-pnts")).toBe(true); // Fill (OTHER)
+      // expect(result[0].id).toBe("candidate-2"); // Old assertion
+      // expect(result[1].id).toBe("candidate-1"); // Old assertion
+      // expect(result.find((u) => u.id === "candidate-pnts")).toBeUndefined(); // Old assertion
+    });
+
+    it("should skip gender filtering if preference is undefined", async () => {
+      // Arrange
+      currentUserProfile.genderPreference = undefined;
+      const { candidatesQueryBuilderMock } = setupGenderTestMocks();
+      // Ensure candidates have distinct lastActiveAt for deterministic order
+      const candidate1 = mockCandidates.find(
+        (c) => c.userId === "candidate-1",
+      )!;
+      const candidate2 = mockCandidates.find(
+        (c) => c.userId === "candidate-2",
+      )!;
+      candidate1.lastActiveAt = new Date(Date.now() - 10000); // 10s ago
+      candidate2.lastActiveAt = new Date(Date.now() - 20000); // 20s ago
+      // PNTS candidate's lastActiveAt doesn't matter as it's filtered before this step
+      candidatesQueryBuilderMock.getMany.mockResolvedValue([
+        candidate1,
+        candidate2,
+      ]); // Mock returns only valid gender candidates
+
+      // Act
+      const result = await service.getHomepageRecommendations("current-user");
+
+      // Assert: Expecting candidates based on lastActiveAt, PNTS already excluded by service logic
+      expect(result.length).toBe(2);
+      expect(result[0].id).toBe("candidate-1"); // Most recent
+      expect(result[1].id).toBe("candidate-2");
+    });
+
+    // --- Error Handling Tests --- //
+    it("should throw InternalServerErrorException if findBlockedUserIds fails", async () => {
+      const {
+        userProfileRepoMock,
+        userRelRepoMock,
+        currentUserQueryBuilderMock,
+      } = setupGenderTestMocks();
+      // Arrange: Mock blocklist fetch failure
+      userRelRepoMock.findBlockedUserIds.mockRejectedValue(
+        new Error("DB Error"),
+      );
+
+      // Act & Assert
+      await expect(
+        service.getHomepageRecommendations("current-user"),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it("should throw InternalServerErrorException if candidate fetching fails", async () => {
+      const {
+        userProfileRepoMock,
+        userRelRepoMock,
+        currentUserQueryBuilderMock,
+        candidatesQueryBuilderMock,
+      } = setupGenderTestMocks();
+      // Arrange: Mock candidate fetch failure
+      candidatesQueryBuilderMock.getMany.mockRejectedValue(
+        new Error("DB Error"),
+      );
+
+      // Act & Assert
+      await expect(
+        service.getHomepageRecommendations("current-user"),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 });

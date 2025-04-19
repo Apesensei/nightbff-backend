@@ -10,12 +10,19 @@ import { Repository } from "typeorm";
 import { JwtService } from "@nestjs/jwt";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { ConfigModule } from "@nestjs/config";
-import { DatabaseModule } from "@/common/database/database.module";
+// Remove DatabaseModule if TypeOrmModule.forRootAsync is used or options provided directly
+// import { DatabaseModule } from "@/common/database/database.module";
+// Remove direct Testcontainers import from here
+// import {
+//   PostgreSqlContainer,
+//   type StartedPostgreSqlContainer,
+// } from "@testcontainers/postgresql";
+
+// --- Import the new DB helper utils --- //
 import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from "@testcontainers/postgresql"; // Added Testcontainers import
-// Removed unused ValidationPipe import here as it's combined above
+  setupTestDatabase,
+  teardownTestDatabase,
+} from "../../../../test/utils/db-test.utils";
 
 import { ChatModule } from "../chat.module";
 import { Chat, ChatType } from "../entities/chat.entity";
@@ -46,10 +53,10 @@ import { AgeVerification } from "../../auth/entities/age-verification.entity";
 // import { ChatResponseDto } from "../dto/chat-response.dto";
 // import { MessageResponseDto } from "../dto/message-response.dto";
 
-// --- Testcontainers Setup ---
-let postgresContainer: StartedPostgreSqlContainer;
+// Remove Testcontainers variables from here
+// let postgresContainer: StartedPostgreSqlContainer;
 let app: INestApplication;
-// --- End Testcontainers Setup ---
+let typeOrmOptions: TypeOrmModuleOptions; // Store options from helper
 
 describe("Chat API (e2e)", () => {
   // Increased timeout for Docker operations
@@ -63,60 +70,26 @@ describe("Chat API (e2e)", () => {
   let testMessage: Message | null = null; // Initialize to null for safety
 
   beforeAll(async () => {
-    console.log("Starting PostgreSQL container...");
-    const postgresContainerInstance = new PostgreSqlContainer("postgres:15");
-    postgresContainer = await postgresContainerInstance.start();
-    console.log("PostgreSQL container started.");
+    // --- Use the DB helper --- //
+    const dbSetup = await setupTestDatabase();
+    typeOrmOptions = dbSetup.typeOrmOptions;
+    // postgresContainer variable is managed within the helper
 
-    console.log("Creating TypeORM options...");
-    const typeOrmOptions: TypeOrmModuleOptions = {
-      type: "postgres",
-      host: postgresContainer.getHost(),
-      port: postgresContainer.getPort(),
-      username: postgresContainer.getUsername(),
-      password: postgresContainer.getPassword(),
-      database: postgresContainer.getDatabase(),
-      entities: [
-        User,
-        Chat,
-        Message,
-        Event,
-        EventAttendee,
-        Interest,
-        UserInterest,
-        EventInterest,
-        AgeVerification,
-      ],
-      synchronize: true, // Create schema automatically
-      dropSchema: true, // Ensure clean state for tests
-      logging: false, // Keep false unless debugging SQL
-    };
-    console.log("TypeORM options created:", {
-      host: typeOrmOptions.host,
-      port: typeOrmOptions.port,
-      username: typeOrmOptions.username,
-      database: typeOrmOptions.database,
-    });
-
-    console.log("Compiling module..."); // Log before compile
+    console.log("Compiling module...");
     const compiledModule: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: ".env.test" }),
-        DatabaseModule, // Provides global entity registration (for non-test connections if ever needed)
-        // Replace previous TypeOrmModule.forRoot with the dynamic one
+        // --- Use the dynamic TypeORM options --- //
         TypeOrmModule.forRoot(typeOrmOptions),
         EventEmitterModule.forRoot(),
         AuthModule,
         ChatModule,
-        EventModule, // Uncommented: Include EventModule and its dependencies (like InterestModule)
+        EventModule,
       ],
-      // No direct providers for controllers/services needed for E2E
     }).compile();
-    console.log("Module compiled."); // Log after compile
+    console.log("Module compiled.");
 
     app = compiledModule.createNestApplication();
-
-    // Apply global prefix and pipes exactly like in main.ts
     app.setGlobalPrefix("api");
     app.useGlobalPipes(
       new ValidationPipe({
@@ -129,16 +102,15 @@ describe("Chat API (e2e)", () => {
       }),
     );
 
-    console.log("Initializing app..."); // Log before init
+    console.log("Initializing app...");
     await app.init();
-    console.log("App initialized."); // Log after init
+    console.log("App initialized.");
 
-    // Get Repositories needed for setup/assertions - use getRepositoryToken
     try {
       userRepository = compiledModule.get(getRepositoryToken(User));
     } catch (e) {
       console.error("Error getting repositories in test setup:", e);
-      throw e; // Fail fast if repositories can't be retrieved
+      throw e;
     }
 
     // Create test users directly using the repository
@@ -183,10 +155,8 @@ describe("Chat API (e2e)", () => {
   afterAll(async () => {
     // Clean up database connections, etc.
     await app?.close(); // Use optional chaining for safety
-    // Stop the Testcontainer
-    await postgresContainer?.stop();
-    console.log("PostgreSQL container stopped.");
-    // No need for explicit repository.clear() with dropSchema: true
+    // --- Use the DB helper for teardown --- //
+    await teardownTestDatabase();
   });
 
   // Reset testChat and testMessage before each describe block or test if needed

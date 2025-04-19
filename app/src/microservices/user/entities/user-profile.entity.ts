@@ -18,6 +18,7 @@ import {
   UpdateDateColumn,
   OneToOne,
   JoinColumn,
+  Index,
 } from "typeorm";
 import { User } from "../../auth/entities/user.entity"; // Import the correct User entity
 
@@ -25,8 +26,15 @@ import { User } from "../../auth/entities/user.entity"; // Import the correct Us
 export enum Gender {
   MALE = "male",
   FEMALE = "female",
-  OTHER = "other",
-  PREFER_NOT_TO_SAY = "prefer_not_to_say",
+  OTHER = "other", // Final state includes only these three
+  // PREFER_NOT_TO_SAY = "prefer_not_to_say", // Removed
+}
+
+// Define GenderPreference enum
+export enum GenderPreference {
+  MALE = "male",
+  FEMALE = "female",
+  BOTH = "both",
 }
 
 @Entity("user_profiles")
@@ -49,6 +57,7 @@ export class UserProfile {
   country?: string; // Made optional as it was nullable
 
   @Column({ nullable: true, type: "timestamp with time zone" })
+  @Index()
   lastActiveAt?: Date; // Made optional as it was nullable
 
   // Add the gender field using the enum
@@ -64,6 +73,29 @@ export class UserProfile {
 
   @Column({ nullable: true, type: "timestamp with time zone" })
   birthDate?: Date;
+
+  // --- New Preference Fields ---
+  @Column({
+    type: "enum",
+    enum: GenderPreference,
+    nullable: true, // Nullable initially as existing users won't have this set
+    name: "gender_preference",
+  })
+  genderPreference?: GenderPreference;
+
+  @Column({
+    type: "int",
+    nullable: true, // Nullable initially
+    name: "min_age_preference",
+  })
+  minAgePreference?: number;
+
+  @Column({
+    type: "int",
+    nullable: true, // Nullable initially
+    name: "max_age_preference",
+  })
+  maxAgePreference?: number;
 
   // --- Standard Timestamps ---
   @CreateDateColumn({ type: "timestamp with time zone" })

@@ -1,4 +1,13 @@
-import { Injectable, BadRequestException } from "@nestjs/common";
+import {
+  Injectable,
+  BadRequestException,
+  Inject,
+  Logger,
+  NotFoundException,
+  InternalServerErrorException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import {
   UserRepository,
   UserWithDistance,
@@ -6,14 +15,29 @@ import {
 import { UserRelationshipRepository } from "../repositories/user-relationship.repository";
 import { ProfileViewRepository } from "../repositories/profile-view.repository";
 import { RelationshipType } from "../entities/user-relationship.entity";
+import {
+  UserProfile,
+  Gender,
+  GenderPreference,
+} from "../entities/user-profile.entity";
+import { calculateAge } from "../../../common/utils/date.utils";
+import { HomepageRecommendationDto } from "../dto/homepage-recommendation.dto";
 
 export interface ViewerWithTimestamp extends UserWithDistance {
   viewedAt: Date;
 }
 
+// Define constants for limits
+const FETCH_LIMIT = 100; // Candidate pool size
+const RECOMMENDATION_LIMIT = 20; // Final number of recommendations
+
 @Injectable()
 export class UserDiscoveryService {
+  private readonly logger = new Logger(UserDiscoveryService.name);
+
   constructor(
+    @InjectRepository(UserProfile)
+    private readonly userProfileRepository: Repository<UserProfile>,
     private readonly userRepository: UserRepository,
     private readonly userRelationshipRepository: UserRelationshipRepository,
     private readonly profileViewRepository: ProfileViewRepository,
@@ -196,5 +220,177 @@ export class UserDiscoveryService {
       users: usersWithViewInfo,
       total,
     };
+  }
+
+  async getHomepageRecommendations(
+    currentUserId: string,
+  ): Promise<HomepageRecommendationDto[]> {
+    this.logger.log(
+      `Fetching homepage recommendations for user: ${currentUserId}`,
+    );
+    try {
+      // Phase 1: Fetch Current User Profile (using injected standard repository)
+      const currentUserProfile = await this.userProfileRepository
+        .createQueryBuilder("profile")
+        .innerJoinAndSelect("profile.user", "user")
+        .where("profile.userId = :userId", { userId: currentUserId })
+        .getOne();
+
+      if (!currentUserProfile || !currentUserProfile.user) {
+        this.logger.warn(
+          `User profile or user not found for ID: ${currentUserId}`,
+        );
+        throw new NotFoundException("User profile not found.");
+      }
+      this.logger.debug(
+        `Fetched current user profile: ${currentUserProfile.userId}`,
+      );
+
+      const blockedUserIds =
+        await this.userRelationshipRepository.findBlockedUserIds(currentUserId);
+      this.logger.debug(`Fetched blocked user IDs: ${blockedUserIds.length}`);
+
+      // Phase 2: Candidate Fetching & Initial Filtering
+      const excludeUserIds = [currentUserId, ...blockedUserIds];
+      // Use the standard repository's createQueryBuilder for consistency
+      const candidates = await this.userProfileRepository
+        .createQueryBuilder("candidateProfile")
+        .innerJoinAndSelect("candidateProfile.user", "candidateUser") // Alias properly
+        .select([
+          "candidateProfile.userId", // Select specific fields needed
+          "candidateProfile.gender",
+          "candidateProfile.birthDate",
+          "candidateProfile.lastActiveAt",
+          "candidateProfile.genderPreference", // Include preferences if needed later, or remove
+          "candidateProfile.minAgePreference",
+          "candidateProfile.maxAgePreference",
+          "candidateUser.displayName",
+          "candidateUser.photoURL",
+        ])
+        .where("candidateProfile.lastActiveAt IS NOT NULL")
+        .andWhere("candidateProfile.userId NOT IN (:...excludeUserIds)", {
+          excludeUserIds,
+        })
+        .orderBy("candidateProfile.lastActiveAt", "DESC")
+        .limit(FETCH_LIMIT)
+        .getMany();
+
+      this.logger.debug(`Fetched ${candidates.length} initial candidates.`);
+
+      const ageFilteredCandidates = candidates.filter((candidate) => {
+        const age = calculateAge(candidate.birthDate);
+        if (age === null) return false; // Exclude candidates without birthdate
+
+        const minAgePref = currentUserProfile.minAgePreference;
+        const maxAgePref = currentUserProfile.maxAgePreference;
+
+        // Apply age filtering based on preferences, checking for undefined/null
+        if (minAgePref !== null && minAgePref !== undefined && age < minAgePref)
+          return false;
+        if (maxAgePref !== null && maxAgePref !== undefined && age > maxAgePref)
+          return false;
+
+        return true;
+      });
+      this.logger.debug(
+        `Filtered ${ageFilteredCandidates.length} candidates by age preference.`,
+      );
+
+      // Phase 3: Gender Filtering & Final Selection
+      const finalCandidates = this._filterAndSortByGenderPreference(
+        ageFilteredCandidates,
+        currentUserProfile.genderPreference,
+        RECOMMENDATION_LIMIT,
+      );
+      this.logger.debug(
+        `Filtered ${finalCandidates.length} candidates by gender preference.`,
+      );
+
+      // Phase 3: Map to DTO
+      const recommendations: HomepageRecommendationDto[] = finalCandidates.map(
+        (profile) => ({
+          id: profile.userId,
+          displayName: profile.user.displayName,
+          photoURL: profile.user.photoURL,
+          age: calculateAge(profile.birthDate), // Calculate age again
+        }),
+      );
+      this.logger.log(
+        `Successfully generated ${recommendations.length} recommendations for user: ${currentUserId}`,
+      );
+
+      return recommendations;
+    } catch (error) {
+      // Phase 4: Finalization & Error Handling
+      this.logger.error(
+        `Failed to get homepage recommendations for user ${currentUserId}: ${error.message}`,
+        error.stack,
+      );
+      if (error instanceof NotFoundException) {
+        throw error; // Re-throw specific known exceptions
+      }
+      throw new InternalServerErrorException(
+        "Failed to retrieve recommendations.",
+      );
+    }
+  }
+
+  // --- Private Helper Methods ---
+
+  private _filterAndSortByGenderPreference(
+    candidates: UserProfile[],
+    preference: GenderPreference | null | undefined,
+    targetCount: number,
+  ): UserProfile[] {
+    // Filter out null/undefined genders FIRST (PREFER_NOT_TO_SAY check removed as enum value is gone)
+    const validGenderCandidates = candidates.filter(
+      (candidate) => candidate.gender
+    );
+
+    // Handle null or undefined preference - operate on the filtered list
+    if (!preference || validGenderCandidates.length === 0) {
+      return validGenderCandidates.slice(0, targetCount);
+    }
+
+    const preferredGroup: UserProfile[] = [];
+    const fillGroup: UserProfile[] = [];
+
+    // Iterate over the pre-filtered list
+    validGenderCandidates.forEach((candidate) => {
+      if (candidate.gender === Gender.OTHER) {
+        fillGroup.push(candidate);
+      } else if (
+        (preference === GenderPreference.MALE &&
+          candidate.gender === Gender.MALE) ||
+        (preference === GenderPreference.FEMALE &&
+          candidate.gender === Gender.FEMALE) ||
+        (preference === GenderPreference.BOTH &&
+          (candidate.gender === Gender.MALE ||
+            candidate.gender === Gender.FEMALE))
+      ) {
+        preferredGroup.push(candidate);
+      } else {
+        // Include non-preferred MALE/FEMALE in fill group if preference is specific (M or F)
+        if (preference !== GenderPreference.BOTH) {
+          fillGroup.push(candidate);
+        }
+      }
+    });
+
+    this.logger.debug(
+      `Gender filtering: Preferred=${preferredGroup.length}, Fill=${fillGroup.length}`,
+    );
+
+    const targetPreferredCount = Math.ceil(targetCount * 0.75);
+    const selectedPreferred = preferredGroup.slice(0, targetPreferredCount);
+    const neededFillCount = targetCount - selectedPreferred.length;
+    const selectedFill = fillGroup.slice(0, neededFillCount);
+
+    const finalSelection = [...selectedPreferred, ...selectedFill];
+    this.logger.debug(
+      `Final selection count: ${finalSelection.length} (Preferred: ${selectedPreferred.length}, Fill: ${selectedFill.length})`,
+    );
+
+    return finalSelection.slice(0, targetCount);
   }
 }

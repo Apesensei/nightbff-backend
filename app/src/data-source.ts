@@ -35,7 +35,7 @@ const entitiesPath = path.join(
 );
 const migrationsPath = path.join(
   projectRoot,
-  isTest ? "src/migrations/*.ts" : "dist/migrations/*.js", // Use TS files for tests
+  isTest ? "src/database/migrations/*.ts" : "dist/database/migrations/*.js", // Use TS files for tests, Corrected path for JS
 );
 
 // Configuration options for TypeORM
@@ -72,6 +72,7 @@ if (isTest) {
     entities: [entitiesPath],
     migrations: [migrationsPath],
     migrationsTableName: "typeorm_migrations",
+    migrationsTransactionMode: "none",
     ssl: isProduction ? { rejectUnauthorized: false } : false, // Enable SSL only in production
   };
 }
@@ -79,6 +80,4 @@ if (isTest) {
 export const dataSourceOptions: DataSourceOptions = options;
 
 // Export a DataSource instance for the CLI and application use
-const AppDataSource = new DataSource(dataSourceOptions);
-
-export default AppDataSource;
+export const AppDataSource = new DataSource(dataSourceOptions);

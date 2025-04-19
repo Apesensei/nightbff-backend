@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, IsNull, Not, In } from "typeorm";
 import { UserProfile } from "../entities/user-profile.entity";
+
+const DEFAULT_FETCH_LIMIT = 100;
 
 @Injectable()
 export class ProfileRepository {
@@ -43,5 +45,35 @@ export class ProfileRepository {
       where: { userId },
     });
     return count > 0;
+  }
+
+  async findMostRecentActiveUserProfiles(options: {
+    fetchLimit?: number;
+    excludeUserIds: string[];
+  }): Promise<UserProfile[]> {
+    const { fetchLimit = DEFAULT_FETCH_LIMIT, excludeUserIds } = options;
+
+    const query = this.profileRepository
+      .createQueryBuilder("userProfile")
+      .select([
+        "userProfile.userId",
+        "userProfile.gender",
+        "userProfile.lastActiveAt",
+        "userProfile.birthDate",
+        "user.displayName",
+        "user.photoURL",
+      ])
+      .innerJoin("userProfile.user", "user")
+      .where({ lastActiveAt: Not(IsNull()) });
+
+    if (excludeUserIds && excludeUserIds.length > 0) {
+      query.andWhere("userProfile.userId NOT IN (:...excludeUserIds)", {
+        excludeUserIds,
+      });
+    }
+
+    query.orderBy("userProfile.lastActiveAt", "DESC").limit(fetchLimit);
+
+    return query.getMany();
   }
 }

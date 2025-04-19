@@ -5,8 +5,8 @@ import {
   TableIndex,
   TableForeignKey,
 } from "typeorm";
-import { EventVisibility } from "../microservices/event/enums/event-visibility.enum"; // Import enum for default
-import { EventAttendeeStatus } from "../microservices/event/enums/event-attendee-status.enum"; // Import enum for default
+import { EventVisibility } from "../../microservices/event/enums/event-visibility.enum"; // Import enum for default
+import { EventAttendeeStatus } from "../../microservices/event/enums/event-attendee-status.enum"; // Import enum for default
 
 export class CreateEventsTables1712999999999 implements MigrationInterface {
   name = "CreateEventsTables1712999999999";

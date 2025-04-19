@@ -8,6 +8,12 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
 } from "@nestjs/common";
+import {
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiBearerAuth,
+} from "@nestjs/swagger";
 import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../../auth/decorators/current-user.decorator";
 import { User } from "../../auth/entities/user.entity";
@@ -16,11 +22,30 @@ import {
   ViewerWithTimestamp,
 } from "../services/user-discovery.service";
 import { UserWithDistance } from "../repositories/user.repository";
+import { HomepageRecommendationDto } from "../dto/homepage-recommendation.dto";
 
+@ApiTags("User Discovery")
+@ApiBearerAuth()
 @Controller("users/discovery")
 @UseGuards(JwtAuthGuard)
 export class UserDiscoveryController {
   constructor(private readonly userDiscoveryService: UserDiscoveryService) {}
+
+  @Get("homepage")
+  @ApiOperation({ summary: "Get homepage user recommendations" })
+  @ApiResponse({
+    status: 200,
+    description: "Successfully retrieved recommendations.",
+    type: [HomepageRecommendationDto],
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized." })
+  @ApiResponse({ status: 404, description: "Current user profile not found." })
+  @ApiResponse({ status: 500, description: "Internal server error." })
+  async getHomepageRecommendations(
+    @CurrentUser() user: User,
+  ): Promise<HomepageRecommendationDto[]> {
+    return this.userDiscoveryService.getHomepageRecommendations(user.id);
+  }
 
   @Get("nearby")
   async findNearbyUsers(
