@@ -9,6 +9,8 @@ import {
   OneToMany,
   Index,
 } from "typeorm";
+// Import Point if needed (check TypeORM docs for geometry handling)
+// import { Point } from 'typeorm'; // Or from a geo-types library
 import { VenueType } from "./venue-type.entity";
 import { VenueEvent } from "./venue-event.entity";
 import { VenueHour } from "./venue-hour.entity";
@@ -39,11 +41,15 @@ export class Venue {
   @Column({ length: 255 })
   address: string;
 
-  @Column({ type: "decimal", precision: 10, scale: 7 })
-  latitude: number;
-
-  @Column({ type: "decimal", precision: 10, scale: 7 })
-  longitude: number;
+  @Column({
+    type: 'geometry',
+    spatialFeatureType: 'Point',
+    srid: 4326, // Standard WGS 84 spatial reference system
+    nullable: true,
+  })
+  @Index({ spatial: true }) // Add spatial index decorator
+  location?: string; // Start with string (WKT/GeoJSON), adjust if TypeORM handles Point object directly
+  // Or potentially: location?: Point;
 
   @Column({ nullable: true, length: 50 })
   googlePlaceId?: string;

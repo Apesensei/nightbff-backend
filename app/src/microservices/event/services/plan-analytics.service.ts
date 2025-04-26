@@ -1,13 +1,17 @@
-import { Injectable, Inject } from "@nestjs/common";
+import { Injectable, Inject, Logger } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import { Cache } from "cache-manager";
+import type { Cache } from "cache-manager";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { EventRepository } from '../repositories/event.repository';
 
 @Injectable()
 export class PlanAnalyticsService {
+  private readonly logger = new Logger(PlanAnalyticsService.name);
+
   constructor(
     private readonly eventEmitter: EventEmitter2,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly eventRepository: EventRepository,
   ) {}
 
   /**

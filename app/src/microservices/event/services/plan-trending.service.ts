@@ -1,6 +1,6 @@
-import { Injectable, Inject, NotFoundException } from "@nestjs/common";
+import { Injectable, Inject, NotFoundException, Logger } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import { Cache } from "cache-manager";
+import type { Cache } from "cache-manager";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -10,6 +10,8 @@ import { EventAttendee } from "../entities/event-attendee.entity";
 
 @Injectable()
 export class PlanTrendingService {
+  private readonly logger = new Logger(PlanTrendingService.name);
+
   constructor(
     private readonly eventRepository: EventRepository,
     private readonly planAnalyticsService: PlanAnalyticsService,

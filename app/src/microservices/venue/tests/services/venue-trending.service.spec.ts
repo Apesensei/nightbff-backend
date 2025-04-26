@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import { ConfigService } from "@nestjs/config";
 import { VenueTrendingService } from "../../services/venue-trending.service";
 import { VenueRepository } from "../../repositories/venue.repository";
 import { VenueAnalyticsService } from "../../services/venue-analytics.service";
@@ -7,6 +8,7 @@ import { Venue } from "../../entities/venue.entity";
 
 describe("VenueTrendingService", () => {
   let service: VenueTrendingService;
+  let configService: { get: jest.Mock };
   let venueRepository: {
     findById: jest.Mock;
     updateTrendingScore: jest.Mock;
@@ -27,6 +29,10 @@ describe("VenueTrendingService", () => {
 
   beforeEach(async () => {
     // Create mocks
+    configService = {
+      get: jest.fn(),
+    };
+
     venueRepository = {
       findById: jest.fn(),
       updateTrendingScore: jest.fn(),
@@ -61,6 +67,10 @@ describe("VenueTrendingService", () => {
         {
           provide: CACHE_MANAGER,
           useValue: cacheManager,
+        },
+        {
+          provide: ConfigService,
+          useValue: configService,
         },
       ],
     }).compile();

@@ -1,0 +1,195 @@
+**Refined TDL: Plan Feature Implementation (Revision 4 - Standalone)**
+
+*(Focusing on Scalable Eventing + Simplified Linking + Encapsulated City Logic + Enhanced Robustness)*
+
+**Phase 1: Core Infrastructure & Entities (Est. 5-6 days)**
+
+1.  **Setup `@nestjs/microservices` (Redis Transporter):**
+    *   **Goal:** Enable reliable, scalable event communication between logical services using Redis Pub/Sub.
+    *   **Action:** Install dependencies: `npm install --save @nestjs/microservices ioredis` (verify not already present).
+    *   **Action:** Configure Redis connection details (host, port, password) via `ConfigService`, ensuring these are available globally or injected where needed. Reuse existing Redis configuration intended for BullMQ if applicable.
+    *   **Action:** In the module responsible for *emitting* Plan-related events (i.e., `PlanModule`), register the `ClientsModule` to provide a `ClientProxy` for sending events to Redis.
+        ```typescript
+        // Example in plan.module.ts
+        import { Module } from '@nestjs/common';
+        import { ClientsModule, Transport } from '@nestjs/microservices';
+        import { ConfigModule, ConfigService } from '@nestjs/config';
+        // ... other imports
+
+        @Module({
+          imports: [
+            ClientsModule.registerAsync([ // Use registerAsync to inject ConfigService
+              {
+                name: 'PLAN_EVENTS_SERVICE', // Unique identifier for this client
+                imports: [ConfigModule], // Make ConfigService available
+                useFactory: (configService: ConfigService) => ({
+                  transport: Transport.REDIS,
+                  options: {
+                    host: configService.get<string>('REDIS_HOST'),
+                    port: configService.get<number>('REDIS_PORT'),
+                    // password: configService.get<string>('REDIS_PASSWORD'), // If needed
+                  },
+                }),
+                inject: [ConfigService],
+              },
+            ]),
+            // ... other imports
+          ],
+          // ... controllers, providers
+        })
+        export class PlanModule {}
+        ```
+    *   **Action:** Configure the main application (`main.ts`) to also *listen* for events transported via Redis, allowing services within the same monolith to act as subscribers.
+        ```typescript
+        // Example in main.ts
+        import { NestFactory } from '@nestjs/core';
+        import { AppModule } from './app.module';
+        import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+        import { ConfigService } from '@nestjs/config';
+
+        async function bootstrap() {
+          const app = await NestFactory.create(AppModule);
+          const configService = app.get(ConfigService); // Get ConfigService instance
+
+          // Connect microservice transport for listening
+          app.connectMicroservice<MicroserviceOptions>({
+            transport: Transport.REDIS,
+            options: {
+              host: configService.get<string>('REDIS_HOST'),
+              port: configService.get<number>('REDIS_PORT'),
+              // password: configService.get<string>('REDIS_PASSWORD'), // If needed
+            },
+          });
+
+          await app.startAllMicroservices();
+
+          const PORT = configService.get<number>('PORT') || 3000;
+          await app.listen(PORT);
+          console.log(`Application is running on: ${await app.getUrl()}`);
+        }
+        bootstrap();
+        ```
+    *   **Junior Dev Note:** This setup enables scalable eventing. Ensure Redis connection variables are correctly defined in `.env.*` files. The `'PLAN_EVENTS_SERVICE'` name is arbitrary but must be used consistently when injecting the `ClientProxy`.
+
+2.  **Create/Update Entities:**
+    *   **`City` Entity** (`plan` service - `entities/city.entity.ts`):
+        *   Fields: `id` (uuid, primary), `name` (string, 100, indexed), `countryCode` (string, 2, indexed), `location` (geometry, Point, 4326, nullable, spatial index), `flagEmoji` (string, 10, nullable), `trendingScore` (float, default 0, indexed), `planCount` (integer, default 0), `createdAt` (timestamp with tz), `updatedAt` (timestamp with tz).
+        *   Needs `@Entity('cities')` decorator. Use TypeORM decorators (`@PrimaryGeneratedColumn`, `@Column`, `@Index`, `@CreateDateColumn`, `@UpdateDateColumn`). Ensure PostGIS spatial type setup.
+    *   **`Plan` Entity** (`plan` service - `entities/plan.entity.ts`):
+        *   Fields: `id` (uuid, primary), `creatorId` (string, indexed), `cityId` (string, indexed), `venueId` (string, nullable, indexed), `startDate` (timestamp with tz), `endDate` (timestamp with tz, nullable), `coverImage` (string, nullable), `saveCount` (integer, default 0), `viewCount` (integer, default 0), `createdAt` (timestamp with tz, indexed), `updatedAt` (timestamp with tz).
+        *   Needs `@Entity('plans')` decorator.
+        *   Relation: `@ManyToOne(() => City, { eager: true }) @JoinColumn({ name: 'cityId' }) city: City;` Add FK constraint in migration.
+    *   **`PlanUser` Entity** (`plan` service - `entities/plan-user.entity.ts`):
+        *   Fields: `id` (uuid, primary), `planId` (string, indexed), `userId` (string, indexed), `createdAt` (timestamp with tz).
+        *   Needs `@Entity('plan_users')` decorator.
+        *   Relation: `@ManyToOne(() => Plan, { onDelete: 'CASCADE' }) @JoinColumn({ name: 'planId' }) plan: Plan;` Add FK constraint in migration.
+        *   Index: `@Index(['planId', 'userId'], { unique: true })`
+    *   **`Venue` Entity** (`venue` service - `entities/venue.entity.ts` - **Modification**):
+        *   Action: Add `@Column({ name: 'city_id', type: 'uuid', nullable: true }) @Index() cityId?: string;`
+    *   **`Event` Entity** (`event` service - **Modification**):
+        *   Action: Add `@Column({ name: 'city_id', type: 'uuid', nullable: true }) @Index() cityId?: string;`
+
+3.  **Database Migrations:**
+    *   **Action:** Use TypeORM CLI (`npm run typeorm:generate-migration -- -d dist/src/data-source.js MigrationName`) to generate three separate migrations.
+    *   **Migration 1 (`plan` service scope):** Create `cities`, `plans`, `plan_users` tables with specified columns, types, indexes (including spatial index on `cities.location`), and foreign key constraints (`plans.cityId` -> `cities.id`, `plan_users.planId` -> `plans.id`).
+    *   **Migration 2 (`venue` service scope):** Add `city_id` column (uuid, nullable, indexed) to `venues` table. (Logical FK only, constraint not strictly needed).
+    *   **Migration 3 (`event` service scope):** Add `city_id` column (uuid, nullable, indexed) to `events` table. (Logical FK only).
+    *   **Junior Dev Note:** Review generated SQL carefully. Ensure correct types. Test migrations locally. Backfill logic is separate (Phase 3).
+
+4.  **Seed Initial City Data (`plan` service):**
+    *   **Action:** Create `CitySeederService` (e.g., `plan/seeders/city.seeder.service.ts`). Implement a method to read from a structured source (CSV/JSON) containing city names, country codes, lat/lon.
+    *   **Action:** Use `plan.CityRepository`'s `findOrCreateByNameAndCountry` (or bulk save with conflict handling) to populate the `cities` table, converting lat/lon to PostGIS Point format (`ST_SetSRID(ST_MakePoint(lng, lat), 4326)`).
+    *   **Action:** Trigger this service via a custom CLI command (`@nestjs/cli`) or a one-off script. Avoid running large seeds during application bootstrap.
+
+**Phase 2: Repositories & Core Services (Est. 7-8 days)**
+
+5.  **Create Repositories (`plan`, `venue`, `event` services):**
+    *   **`plan.CityRepository`:** Implement standard CRUD. Add:
+        *   `findOrCreateByNameAndCountry(name: string, countryCode: string): Promise<City>` (Handle normalization, potential race conditions with DB constraints or locking).
+        *   `findCityByLocation(location: Point): Promise<City | null>` (Use `ST_Contains` if boundary data exists, else `ST_Distance` with threshold).
+        *   `incrementPlanCount(cityId: string, amount: number): Promise<void>`.
+        *   `updateTrendingScore(cityId: string, score: number): Promise<void>`.
+        *   `findTrendingCities(limit: number): Promise<City[]>`.
+    *   **`plan.PlanRepository`:** Implement standard CRUD. Add:
+        *   `findByCityId(cityId: string, options: { limit, offset }): Promise<[Plan[], number]>`.
+        *   `findSavedPlansByUser(userId: string): Promise<Plan[]>`.
+        *   `incrementSaveCount(planId: string, amount: number): Promise<void>`.
+        *   `incrementViewCount(planId: string, amount: number): Promise<void>`.
+    *   **`plan.PlanUserRepository`:** Implement:
+        *   `savePlan(planId: string, userId: string): Promise<PlanUser>`.
+        *   `unsavePlan(planId: string, userId: string): Promise<void>`.
+        *   `findSavedPlansByUser(userId: string): Promise<PlanUser[]>`.
+    *   **`venue.VenueRepository` / `event.EventRepository`:** Update as needed to query/update the new `cityId` field.
+    *   **Junior Dev Note (City Matching):** Robust city matching is key. Normalize city names (lowercase, trim, remove common suffixes/punctuation) before querying/saving. Use unique DB constraints on `(normalized_name, countryCode)` if possible. Handle spatial query errors gracefully.
+
+6.  **Core Services Implementation & Communication:**
+    *   **`plan.PlanService` (Emitter):**
+        *   Inject `PlanRepository`, `PlanUserRepository`, `@Inject('PLAN_EVENTS_SERVICE') private readonly client: ClientProxy`, `Logger`.
+        *   Methods (`createPlan`, `deletePlan`, `savePlan`, `unsavePlan`, `viewPlan`): Perform core DB operation. **Generate a unique `eventId` (UUID)** for each logical event. Create payload including `eventId` and relevant data. Emit using `this.client.emit('event.name', payload)`. **Wrap emission in try/catch:** Log emission failures but accept inconsistency risk for Phase 1 (no transactional outbox).
+    *   **Listener Services (e.g., `plan.CityEventListenerService`, `venue.VenueEventListenerService`):**
+        *   Inject necessary Repositories, `Logger`, `Redis` (for idempotency locks).
+        *   Use `@EventPattern('event.name')` decorator on handler methods (ensure controller/service is registered for microservice transport).
+        *   **IDEMPOTENCY HANDLER (Decorator/Wrapper Preferred):** Implement a reusable mechanism (e.g., a decorator `@IdempotentEvent('event.name')` or a wrapper function `withIdempotencyCheck(handler)`) for checking/setting Redis locks.
+            *   Logic: Extract unique `eventId` from payload. Construct lock key (e.g., `lock:event:${eventId}`). Attempt `redis.set(lockKey, 'locked', 'NX', 'PX', 60000)` (e.g., 60s TTL). If successful (`'OK'`), proceed; otherwise, log duplicate and return. Release lock (`redis.del(lockKey)`) in a `finally` block after successful processing *or* non-transient failure.
+        *   **ERROR HANDLING/RETRY:** Wrap core handler logic in try/catch. Log errors with event details. Implement simple retry (e.g., `async-retry` package, 3 attempts with exponential backoff) for specific, potentially transient errors (e.g., DB connection errors). If retries fail, log critical error (no DLQ for Phase 1).
+        *   **Example Listener (`VenueEventListenerService`):**
+            ```typescript
+            @Injectable()
+            export class VenueEventListenerService {
+              constructor(private readonly venueRepository: VenueRepository, /* + Redis, Logger */) {}
+
+              @EventPattern('plan.created') // Listens to Redis
+              async handlePlanCreated(payload: PlanCreatedPayload): Promise<void> {
+                await withIdempotencyCheck(payload.eventId, async () => { // Wrapper handles Redis lock
+                  if (payload.venueId) {
+                    await retry(async () => { // Wrapper handles retries
+                      await this.venueRepository.incrementAssociatedPlanCount(payload.venueId, 1);
+                    });
+                  }
+                });
+              }
+              // ... other handlers (plan.deleted)
+            }
+            ```
+    *   **`venue.VenueScanConsumer` (`@Geo Hashing` - Direct Call for Linking):**
+        *   Inject `VenueRepository`, `plan.CityService`, `Logger`.
+        *   Logic: Get Google Details. Call `city = await this.cityService.findOrCreateCityByNameAndCountry(...)` **within a try/catch**. If successful, `await this.venueRepository.update(venueId, { cityId: city.id, ... })` **within a try/catch**. Log errors clearly if city resolution or venue update fails for an individual venue, but allow the main job for the geohash to continue processing other venues.
+    *   **`event.EventService`:**
+        *   Inject `EventRepository`, `plan.CityService`, `venue.VenueService`.
+        *   Modify `createEvent(dto)`: Robustly resolve `cityId` via `venueService` or `cityService` (handle errors if city cannot be determined). Save `cityId` with Event.
+        *   Implement `getEventsForCity(cityId, options)`.
+        *   Implement `getJoinedEventsByUser(userId)`.
+
+**Phase 3: Integration & Background Jobs (Est. 6-7 days)**
+
+7.  **Inter-Service Communication (Event Payloads):** Define Typescript interfaces/classes for all event payloads (e.g., `PlanCreatedPayload`, `PlanSavedPayload`). Ensure each includes a mandatory `eventId: string;`. Document these payloads.
+8.  **Scheduled Tasks (`plan` service):** `CityTrendingJob` using `@nestjs/schedule`. Ensure job logic has robust error handling (try/catch around main loop/processing steps).
+9.  **API Endpoints & Aggregation (`plan` service):**
+    *   `CityController -> GET /cities/:cityId/details`: Implement robust caching using `cache-manager-ioredis`. Handle cache misses by orchestrating calls to other services. **Consider Cache Warming:** Implement a background job or post-deployment script to pre-populate the cache for known popular cities to mitigate cold start latency.
+    *   Implement other controllers/endpoints as needed, ensuring DTO validation.
+10. **Backfill Jobs (`plan` service - Orchestration):**
+    *   Implement `VenueCityBackfillJob` / `EventCityBackfillJob`.
+    *   **Requirements:** Must handle errors per-item (log and continue), track progress (log processed batches/IDs, potentially store last processed ID to allow resuming), be runnable manually or on a schedule. Use batching to query and update records to avoid overwhelming DB/services. Test thoroughly.
+
+**Phase 4: Testing & Refinement (Est. 4-5 days)**
+
+11. **Testing:** Focus on: Idempotency of listeners (test duplicate events). Retry logic behavior. Backfill job error handling, progress tracking, and resumability. Spatial queries and city matching edge cases. Cache logic (hit, miss, expiry, warming). End-to-end flows involving event emission and listening.
+12. **Performance Testing:** Load test aggregation endpoints, measure listener processing latency, monitor backfill job resource usage and duration.
+
+**Phase 5: Documentation & Deployment (Est. 2-3 days)**
+
+13. **API Documentation:** Update Swagger. Document event contracts (payloads, purpose) and idempotency requirements for listeners clearly.
+14. **Deployment:** Document Redis setup for Pub/Sub. Ensure migrations run. Deploy updated services. Monitor listener error logs, Redis lock keys/activity, and application performance closely.
+
+**Total Estimated Time:** 24-31 days
+
+---
+
+**Explicit Acknowledgements & Trade-offs:**
+
+*   **Eventing Reliability:** Using Redis Pub/Sub with Idempotency/Retry significantly improves robustness over basic `EventEmitter` but doesn't offer guaranteed delivery like Kafka/RabbitMQ or transactional safety like an outbox pattern. This is an accepted Phase 1 trade-off.
+*   **City Entity Ownership:** Remains in `plan` service for Phase 1 scope; documented for future review.
+*   **Direct Call Coupling:** Accepted for Venue-City linking simplification.
+*   **Transactionality:** Event emission after DB commit still carries a small risk of inconsistency; accepted for Phase 1.
+
+--- 
