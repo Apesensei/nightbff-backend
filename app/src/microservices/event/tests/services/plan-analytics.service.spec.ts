@@ -2,11 +2,13 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { PlanAnalyticsService } from "../../services/plan-analytics.service";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { EventRepository } from "../../repositories/event.repository";
 
 describe("PlanAnalyticsService", () => {
   let service: PlanAnalyticsService;
   let eventEmitter: EventEmitter2;
   let cacheManager: { get: jest.Mock; set: jest.Mock; del: jest.Mock };
+  let eventRepository: EventRepository;
 
   beforeEach(async () => {
     // Create mocks
@@ -22,6 +24,9 @@ describe("PlanAnalyticsService", () => {
       del: jest.fn(),
     };
 
+    // Mock for EventRepository (add methods if they are used later)
+    eventRepository = {} as unknown as EventRepository;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PlanAnalyticsService,
@@ -32,6 +37,11 @@ describe("PlanAnalyticsService", () => {
         {
           provide: CACHE_MANAGER,
           useValue: cacheManager,
+        },
+        // Add mock provider for EventRepository
+        {
+          provide: EventRepository,
+          useValue: eventRepository,
         },
       ],
     }).compile();

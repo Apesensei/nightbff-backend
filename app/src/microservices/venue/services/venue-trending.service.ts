@@ -1,7 +1,9 @@
 import { Injectable, Logger, Inject } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import { Cache } from "cache-manager";
+// Use import type for Cache
+import type { Cache } from "cache-manager";
 import { VenueRepository } from "../repositories/venue.repository";
 import { VenueAnalyticsService } from "./venue-analytics.service";
 // TODO: Import FollowRepository and EventRepository/Client if needed for direct counts
@@ -11,6 +13,7 @@ export class VenueTrendingService {
   private readonly logger = new Logger(VenueTrendingService.name);
 
   constructor(
+    private readonly configService: ConfigService,
     private readonly venueRepository: VenueRepository,
     private readonly venueAnalyticsService: VenueAnalyticsService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,

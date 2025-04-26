@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Inject } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import { Cache } from "cache-manager";
+import type { Cache } from "cache-manager";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { OnEvent } from "@nestjs/event-emitter";
 

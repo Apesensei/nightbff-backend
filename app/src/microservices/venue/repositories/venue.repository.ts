@@ -12,6 +12,7 @@ import {
   IsNull,
   MoreThan,
   FindOptionsWhere,
+  LessThan,
 } from "typeorm";
 import { Venue } from "../entities/venue.entity";
 import { VenueSortBy } from "../dto/venue-search.dto";
@@ -99,41 +100,51 @@ export class VenueRepository {
         options.latitude !== undefined &&
         options.longitude !== undefined
       ) {
-        // 2. Apply Geographic Filters (Standard Search path)
+        // 2. Apply Geographic Filters (Standard Search path) using PostGIS
         isGeoSearch = true;
         const radiusMiles = options.radiusMiles ?? 10;
         const latitude = options.latitude;
         const longitude = options.longitude;
+        const radiusMeters = radiusMiles * 1609.34; // Convert miles to meters
 
-        // Approx bounding box
-        const latDelta = radiusMiles / 69;
-        const lngDelta = radiusMiles / 55;
-        queryBuilder
-          .andWhere("venue.latitude BETWEEN :minLat AND :maxLat", {
-            minLat: latitude - latDelta,
-            maxLat: latitude + latDelta,
-          })
-          .andWhere("venue.longitude BETWEEN :minLng AND :maxLng", {
-            minLng: longitude - lngDelta,
-            maxLng: longitude + lngDelta,
-          });
+        // Remove Approx bounding box logic
+        // const latDelta = radiusMiles / 69;
+        // const lngDelta = radiusMiles / 55;
+        // queryBuilder
+        //   .andWhere("venue.latitude BETWEEN :minLat AND :maxLat", { ... })
+        //   .andWhere("venue.longitude BETWEEN :minLng AND :maxLng", { ... });
 
-        // Add precise distance calculation
-        queryBuilder
-          .addSelect(
-            `(
-              6371 * acos(
-                cos(radians(:latitude)) * 
-                cos(radians(venue.latitude)) * 
-                cos(radians(venue.longitude) - radians(:longitude)) + 
-                sin(radians(:latitude)) * 
-                sin(radians(venue.latitude))
-              )
+        // Add PostGIS ST_DWithin for efficient radius filtering
+        queryBuilder.andWhere(
+          `ST_DWithin(
+            venue.location::geography, -- Cast geometry to geography
+            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+            :radiusMeters
+          )`,
+          {
+            latitude: latitude,
+            longitude: longitude,
+            radiusMeters: radiusMeters,
+          },
+        );
+
+        // Remove Haversine distance calculation
+        // queryBuilder
+        //   .addSelect(`( 6371 * acos(...) )`, "distance")
+        //   .setParameter("latitude", latitude)
+        //   .setParameter("longitude", longitude);
+
+        // Add PostGIS ST_Distance for sorting (distance in meters)
+        queryBuilder.addSelect(
+          `ST_Distance(
+            venue.location::geography, 
+            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
             )`,
-            "distance",
-          )
-          .setParameter("latitude", latitude)
-          .setParameter("longitude", longitude);
+          "distance"
+          );
+        queryBuilder.setParameter("latitude", latitude);
+        queryBuilder.setParameter("longitude", longitude);
+
       }
       // If neither venueIds nor lat/lng provided, it becomes a general search
 
@@ -179,15 +190,15 @@ export class VenueRepository {
       // --- Standard Sorting Logic ---
       const sortBy =
         options.sortBy ??
-        (isGeoSearch ? VenueSortBy.DISTANCE : VenueSortBy.POPULARITY); // Default sort depends on search type
+        (isGeoSearch ? VenueSortBy.DISTANCE : VenueSortBy.POPULARITY);
       const order = options.order ?? "ASC";
 
       switch (sortBy) {
         case VenueSortBy.DISTANCE:
           if (isGeoSearch) {
+            // Order by the distance calculated by ST_Distance
             queryBuilder.orderBy("distance", order);
           } else {
-            // Fallback if distance sort requested without geo context
             queryBuilder.orderBy("venue.popularity", "DESC");
           }
           break;
@@ -211,6 +222,7 @@ export class VenueRepository {
           break;
         default:
           if (isGeoSearch) {
+            // Default geo sort by distance ASC
             queryBuilder.orderBy("distance", "ASC");
           } else {
             queryBuilder.orderBy("venue.popularity", "DESC");
@@ -547,4 +559,27 @@ export class VenueRepository {
       );
     }
   }
+
+  // --- Add new method for finding stale venues --- 
+  async findStaleLocations(cutoffDate: Date, limit: number = 1000): Promise<Pick<Venue, 'id' | 'location'>[]> {
+    const logger = new Logger(VenueRepository.name);
+    try {
+        logger.debug(`Finding stale venues with lastRefreshed < ${cutoffDate.toISOString()} or NULL, limit ${limit}`);
+        return await this.venueRepository.find({
+            select: ['id', 'location'], // Select only necessary fields
+            where: [
+                { lastRefreshed: IsNull() },
+                { lastRefreshed: LessThan(cutoffDate) }
+            ],
+            take: limit, // Limit the number processed per run
+            order: {
+                lastRefreshed: 'ASC' // Process oldest first (optional)
+            }
+        });
+    } catch (error) {
+        logger.error(`Failed to find stale venues: ${error.message}`, error.stack);
+        throw new InternalServerErrorException('Failed to retrieve stale venues');
+    }
+  }
+  // --- End new method ---
 }

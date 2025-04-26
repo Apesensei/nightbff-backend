@@ -16,6 +16,7 @@ import {
   Res,
 } from "@nestjs/common";
 import { Response } from "express";
+import type { Response as ResponseType } from "express";
 import {
   ApiTags,
   ApiOperation,
@@ -71,7 +72,7 @@ export class VenueAdminController {
   @Header("Cache-Control", "private, max-age=300")
   async getVenuesWithOverrides(
     @Request() req: { user: any },
-    @Res() response: Response,
+    @Res() response: ResponseType,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
     @Query("offset", new ParseIntPipe({ optional: true })) offset?: number,
     @Headers("if-none-match") ifNoneMatch?: string,
@@ -156,7 +157,7 @@ export class VenueAdminController {
   @Header("Cache-Control", "private, max-age=60")
   async getVenuePhotos(
     @Request() req: { user: any },
-    @Res() response: Response,
+    @Res() response: ResponseType,
     @Param("id", ParseUUIDPipe) id: string,
     @Query("source") source?: "google" | "admin" | "user",
     @Query("deviceType") deviceType?: "mobile" | "tablet" | "desktop",

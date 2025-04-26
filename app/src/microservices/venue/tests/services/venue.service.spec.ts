@@ -22,6 +22,10 @@ import { EventService } from "../../../event/event.service";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PlanAnalyticsService } from "../../../event/services/plan-analytics.service";
 import { PlanTrendingService } from "../../../event/services/plan-trending.service";
+import { VenueStatus } from "../../entities/venue.entity";
+import { ConfigService } from "@nestjs/config";
+import { ScannedAreaRepository } from "../../repositories/scanned-area.repository";
+import { VenueScanProducerService } from "../../services/venue-scan-producer.service";
 
 // Mock implementations (replace with actual mock utilities if available)
 const createMockVenueRepository = (): Partial<
@@ -131,6 +135,25 @@ const createMockPlanTrendingService = (): Partial<
   refreshAllTrendingScores: jest.fn(),
 });
 
+const createMockConfigService = (): Partial<
+  Record<keyof ConfigService, jest.Mock>
+> => ({
+  get: jest.fn(),
+});
+
+const createMockScannedAreaRepository = (): Partial<
+  Record<keyof ScannedAreaRepository, jest.Mock>
+> => ({
+  findLastScanned: jest.fn(),
+  upsertLastScanned: jest.fn(),
+});
+
+const createMockVenueScanProducerService = (): Partial<
+  Record<keyof VenueScanProducerService, jest.Mock>
+> => ({
+  enqueueScanIfStale: jest.fn().mockResolvedValue(undefined),
+});
+
 describe("VenueService", () => {
   let service: VenueService;
   let mockVenueRepository: ReturnType<typeof createMockVenueRepository>;
@@ -156,6 +179,9 @@ describe("VenueService", () => {
     typeof createMockPlanAnalyticsService
   >;
   let mockPlanTrendingService: ReturnType<typeof createMockPlanTrendingService>;
+  let mockConfigService: ReturnType<typeof createMockConfigService>;
+  let mockScannedAreaRepository: ReturnType<typeof createMockScannedAreaRepository>;
+  let mockVenueScanProducerService: ReturnType<typeof createMockVenueScanProducerService>;
   let logger: Logger;
   let loggerDebugSpy: jest.SpyInstance;
   let loggerErrorSpy: jest.SpyInstance;
@@ -166,18 +192,51 @@ describe("VenueService", () => {
   const mockVenue: Venue = {
     id: "venue-1",
     name: "Test Venue",
-    latitude: 40.7128,
-    longitude: -74.006,
-    // Add other necessary Venue properties
+    location: 'POINT(-74.006 40.7128)',
+    address: "123 Test St",
+    rating: 4.5,
+    reviewCount: 100,
+    popularity: 500,
+    status: VenueStatus.ACTIVE,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    isActive: true,
+    viewCount: 1000,
+    followerCount: 50,
+    associatedPlanCount: 5,
+    trendingScore: 0.8,
+    metadata: {},
+    description: undefined,
+    googlePlaceId: undefined,
+    priceLevel: undefined,
+    isFeatured: false,
+    website: undefined,
+    phone: undefined,
+    isOpenNow: undefined,
+    adminOverrides: undefined,
+    lastModifiedBy: undefined,
+    lastModifiedAt: new Date(),
+    venueTypes: [],
+    hours: [],
+    events: [],
+    reviews: [],
+    venuePhotos: [],
+    googleRating: undefined,
+    googleRatingsTotal: undefined,
+    lastRefreshed: undefined,
   } as Venue;
 
   const mockVenueDto: VenueResponseDto = {
     id: "venue-1",
     name: "Test Venue",
-    latitude: 40.7128,
-    longitude: -74.006,
-    // Match VenueResponseDto structure - IMPORTANT!
-    // This needs careful construction based on the DTO and transformToVenueResponseDto
+    latitude: 0,
+    longitude: 0,
+    description: undefined,
+    address: "123 Test St",
+    primaryPhotoUrl: null,
+    rating: 4.5,
+    followerCount: 50,
+    isFollowing: false,
   } as VenueResponseDto;
 
   const mockUserId = "user-test-id";
@@ -197,6 +256,9 @@ describe("VenueService", () => {
     mockEventEmitter = createMockEventEmitter();
     mockPlanAnalyticsService = createMockPlanAnalyticsService();
     mockPlanTrendingService = createMockPlanTrendingService();
+    mockConfigService = createMockConfigService();
+    mockScannedAreaRepository = createMockScannedAreaRepository();
+    mockVenueScanProducerService = createMockVenueScanProducerService();
 
     const module: TestingModule = await Test.createTestingModule({
       imports: [CacheModule.register()],
@@ -253,6 +315,18 @@ describe("VenueService", () => {
         {
           provide: PlanTrendingService,
           useValue: mockPlanTrendingService,
+        },
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
+        },
+        {
+          provide: ScannedAreaRepository,
+          useValue: mockScannedAreaRepository,
+        },
+        {
+          provide: VenueScanProducerService,
+          useValue: mockVenueScanProducerService,
         },
         Logger,
       ],

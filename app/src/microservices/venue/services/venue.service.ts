@@ -38,6 +38,7 @@ import { EventService } from "@/microservices/event/event.service";
 import { InterestService } from "@/microservices/interest/services/interest.service";
 import { VenueSearchDto } from "../dto/venue-search.dto";
 import { Event } from "../../event/entities/event.entity";
+import { VenueScanProducerService } from './venue-scan-producer.service';
 
 @Injectable()
 export class VenueService {
@@ -55,6 +56,7 @@ export class VenueService {
     private readonly eventRepository: EventRepository,
     private readonly eventService: EventService,
     private readonly interestService: InterestService,
+    private readonly venueScanProducerService: VenueScanProducerService,
   ) {}
 
   /**
@@ -641,13 +643,26 @@ export class VenueService {
       isFollowing = !!follow;
     }
 
+    // TODO: Parse coordinates from venue.location (WKT string) if needed in DTO
+    // Example (requires a WKT parser or regex):
+    // let latitude = null, longitude = null;
+    // if (venue.location) {
+    //   const match = venue.location.match(/POINT\(([-\d.]+) ([-\d.]+)\)/);
+    //   if (match) {
+    //     longitude = parseFloat(match[1]);
+    //     latitude = parseFloat(match[2]);
+    //   }
+    // }
+
     const dto: VenueResponseDto = {
       id: venue.id,
       name: venue.name,
       description: venue.description,
       address: venue.address,
-      latitude: venue.latitude,
-      longitude: venue.longitude,
+      // latitude: venue.latitude, // Removed old property access
+      // longitude: venue.longitude, // Removed old property access
+      latitude: 0, // Placeholder - Parse from venue.location if needed
+      longitude: 0, // Placeholder - Parse from venue.location if needed
       primaryPhotoUrl:
         primaryPhoto?.mediumUrl || primaryPhoto?.photoUrl || null,
       rating: venue.rating,
@@ -1065,7 +1080,7 @@ export class VenueService {
    */
   async searchVenues(
     searchDto: VenueSearchDto,
-    userId: string, // Assuming controller provides required userId now
+    userId: string,
   ): Promise<PaginatedVenueResponseDto> {
     this.logger.debug(
       `Searching venues with DTO: ${JSON.stringify(searchDto)}, userId: ${userId}`,
@@ -1223,11 +1238,10 @@ export class VenueService {
         repositoryOptions.offset = currentSearchDto.offset;
       }
     } else {
-      // Not an interest search, apply standard limit/offset
+      // Not an interest search - THIS is the path we need to modify
       repositoryOptions.limit = currentSearchDto.limit;
       repositoryOptions.offset = currentSearchDto.offset;
     }
-    // --- End: Modified Phase 2 Interest Filtering ---
 
     // 3. Call Repository
     this.logger.debug(
@@ -1235,6 +1249,15 @@ export class VenueService {
     );
     const [fetchedVenues, totalFromRepo] =
       await this.venueRepository.search(repositoryOptions);
+      
+    // --- Add Scan Trigger Here (Consistent Placement) ---
+    if (!isInterestSearch && currentSearchDto.latitude !== undefined && currentSearchDto.longitude !== undefined) {
+         this.venueScanProducerService.enqueueScanIfStale(currentSearchDto.latitude, currentSearchDto.longitude)
+             .catch(error => {
+                 this.logger.error(`Error triggering background scan from VenueService.searchVenues: ${error.message}`, error.stack);
+             });
+    }
+    // --- End Scan Trigger Check ---
 
     let finalVenues = fetchedVenues;
     let total = totalFromRepo;

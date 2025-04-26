@@ -29,6 +29,13 @@ import { MulterModule } from "@nestjs/platform-express";
 import { UserModule } from "../user/user.module";
 import { EventsModule } from "../event/events.module";
 import { InterestModule } from "../interest/interest.module";
+import { ScannedArea } from './entities/scanned-area.entity';
+import { ScannedAreaRepository } from './repositories/scanned-area.repository';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bull';
+import { VenueScanProducerService } from './services/venue-scan-producer.service';
+import { VenueScanConsumer } from './jobs/venue-scan.consumer';
+import { VenueMaintenanceService } from './services/venue-maintenance.service';
 
 @Module({
   imports: [
@@ -41,6 +48,7 @@ import { InterestModule } from "../interest/interest.module";
       VenueHour,
       VenueReview,
       VenuePhoto,
+      ScannedArea,
     ]),
     MulterModule.register({
       dest: "./uploads/venue",
@@ -48,6 +56,33 @@ import { InterestModule } from "../interest/interest.module";
     UserModule,
     EventsModule,
     InterestModule,
+    ConfigModule,
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        redis: {
+          host: configService.get<string>('REDIS_HOST', 'localhost'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+        },
+      }),
+      inject: [ConfigService],
+    }),
+    BullModule.registerQueueAsync({
+      name: 'venue-scan',
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        defaultJobOptions: {
+          attempts: configService.get<number>('VENUE_SCAN_JOB_ATTEMPTS', 3),
+          backoff: {
+            type: 'exponential',
+            delay: configService.get<number>('VENUE_SCAN_JOB_BACKOFF_DELAY', 1000),
+          },
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+      }),
+      inject: [ConfigService],
+    }),
   ],
   controllers: [VenueController, VenueImageController, VenueAdminController],
   providers: [
@@ -65,7 +100,28 @@ import { InterestModule } from "../interest/interest.module";
     VenueImageService,
     VenueAnalyticsService,
     VenueTrendingService,
+    ScannedAreaRepository,
+    VenueScanProducerService,
+    VenueScanConsumer,
+    VenueMaintenanceService,
   ],
-  exports: [VenueService],
+  exports: [
+    VenueService,
+    VenueRepository,
+    VenueTypeRepository,
+    VenueEventRepository,
+    VenueHourRepository,
+    VenueReviewRepository,
+    VenuePhotoRepository,
+    VenueMapService,
+    GoogleMapsService,
+    VenueCacheService,
+    RateLimiterService,
+    VenueImageService,
+    VenueAnalyticsService,
+    VenueTrendingService,
+    ScannedAreaRepository,
+    VenueScanProducerService,
+  ],
 })
 export class VenueModule {}
