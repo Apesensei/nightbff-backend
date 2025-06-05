@@ -29,6 +29,16 @@ import { User } from "@/microservices/auth/entities/user.entity";
 import { Request } from "express";
 import { VenueSearchDto } from "../dto/venue-search.dto";
 import { CurrentUser } from "@/microservices/auth/decorators/current-user.decorator";
+import { MessagePattern, Payload, RpcException } from "@nestjs/microservices";
+import {
+  GetVenuesWithoutCityIdRequestDto,
+  GetVenuesWithoutCityIdResponseDto,
+  UpdateVenueCityIdRequestDto,
+  UpdateVenueCityIdResponseDto,
+  VENUE_GET_WITHOUT_CITY_ID_PATTERN,
+  VENUE_UPDATE_CITY_ID_PATTERN,
+} from "../dto/venue-backfill.dto";
+import { Logger } from "@nestjs/common";
 
 // Define interface for request with user
 interface RequestWithUser extends Request {
@@ -38,7 +48,59 @@ interface RequestWithUser extends Request {
 @ApiTags("venues")
 @Controller("venues")
 export class VenueController {
-  constructor(private readonly venueService: VenueService) {}
+  constructor(private readonly venueService: VenueService) {
+    this.logger = new Logger(VenueController.name);
+  }
+
+  private readonly logger: Logger;
+
+  @MessagePattern(VENUE_GET_WITHOUT_CITY_ID_PATTERN)
+  async handleGetVenuesWithoutCityId(
+    @Payload() payload: GetVenuesWithoutCityIdRequestDto,
+  ): Promise<GetVenuesWithoutCityIdResponseDto> {
+    this.logger.debug(
+      `RPC Handler: Received ${VENUE_GET_WITHOUT_CITY_ID_PATTERN} with payload: ${JSON.stringify(payload)}`,
+    );
+    try {
+      const [venues, total] = await this.venueService.findVenuesWithoutCityId(
+        payload.limit ?? 100,
+        payload.offset ?? 0,
+      );
+      return { venues, total };
+    } catch (error) {
+      this.logger.error(
+        `RPC Error in ${VENUE_GET_WITHOUT_CITY_ID_PATTERN}: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(
+        error.message || "Failed to fetch venues without cityId",
+      );
+    }
+  }
+
+  @MessagePattern(VENUE_UPDATE_CITY_ID_PATTERN)
+  async handleUpdateVenueCityId(
+    @Payload() payload: UpdateVenueCityIdRequestDto,
+  ): Promise<UpdateVenueCityIdResponseDto> {
+    this.logger.debug(
+      `RPC Handler: Received ${VENUE_UPDATE_CITY_ID_PATTERN} for venue ${payload.venueId}`,
+    );
+    try {
+      const success = await this.venueService.updateVenueCityId(
+        payload.venueId,
+        payload.cityId,
+      );
+      return { success };
+    } catch (error) {
+      this.logger.error(
+        `RPC Error in ${VENUE_UPDATE_CITY_ID_PATTERN} for venue ${payload.venueId}: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(
+        error.message || `Failed to update cityId for venue ${payload.venueId}`,
+      );
+    }
+  }
 
   @Get("trending")
   @ApiOperation({ summary: "Get trending venues" })

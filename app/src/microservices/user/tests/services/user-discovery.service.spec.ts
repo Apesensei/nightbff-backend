@@ -6,9 +6,7 @@ import {
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { UserDiscoveryService } from "../../services/user-discovery.service";
-import { UserRepository } from "../../repositories/user.repository";
 import { UserRelationshipRepository } from "../../repositories/user-relationship.repository";
-import { ProfileViewRepository } from "../../repositories/profile-view.repository";
 import { User } from "../../../auth/entities/user.entity";
 import { calculateAge } from "../../../../common/utils/date.utils";
 import {
@@ -16,9 +14,8 @@ import {
   Gender,
   GenderPreference,
 } from "../../entities/user-profile.entity";
-import { HomepageRecommendationDto } from "../../dto/homepage-recommendation.dto";
-import { RelationshipType } from "../../entities/user-relationship.entity";
-import { ProfileView } from "../../entities/profile-view.entity";
+import { UserRepository } from "../../repositories/user.repository";
+import { ProfileViewRepository } from "../../repositories/profile-view.repository";
 
 // --- Mock the date utils module --- START
 jest.mock("../../../../common/utils/date.utils", () => ({
@@ -32,20 +29,23 @@ const mockCalculateAge = calculateAge as jest.Mock;
 describe("UserDiscoveryService", () => {
   let service: UserDiscoveryService;
   let userProfileRepository: Repository<UserProfile>;
-  let userRepository: UserRepository;
   let userRelationshipRepository: UserRelationshipRepository;
-  let profileViewRepository: ProfileViewRepository;
 
   type MockUserProfileRepository = Partial<
     Record<keyof Repository<UserProfile>, jest.Mock>
   > & { createQueryBuilder: jest.Mock };
-  type MockUserRepository = Partial<Record<keyof UserRepository, jest.Mock>>;
   type MockUserRelationshipRepository = Partial<
     Record<keyof UserRelationshipRepository, jest.Mock>
   > & { findBlockedUserIds: jest.Mock };
+
+  // Re-add MockUserRepository type
+  type MockUserRepository = Partial<Record<keyof UserRepository, jest.Mock>>;
+
+  // --- Add MockProfileViewRepository type --- START
   type MockProfileViewRepository = Partial<
     Record<keyof ProfileViewRepository, jest.Mock>
   >;
+  // --- Add MockProfileViewRepository type --- END
 
   const mockUserProfileRepositoryFactory = jest.fn(() => ({
     createQueryBuilder: jest.fn().mockReturnValue({
@@ -61,6 +61,7 @@ describe("UserDiscoveryService", () => {
     findOne: jest.fn(),
   }));
 
+  // Re-add mockUserRepositoryFactory
   const mockUserRepositoryFactory = jest.fn(() => ({
     findById: jest.fn(),
     findNearbyUsers: jest.fn(),
@@ -72,10 +73,13 @@ describe("UserDiscoveryService", () => {
     findUserRelationships: jest.fn(),
   }));
 
+  // --- Add mockProfileViewRepositoryFactory --- START
   const mockProfileViewRepositoryFactory = jest.fn(() => ({
     getViewsForUser: jest.fn(),
     countUniqueViewersForUser: jest.fn(),
+    // Add mocks for other methods used by UserDiscoveryService if needed
   }));
+  // --- Add mockProfileViewRepositoryFactory --- END
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -104,12 +108,8 @@ describe("UserDiscoveryService", () => {
     userProfileRepository = moduleRef.get<Repository<UserProfile>>(
       getRepositoryToken(UserProfile),
     );
-    userRepository = moduleRef.get<UserRepository>(UserRepository);
     userRelationshipRepository = moduleRef.get<UserRelationshipRepository>(
       UserRelationshipRepository,
-    );
-    profileViewRepository = moduleRef.get<ProfileViewRepository>(
-      ProfileViewRepository,
     );
 
     mockCalculateAge.mockClear();
@@ -207,9 +207,9 @@ describe("UserDiscoveryService", () => {
 
       expect(result).toBeDefined();
       expect(result.length).toBe(3);
-      expect(result.some(u => u.id === "candidate-1")).toBe(true);
-      expect(result.some(u => u.id === "candidate-2")).toBe(true);
-      expect(result.some(u => u.id === "candidate-pnts")).toBe(true);
+      expect(result.some((u) => u.id === "candidate-1")).toBe(true);
+      expect(result.some((u) => u.id === "candidate-2")).toBe(true);
+      expect(result.some((u) => u.id === "candidate-pnts")).toBe(true);
       expect(result[0].age).toBeDefined();
       expect(result[1].age).toBeDefined();
       expect(result[2].age).toBeDefined();
@@ -286,8 +286,8 @@ describe("UserDiscoveryService", () => {
       // Assert: Service logic filters PNTS, leaving only candidate-2
       expect(result.length).toBe(2);
       expect(result.find((u) => u.id === "candidate-1")).toBeUndefined();
-      expect(result.some(u => u.id === "candidate-2")).toBe(true);
-      expect(result.some(u => u.id === "candidate-pnts")).toBe(true);
+      expect(result.some((u) => u.id === "candidate-2")).toBe(true);
+      expect(result.some((u) => u.id === "candidate-pnts")).toBe(true);
       expect(userRelRepoMock.findBlockedUserIds).toHaveBeenCalledWith(
         "current-user",
       );
@@ -406,9 +406,9 @@ describe("UserDiscoveryService", () => {
       // Assert: Expecting candidate-1 (MALE) primarily, filled by candidate-2 (FEMALE) and candidate-pnts (OTHER)
       expect(result.length).toBe(3);
       // Verify presence, exact order depends on 75/25 logic and tie-breaking
-      expect(result.some(u => u.id === "candidate-1")).toBe(true); // Preferred
-      expect(result.some(u => u.id === "candidate-2")).toBe(true); // Fill
-      expect(result.some(u => u.id === "candidate-pnts")).toBe(true); // Fill (OTHER)
+      expect(result.some((u) => u.id === "candidate-1")).toBe(true); // Preferred
+      expect(result.some((u) => u.id === "candidate-2")).toBe(true); // Fill
+      expect(result.some((u) => u.id === "candidate-pnts")).toBe(true); // Fill (OTHER)
       // expect(result[0].id).toBe("candidate-1"); // Old assertion
       // expect(result[1].id).toBe("candidate-2"); // Old assertion
       // expect(result.find((u) => u.id === "candidate-pnts")).toBeUndefined(); // Old assertion
@@ -425,9 +425,9 @@ describe("UserDiscoveryService", () => {
       // Assert: Expecting candidate-2 (FEMALE) primarily, filled by candidate-1 (MALE) and candidate-pnts (OTHER)
       expect(result.length).toBe(3);
       // Verify presence, exact order depends on 75/25 logic and tie-breaking
-      expect(result.some(u => u.id === "candidate-2")).toBe(true); // Preferred
-      expect(result.some(u => u.id === "candidate-1")).toBe(true); // Fill
-      expect(result.some(u => u.id === "candidate-pnts")).toBe(true); // Fill (OTHER)
+      expect(result.some((u) => u.id === "candidate-2")).toBe(true); // Preferred
+      expect(result.some((u) => u.id === "candidate-1")).toBe(true); // Fill
+      expect(result.some((u) => u.id === "candidate-pnts")).toBe(true); // Fill (OTHER)
       // expect(result[0].id).toBe("candidate-2"); // Old assertion
       // expect(result[1].id).toBe("candidate-1"); // Old assertion
       // expect(result.find((u) => u.id === "candidate-pnts")).toBeUndefined(); // Old assertion

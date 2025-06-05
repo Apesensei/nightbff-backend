@@ -8,10 +8,11 @@ import {
   BadRequestException,
   Delete,
   HttpStatus,
+  Req,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
-import { CurrentUser } from "../../auth/decorators/current-user.decorator";
 import { EventImageService } from "../services/event-image.service";
 import {
   ApiTags,
@@ -22,6 +23,13 @@ import {
   ApiBody,
   ApiParam,
 } from "@nestjs/swagger";
+import { Request } from "express";
+import { User } from "../../auth/entities/user.entity";
+
+// Define interface for request with user
+interface RequestWithUser extends Request {
+  user?: User;
+}
 
 @ApiTags("Event Images")
 @ApiBearerAuth()
@@ -62,16 +70,20 @@ export class EventImageController {
   async uploadEventCoverImage(
     @Param("id") eventId: string,
     @UploadedFile() file: Express.Multer.File,
-    @CurrentUser("id") userId: string,
+    @Req() req: RequestWithUser,
   ): Promise<{ url: string }> {
     if (!file) {
       throw new BadRequestException("No file uploaded");
     }
 
+    if (!req.user) {
+      throw new UnauthorizedException();
+    }
+
     const url = await this.eventImageService.uploadEventCoverImage(
       file,
       eventId,
-      userId,
+      req.user.id,
     );
     return { url };
   }
@@ -94,11 +106,15 @@ export class EventImageController {
   })
   async deleteEventCoverImage(
     @Param("id") eventId: string,
-    @CurrentUser("id") userId: string,
+    @Req() req: RequestWithUser,
   ): Promise<{ success: boolean }> {
+    if (!req.user) {
+      throw new UnauthorizedException();
+    }
+
     const success = await this.eventImageService.deleteEventCoverImage(
       eventId,
-      userId,
+      req.user.id,
     );
     return { success };
   }

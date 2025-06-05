@@ -1,19 +1,16 @@
 import { Injectable, Logger, BadRequestException } from "@nestjs/common";
-import { ConfigService } from '@nestjs/config';
-import * as ngeohash from 'ngeohash';
-import { differenceInHours } from 'date-fns';
-
-import {
-  VenueRepository,
-  VenueSearchOptions,
-} from "../repositories/venue.repository";
+import { ConfigService } from "@nestjs/config";
 import { GoogleMapsService } from "./google-maps.service";
 import { Venue, VenueStatus } from "../entities/venue.entity";
 import { VenueType } from "../entities/venue-type.entity";
 import { VenueSearchDto, VenueSortBy } from "../dto/venue-search.dto";
 import { VenueTypeRepository } from "../repositories/venue-type.repository";
-import { ScannedAreaRepository } from '../repositories/scanned-area.repository';
-import { VenueScanProducerService } from './venue-scan-producer.service';
+import { ScannedAreaRepository } from "../repositories/scanned-area.repository";
+import { VenueScanProducerService } from "./venue-scan-producer.service";
+import {
+  VenueRepository,
+  VenueSearchOptions,
+} from "../repositories/venue.repository";
 
 @Injectable()
 export class VenueMapService {
@@ -41,11 +38,16 @@ export class VenueMapService {
         "VenueMapService.searchVenues called without required latitude/longitude.",
       );
       // Throwing error now as geo context is expected for this method
-      throw new BadRequestException('Latitude and Longitude are required for map search.');
+      throw new BadRequestException(
+        "Latitude and Longitude are required for map search.",
+      );
     }
     // --- END: Add validation ---
 
-    let searchResult: { venues: Venue[]; total: number } = { venues: [], total: 0 };
+    let searchResult: { venues: Venue[]; total: number } = {
+      venues: [],
+      total: 0,
+    };
     try {
       // --- Construct options object ---
       const options: VenueSearchOptions = {
@@ -67,26 +69,36 @@ export class VenueMapService {
       searchResult = { venues, total };
 
       // 2. Asynchronously trigger background scan if needed (fire-and-forget)
-      this.venueScanProducerService.enqueueScanIfStale(
-          searchDto.latitude, 
-          searchDto.longitude
-      ).catch(error => {
-          this.logger.error(`Error triggering background scan: ${error.message}`, error.stack);
-      });
+      this.venueScanProducerService
+        .enqueueScanIfStale(searchDto.latitude, searchDto.longitude)
+        .catch((error) => {
+          this.logger.error(
+            `Error triggering background scan: ${error.message}`,
+            error.stack,
+          );
+        });
 
       // 3. Return results from local DB immediately
       return searchResult;
-
     } catch (error) {
       this.logger.error(
         `Failed to search venues: ${error.message}`,
         error.stack,
       );
       // Return empty on error, but still try to trigger scan if coords available
-       if (searchDto.latitude !== undefined && searchDto.longitude !== undefined) {
-           this.venueScanProducerService.enqueueScanIfStale(searchDto.latitude, searchDto.longitude)
-              .catch(e => this.logger.error(`Error triggering scan after search failure: ${e.message}`, e.stack));
-       }
+      if (
+        searchDto.latitude !== undefined &&
+        searchDto.longitude !== undefined
+      ) {
+        this.venueScanProducerService
+          .enqueueScanIfStale(searchDto.latitude, searchDto.longitude)
+          .catch((e) =>
+            this.logger.error(
+              `Error triggering scan after search failure: ${e.message}`,
+              e.stack,
+            ),
+          );
+      }
       return { venues: [], total: 0 }; // Graceful fallback
     }
   }
@@ -125,7 +137,7 @@ export class VenueMapService {
     radius: number = 10,
     limit: number = 20,
   ): Promise<Venue[]> {
-      let venuesResult: Venue[] = [];
+    let venuesResult: Venue[] = [];
     try {
       const options: VenueSearchOptions = {
         latitude,
@@ -142,9 +154,14 @@ export class VenueMapService {
       venuesResult = venues;
 
       // 2. Asynchronously trigger background scan if needed
-       this.venueScanProducerService.enqueueScanIfStale(latitude, longitude).catch(error => {
-          this.logger.error(`Error triggering background scan: ${error.message}`, error.stack);
-      });
+      this.venueScanProducerService
+        .enqueueScanIfStale(latitude, longitude)
+        .catch((error) => {
+          this.logger.error(
+            `Error triggering background scan: ${error.message}`,
+            error.stack,
+          );
+        });
 
       // 3. Return results from local DB immediately
       return venuesResult;
@@ -153,9 +170,15 @@ export class VenueMapService {
         `Failed to get venues near location: ${error.message}`,
         error.stack,
       );
-       // Still try to trigger scan if coords available
-       this.venueScanProducerService.enqueueScanIfStale(latitude, longitude)
-          .catch(e => this.logger.error(`Error triggering scan after getVenuesNearLocation failure: ${e.message}`, e.stack));
+      // Still try to trigger scan if coords available
+      this.venueScanProducerService
+        .enqueueScanIfStale(latitude, longitude)
+        .catch((e) =>
+          this.logger.error(
+            `Error triggering scan after getVenuesNearLocation failure: ${e.message}`,
+            e.stack,
+          ),
+        );
       return [];
     }
   }

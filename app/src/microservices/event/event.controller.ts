@@ -91,7 +91,7 @@ export class EventController {
       "Optional. Filter events by a specific interest ID, or use the special value 'forYou' to filter by the authenticated user\'s primary interest (V1). Using 'forYou' requires authentication.",
   })
   async findAll(
-    @CurrentUser("id") userId: string,
+    @Request() req: RequestWithUser,
     @Query("limit") limit?: number,
     @Query("offset") offset?: number,
     @Query("search") search?: string,
@@ -100,6 +100,11 @@ export class EventController {
     @Query("venueId") venueId?: string,
     @Query("interestId") interestId?: string,
   ): Promise<{ events: EventResponseDto[]; total: number }> {
+    if (!req.user) {
+      throw new Error("User not authenticated");
+    }
+    const userId = req.user.id;
+
     const options: FindEventsOptions = {
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
@@ -140,9 +145,9 @@ export class EventController {
     }
     return this.eventService.findAll(
       {
+        creatorId: req.user.id,
         limit: limit ? Number(limit) : undefined,
         offset: offset ? Number(offset) : undefined,
-        creatorId: req.user.id,
       },
       req.user.id,
     );
@@ -171,6 +176,62 @@ export class EventController {
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
     });
+  }
+
+  @Get("trending")
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({ summary: "Get trending plans" })
+  @ApiResponse({ status: HttpStatus.OK, description: "Returns trending plans" })
+  async getTrendingPlans(
+    @Query() queryParams: TrendingPlansRequestDto,
+    @Request() req: RequestWithUser,
+  ): Promise<PaginatedEventResponseDto> {
+    const userId = req.user?.id;
+    return this.eventService.getTrendingPlans(queryParams, userId);
+  }
+
+  @Get("search")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Search for plans by text and filters" })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Returns plans matching search criteria",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized - Authentication required",
+  })
+  async searchPlans(
+    @Request() req: RequestWithUser,
+    @Query() searchDto: PlanSearchDto,
+  ): Promise<PaginatedEventResponseDto> {
+    if (!req.user) {
+      throw new Error("User not authenticated");
+    }
+    const userId = req.user.id;
+
+    const { events, total } = await this.eventService.findAll(
+      {
+        title: searchDto.query,
+        limit: searchDto.limit,
+        offset: searchDto.offset,
+      },
+      userId,
+    );
+
+    const page =
+      Math.floor((searchDto.offset || 0) / (searchDto.limit || 10)) + 1;
+    const limit = searchDto.limit || 10;
+    const hasMore = total > (searchDto.offset || 0) + limit;
+
+    return {
+      items: events,
+      total,
+      page,
+      limit,
+      hasMore,
+    };
   }
 
   @Get(":id")
@@ -299,56 +360,5 @@ export class EventController {
       throw new Error("User not authenticated");
     }
     return this.eventService.leaveEvent(id, req.user.id);
-  }
-
-  @Get("trending")
-  @UseGuards(OptionalJwtAuthGuard)
-  @ApiOperation({ summary: "Get trending plans" })
-  @ApiResponse({ status: HttpStatus.OK, description: "Returns trending plans" })
-  async getTrendingPlans(
-    @Query() queryParams: TrendingPlansRequestDto,
-    @Request() req: RequestWithUser,
-  ): Promise<PaginatedEventResponseDto> {
-    const userId = req.user?.id;
-    return this.eventService.getTrendingPlans(queryParams, userId);
-  }
-
-  @Get("search")
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: "Search for plans by text and filters" })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: "Returns plans matching search criteria",
-  })
-  @ApiResponse({
-    status: 401,
-    description: "Unauthorized - Authentication required",
-  })
-  async searchPlans(
-    @CurrentUser("id") userId: string,
-    @Query() searchDto: PlanSearchDto,
-  ): Promise<PaginatedEventResponseDto> {
-    const { events, total } = await this.eventService.findAll(
-      {
-        title: searchDto.query,
-        limit: searchDto.limit,
-        offset: searchDto.offset,
-      },
-      userId,
-    );
-
-    const page =
-      Math.floor((searchDto.offset || 0) / (searchDto.limit || 10)) + 1;
-    const limit = searchDto.limit || 10;
-    const hasMore = total > (searchDto.offset || 0) + limit;
-
-    return {
-      items: events,
-      total,
-      page,
-      limit,
-      hasMore,
-    };
   }
 }

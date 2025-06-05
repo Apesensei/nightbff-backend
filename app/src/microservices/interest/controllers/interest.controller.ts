@@ -12,6 +12,7 @@ import {
   DefaultValuePipe,
   ParseBoolPipe,
   Req,
+  UseInterceptors,
 } from "@nestjs/common";
 import { InterestService } from "../services/interest.service";
 import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
@@ -28,6 +29,7 @@ import { PaginatedInterestResponseDto } from "../dto/paginated-interest-response
 import { InterestResponseDto } from "../dto/interest-response.dto";
 import { UserInterestsDto } from "../dto/user-interests.dto";
 import { Request } from "express";
+import { CacheInterceptor, CacheKey, CacheTTL } from "@nestjs/cache-manager";
 
 @ApiTags("interests")
 @Controller("interests")
@@ -46,6 +48,9 @@ export class InterestController {
   })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey("interests:all")
+  @CacheTTL(3600)
   @Get()
   async getAllInterests(
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -60,26 +65,6 @@ export class InterestController {
     );
   }
 
-  @ApiOperation({ summary: "Get an interest by ID" })
-  @ApiResponse({
-    status: 200,
-    description: "Returns the interest",
-    type: InterestResponseDto,
-  })
-  @ApiResponse({ status: 404, description: "Interest not found" })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @Get(":id")
-  async getInterestById(
-    @Param("id", ParseUUIDPipe) id: string,
-  ): Promise<InterestResponseDto> {
-    const interest = await this.interestService.getInterestById(id);
-    if (!interest) {
-      throw new NotFoundException(`Interest with ID ${id} not found`);
-    }
-    return interest;
-  }
-
   @ApiOperation({ summary: "Get popular interests" })
   @ApiQuery({ name: "limit", required: false, type: Number })
   @ApiResponse({
@@ -89,6 +74,9 @@ export class InterestController {
   })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey("interests:popular")
+  @CacheTTL(3600)
   @Get("popular")
   async getPopularInterests(
     @Query("limit", new DefaultValuePipe(10), ParseIntPipe) limit: number,
@@ -105,6 +93,9 @@ export class InterestController {
   })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey("interests:trending")
+  @CacheTTL(3600)
   @Get("trending")
   async getTrendingInterests(
     @Query("limit", new DefaultValuePipe(10), ParseIntPipe) limit: number,
@@ -120,6 +111,9 @@ export class InterestController {
   })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey("interests:user:me")
+  @CacheTTL(1800)
   @Get("user/me")
   async getUserInterests(
     @Req() req: Request & { user: User },
@@ -158,11 +152,38 @@ export class InterestController {
   })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey("interests:recommendations")
+  @CacheTTL(1800)
   @Get("recommendations")
   async getRecommendedInterests(
     @CurrentUser() user: User,
     @Query("limit", new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ): Promise<InterestResponseDto[]> {
     return this.interestService.getRecommendedInterests(user.id, limit);
+  }
+
+  // IMPORTANT: Keep /:id endpoint last to avoid capturing other routes
+  @ApiOperation({ summary: "Get an interest by ID" })
+  @ApiResponse({
+    status: 200,
+    description: "Returns the interest",
+    type: InterestResponseDto,
+  })
+  @ApiResponse({ status: 404, description: "Interest not found" })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey("interests:by-id")
+  @CacheTTL(3600)
+  @Get(":id")
+  async getInterestById(
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<InterestResponseDto> {
+    const interest = await this.interestService.getInterestById(id);
+    if (!interest) {
+      throw new NotFoundException(`Interest with ID ${id} not found`);
+    }
+    return interest;
   }
 }

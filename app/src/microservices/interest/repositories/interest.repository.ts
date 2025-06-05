@@ -4,6 +4,7 @@ import {
   Repository,
   FindOptionsWhere,
   In,
+  Not,
   MoreThan,
   FindOptionsOrder,
   ILike,
@@ -316,7 +317,7 @@ export class InterestRepository {
     const otherUserInterests = await this.userInterestRepository.find({
       where: {
         userId: In(userIds),
-        interestId: { $nin: interestIds } as any, // TypeORM doesn't have a direct Not(In()) operator
+        interestId: Not(In(interestIds)),
       },
       relations: ["interest"],
     });

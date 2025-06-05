@@ -15,7 +15,6 @@ import {
   Headers,
   Res,
 } from "@nestjs/common";
-import { Response } from "express";
 import type { Response as ResponseType } from "express";
 import {
   ApiTags,

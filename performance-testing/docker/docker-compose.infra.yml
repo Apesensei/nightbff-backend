@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  postgres_performance:
+    image: postgis/postgis:15-3.3 # Using PostGIS enabled image
+    container_name: postgres_performance
+    environment:
+      POSTGRES_USER: perf_user
+      POSTGRES_PASSWORD: YourChosenSecurePasswordHere99
+      POSTGRES_DB: nightbff_performance
+    volumes:
+      - postgres_perf_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432" # Exposing on 5433 to avoid conflict with local dev
+    restart: unless-stopped
+    networks:
+      - performance_net
+
+  redis_performance:
+    image: redis:7-alpine
+    container_name: redis_performance
+    ports:
+      - "6380:6379" # Exposing on 6380 to avoid conflict
+    volumes:
+      - redis_perf_data:/data
+    restart: unless-stopped
+    networks:
+      - performance_net
+
+volumes:
+  postgres_perf_data:
+    driver: local
+  redis_perf_data:
+    driver: local
+
+networks:
+  performance_net:
+    driver: bridge 

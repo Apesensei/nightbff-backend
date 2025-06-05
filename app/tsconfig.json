@@ -31,6 +31,11 @@
     "esm": true,
     "experimentalSpecifierResolution": "node"
   },
-  "include": ["src/**/*", "scripts/**/*"],
+  "include": [
+    "src/**/*", 
+    "scripts/**/*", 
+    "src/database/migrations/**/*.ts",
+    "test/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 } 

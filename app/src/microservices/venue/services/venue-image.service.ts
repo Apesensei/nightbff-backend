@@ -17,6 +17,10 @@ import { VenueRepository } from "../repositories/venue.repository";
 import { UserRole } from "../../auth/entities/user.entity";
 import { VenuePhoto, PhotoSource } from "../entities/venue-photo.entity";
 import { VenueCacheService } from "./venue-cache.service";
+import {
+  ImageProcessingService,
+  ImageProcessingJobData,
+} from "./image-processing.service";
 
 // Image size definitions for different device contexts
 export interface ImageSizes {
@@ -81,6 +85,7 @@ export class VenueImageService {
     private readonly venuePhotoRepository: VenuePhotoRepository,
     private readonly venueRepository: VenueRepository,
     private readonly cacheService: VenueCacheService,
+    private readonly imageProcessingService: ImageProcessingService,
   ) {
     this.uploadDir =
       this.configService.get("UPLOAD_DIR_VENUE") || "uploads/venue";
@@ -301,12 +306,56 @@ export class VenueImageService {
     const fileExt = path.extname(file.originalname).toLowerCase();
     const fileName = `${venueId}_photo_${uuidv4()}_${fileHash}${fileExt}`;
 
-    // Process and save image variations
-    const imageUrls = await this.processAndSaveImages(
-      file.buffer,
-      fileName,
-      file.mimetype,
+    // Check if async processing is enabled
+    const asyncProcessing = this.configService.get<boolean>(
+      "IMAGE_PROCESSING_ASYNC",
+      false,
     );
+
+    let imageUrls: ImageSizes;
+
+    if (asyncProcessing) {
+      // Queue image processing for background execution
+      const jobData: ImageProcessingJobData = {
+        buffer: file.buffer,
+        fileName,
+        mimetype: file.mimetype,
+        uploadDir: this.uploadDir,
+        baseUrl: this.baseUrl,
+      };
+
+      const jobId =
+        await this.imageProcessingService.queueImageProcessing(jobData);
+
+      // Save original image immediately for quick response
+      const originalPath = path.join(this.uploadDir, "original", fileName);
+      await writeFile(originalPath, file.buffer);
+      const originalUrl = `${this.baseUrl}/uploads/venue/original/${fileName}`;
+
+      // Set placeholder URLs that will be updated when processing completes
+      imageUrls = {
+        original: originalUrl,
+        thumbnail: originalUrl, // Temporary - will be updated by background job
+        medium: originalUrl, // Temporary - will be updated by background job
+        large: originalUrl, // Temporary - will be updated by background job
+      };
+
+      this.logger.log(
+        `Image processing queued with job ID: ${jobId} for file: ${fileName}`,
+      );
+    } else {
+      // Process images synchronously (legacy behavior)
+      const jobData: ImageProcessingJobData = {
+        buffer: file.buffer,
+        fileName,
+        mimetype: file.mimetype,
+        uploadDir: this.uploadDir,
+        baseUrl: this.baseUrl,
+      };
+
+      imageUrls =
+        await this.imageProcessingService.processImagesSynchronously(jobData);
+    }
 
     // Generate ETag for the original image
     const etag = this.generateETag(file.buffer);
@@ -333,6 +382,15 @@ export class VenueImageService {
 
     const photo = await this.venuePhotoRepository.create(photoData);
 
+    // If async processing, queue URL update job for when processing completes
+    if (asyncProcessing) {
+      // Note: In a production system, you'd want to implement a callback mechanism
+      // or use Redis pub/sub to update the photo URLs when processing completes
+      this.logger.log(
+        `Photo created with ID: ${photo.id}, image processing in background`,
+      );
+    }
+
     // Invalidate cache for this venue's photos
     await this.cacheService.invalidateSelective(venueId, ["photos"]);
 
@@ -345,6 +403,7 @@ export class VenueImageService {
       isPrimary: photo.isPrimary,
       isApproved: photo.isApproved,
       createdAt: photo.createdAt,
+      processing: asyncProcessing ? "background" : "completed",
     };
   }
 

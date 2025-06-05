@@ -7,10 +7,11 @@ import {
   BadRequestException,
   Delete,
   HttpStatus,
+  Req,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
-import { CurrentUser } from "../../auth/decorators/current-user.decorator";
 import { UserImageService } from "../services/user-image.service";
 import {
   ApiTags,
@@ -20,6 +21,13 @@ import {
   ApiConsumes,
   ApiBody,
 } from "@nestjs/swagger";
+import { Request } from "express";
+import { User } from "../../auth/entities/user.entity";
+
+// Define interface for request with user
+interface RequestWithUser extends Request {
+  user?: User;
+}
 
 @ApiTags("User Images")
 @ApiBearerAuth()
@@ -58,13 +66,20 @@ export class UserImageController {
   @UseInterceptors(FileInterceptor("file"))
   async uploadProfileImage(
     @UploadedFile() file: Express.Multer.File,
-    @CurrentUser("id") userId: string,
+    @Req() req: RequestWithUser,
   ): Promise<{ url: string }> {
     if (!file) {
       throw new BadRequestException("No file uploaded");
     }
 
-    const url = await this.userImageService.uploadProfileImage(file, userId);
+    if (!req.user) {
+      throw new UnauthorizedException();
+    }
+
+    const url = await this.userImageService.uploadProfileImage(
+      file,
+      req.user.id,
+    );
     return { url };
   }
 
@@ -98,15 +113,19 @@ export class UserImageController {
   @UseInterceptors(FileInterceptor("file"))
   async uploadProfileCoverImage(
     @UploadedFile() file: Express.Multer.File,
-    @CurrentUser("id") userId: string,
+    @Req() req: RequestWithUser,
   ): Promise<{ url: string }> {
     if (!file) {
       throw new BadRequestException("No file uploaded");
     }
 
+    if (!req.user) {
+      throw new UnauthorizedException();
+    }
+
     const url = await this.userImageService.uploadProfileCoverImage(
       file,
-      userId,
+      req.user.id,
     );
     return { url };
   }
@@ -127,9 +146,13 @@ export class UserImageController {
     },
   })
   async deleteProfileImage(
-    @CurrentUser("id") userId: string,
+    @Req() req: RequestWithUser,
   ): Promise<{ success: boolean }> {
-    const success = await this.userImageService.deleteProfileImage(userId);
+    if (!req.user) {
+      throw new UnauthorizedException();
+    }
+
+    const success = await this.userImageService.deleteProfileImage(req.user.id);
     return { success };
   }
 
@@ -149,9 +172,15 @@ export class UserImageController {
     },
   })
   async deleteProfileCoverImage(
-    @CurrentUser("id") userId: string,
+    @Req() req: RequestWithUser,
   ): Promise<{ success: boolean }> {
-    const success = await this.userImageService.deleteProfileCoverImage(userId);
+    if (!req.user) {
+      throw new UnauthorizedException();
+    }
+
+    const success = await this.userImageService.deleteProfileCoverImage(
+      req.user.id,
+    );
     return { success };
   }
 }

@@ -1,0 +1,62 @@
+global:
+  scrape_interval: 15s # Default scrape interval
+  evaluation_interval: 15s # Default evaluation interval
+
+scrape_configs:
+  - job_name: 'prometheus' # Scrapes Prometheus itself
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080'] # Points to cAdvisor service name and internal port
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100'] # Points to node-exporter service name and internal port
+
+  # --- Application Microservices ---
+  # Add a job for each microservice that exposes Prometheus metrics.
+  # Assumes services listen on port 3000 and expose /metrics endpoint.
+  # Adjust port and metrics_path if different.
+
+  - job_name: 'auth_service'
+    static_configs:
+      - targets: ['auth:3000'] # Points to auth service name and internal port
+
+  - job_name: 'chat_service'
+    static_configs:
+      - targets: ['chat:3000']
+
+  - job_name: 'event_service'
+    static_configs:
+      - targets: ['event:3000']
+
+  - job_name: 'interest_service'
+    static_configs:
+      - targets: ['interest:3000']
+
+  - job_name: 'notification_service'
+    static_configs:
+      - targets: ['notification:3000']
+
+  - job_name: 'plan_service'
+    static_configs:
+      - targets: ['plan:3000'] # This service is mapped to host 3010 for example
+
+  - job_name: 'premium_service'
+    static_configs:
+      - targets: ['premium:3000']
+
+  - job_name: 'user_service'
+    static_configs:
+      - targets: ['user:3000'] # This service is mapped to host 3011 for example
+
+  - job_name: 'venue_service'
+    static_configs:
+      - targets: ['venue:3000']
+
+  # If your mock server exposes metrics, add a job for it too:
+  # - job_name: 'mock_google_maps'
+  #   static_configs:
+  #     - targets: ['mock-google-maps:8080'] # Adjust port if needed 
