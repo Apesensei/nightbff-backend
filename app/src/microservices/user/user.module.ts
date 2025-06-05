@@ -1,6 +1,6 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { UserController } from "./user.controller";
+import { UserController, UserLocationController } from "./user.controller";
 import { UserService } from "./user.service";
 import { UserRepository } from "./repositories/user.repository";
 // import { User } from "../auth/entities/user.entity"; // Removed unused import
@@ -25,7 +25,9 @@ import { EventEmitterModule } from "@nestjs/event-emitter";
 import { Follow } from "./entities/follow.entity";
 import { FollowRepository } from "./repositories/follow.repository";
 import { UserProfile } from "./entities/user-profile.entity";
-import { ConfigModule } from "@nestjs/config";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { ClientsModule, Transport } from "@nestjs/microservices";
+import { VenueModule } from "../venue/venue.module";
 
 @Module({
   imports: [
@@ -41,13 +43,39 @@ import { ConfigModule } from "@nestjs/config";
     }),
     EventEmitterModule.forRoot(),
     AuthModule,
+    forwardRef(() => VenueModule),
     ConfigModule,
+    ClientsModule.registerAsync([
+      {
+        name: "PLAN_SERVICE_RPC",
+        imports: [ConfigModule],
+        useFactory: () => ({
+          transport: Transport.REDIS,
+          options: {
+            /* Redis options from ConfigService */
+          },
+        }),
+        inject: [ConfigService],
+      },
+      {
+        name: "VENUE_SERVICE_RPC",
+        imports: [ConfigModule],
+        useFactory: () => ({
+          transport: Transport.REDIS,
+          options: {
+            /* Redis options from ConfigService */
+          },
+        }),
+        inject: [ConfigService],
+      },
+    ]),
   ],
   controllers: [
+    UserRelationshipController,
     UserController,
+    UserLocationController,
     UserDiscoveryController,
     UserImageController,
-    UserRelationshipController,
   ],
   providers: [
     UserService,

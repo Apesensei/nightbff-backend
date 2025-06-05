@@ -45,6 +45,20 @@ const AppDataSource = new DataSource(dataSourceOptions);
 
 // --- Helper Functions ---
 
+// Function to generate random coordinates within a given bounding box
+// Example: Bay Area, California
+function getRandomLocation(bounds = {
+  minLat: 37.3,
+  maxLat: 38.0,
+  minLng: -122.5,
+  maxLng: -121.8,
+}) {
+  return {
+    latitude: faker.location.latitude({ min: bounds.minLat, max: bounds.maxLat }),
+    longitude: faker.location.longitude({ min: bounds.minLng, max: bounds.maxLng }),
+  };
+}
+
 function getRandomGender(): Gender {
   const rand = Math.random();
   if (rand < 0.45) return Gender.MALE; // 45%
@@ -99,6 +113,11 @@ async function seedDatabase() {
       user.status = UserStatus.ACTIVE;
       user.isVerified = true; // Assume verified for testing
       user.isAgeVerified = true; // Assume age verified
+
+      // Add random location
+      const location = getRandomLocation();
+      user.locationLatitude = location.latitude;
+      user.locationLongitude = location.longitude;
 
       try {
         const savedUser = await userRepository.save(user);

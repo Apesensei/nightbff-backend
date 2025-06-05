@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, In } from "typeorm";
+import { Repository, In, IsNull, UpdateResult } from "typeorm";
 import { Event } from "../entities/event.entity";
 import { EventAttendee } from "../entities/event-attendee.entity";
 import { EventAttendeeStatus } from "../enums/event-attendee-status.enum";
@@ -206,10 +206,22 @@ export class EventRepository {
     // Load relations
     queryBuilder.leftJoinAndSelect("event.attendees", "eventAttendees");
 
-    return queryBuilder.getManyAndCount();
+    // Execute query
+    const [events, total] = await queryBuilder.getManyAndCount();
+
+    // Add distance to each event if location was used
+    if (options.location) {
+      events.forEach((event) => {
+        // Type assertion might be needed if distance is added via addSelect
+        // event.distance = (event as any).distance;
+      });
+    }
+
+    return [events, total];
   }
 
   async findOne(id: string): Promise<Event | null> {
+    // Find one and include relevant relations
     return this.eventRepository.findOne({
       where: { id },
       relations: ["attendees"],
@@ -220,7 +232,7 @@ export class EventRepository {
     await this.eventRepository.update(id, updateEventDto);
     const updatedEvent = await this.findOne(id);
     if (!updatedEvent) {
-      throw new Error(`Event with ID ${id} not found after update`);
+      throw new Error("Failed to retrieve updated event");
     }
     return updatedEvent;
   }
@@ -356,6 +368,9 @@ export class EventRepository {
     if (location) {
       const { latitude, longitude, radiusInKm } = location;
 
+      // Add venue join when using location filtering
+      queryBuilder.innerJoin("event.venue", "venue");
+
       // Using PostGIS for geospatial queries if your database supports it
       queryBuilder.andWhere(
         `
@@ -373,16 +388,8 @@ export class EventRepository {
       );
     }
 
-    // Add a subquery to determine if the user is attending if userId provided
-    if (userId) {
-      queryBuilder.addSelect((subQuery) => {
-        return subQuery
-          .select("COUNT(ua.id)")
-          .from("event_attendee", "ua")
-          .where("ua.eventId = event.id")
-          .andWhere("ua.userId = :userId", { userId });
-      }, "isAttending");
-    }
+    // Note: Removed the problematic subquery for isAttending to fix UUID parsing errors
+    // This functionality can be added back with a separate query if needed
 
     return queryBuilder.getManyAndCount();
   }
@@ -423,4 +430,40 @@ export class EventRepository {
       .getRawMany<{ venueId: string }>();
     return results.map((result) => result.venueId);
   }
+
+  // --- Backfill Methods ---
+
+  /**
+   * Finds events that do not have a cityId, with pagination.
+   * @param limit - Number of records per batch
+   * @param offset - Number of records to skip
+   * @returns Tuple containing an array of events and the total count matching the criteria.
+   */
+  async findWithoutCityId(
+    limit: number,
+    offset: number,
+  ): Promise<[Event[], number]> {
+    return this.eventRepository.findAndCount({
+      where: {
+        cityId: IsNull(),
+      },
+      select: ["id", "venueId"], // Only select necessary fields for backfill (event needs venueId)
+      order: { createdAt: "ASC" }, // Process older events first
+      take: limit,
+      skip: offset,
+      relations: ["venue"], // Need venue to get location for reverse geocode
+    });
+  }
+
+  /**
+   * Updates the cityId for a specific event.
+   * @param eventId - The ID of the event to update.
+   * @param cityId - The ID of the city to associate.
+   * @returns TypeORM UpdateResult.
+   */
+  async updateCityId(eventId: string, cityId: string): Promise<UpdateResult> {
+    return this.eventRepository.update({ id: eventId }, { cityId: cityId });
+  }
+
+  // --- End Backfill Methods ---
 }

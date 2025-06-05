@@ -1,8 +1,0 @@
-// import { OnfidoService } from "../../onfido/onfido.service"; // Assuming Onfido integration
-
-// Add .skip to ignore these tests for now
-describe.skip("AgeVerificationService", () => {
-  let ageVerificationService: AgeVerificationService;
-
-  // ... rest of the original code ...
-}); 

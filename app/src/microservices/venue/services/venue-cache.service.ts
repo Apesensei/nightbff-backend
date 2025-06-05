@@ -1,6 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import Redis from "ioredis";
 import { Inject } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 // Use import type for Cache
@@ -8,32 +6,43 @@ import type { Cache } from "cache-manager";
 
 @Injectable()
 export class VenueCacheService {
-  private readonly redis: Redis;
   private readonly logger = new Logger(VenueCacheService.name);
-  private readonly defaultTTL = 3600; // 1 hour default TTL
+  private readonly defaultTTL = 3600; // 1 hour default TTL (seconds)
   private readonly versionKey = "venue:cache:version";
-  private readonly adminEditKey = "venue:admin:edits";
+  private readonly adminEditKeyPrefix = "venue:admin:edits"; // Changed to prefix
 
-  constructor(
-    private readonly configService: ConfigService,
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-  ) {
-    this.redis = new Redis({
-      host: this.configService.get("REDIS_HOST"),
-      port: this.configService.get("REDIS_PORT"),
-      password: this.configService.get("REDIS_PASSWORD"),
-      retryStrategy: (times: number) => {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-    });
-
-    this.redis.on("error", (error: Error) => {
-      this.logger.error(
-        `Redis connection error: ${error.message}`,
-        error.stack,
+  constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {
+    this.logger.log("[VenueCacheService] Constructor called.");
+    this.logger.verbose(
+      "[VenueCacheService] Inspecting injected CACHE_MANAGER instance properties:",
+    );
+    this.logger.verbose(
+      `[VenueCacheService]   typeof this.cacheManager.get: ${typeof this.cacheManager.get}`,
+    );
+    this.logger.verbose(
+      `[VenueCacheService]   typeof this.cacheManager.set: ${typeof this.cacheManager.set}`,
+    );
+    this.logger.verbose(
+      `[VenueCacheService]   typeof this.cacheManager.del: ${typeof this.cacheManager.del}`,
+    );
+    if ((this.cacheManager as any).store) {
+      this.logger.verbose(
+        "[VenueCacheService]   (this.cacheManager as any).store exists.",
       );
-    });
+      this.logger.verbose(
+        `[VenueCacheService]   typeof (this.cacheManager as any).store: ${typeof (this.cacheManager as any).store}`,
+      );
+      this.logger.verbose(
+        `[VenueCacheService]   (this.cacheManager as any).store.constructor.name: ${(this.cacheManager as any).store?.constructor?.name}`,
+      );
+      this.logger.verbose(
+        `[VenueCacheService]   typeof (this.cacheManager as any).store.get: ${typeof (this.cacheManager as any).store?.get}`,
+      );
+    } else {
+      this.logger.verbose(
+        "[VenueCacheService]   (this.cacheManager as any).store does NOT exist.",
+      );
+    }
 
     // Initialize cache version if it doesn't exist
     this.initializeCacheVersion();
@@ -44,9 +53,13 @@ export class VenueCacheService {
    */
   private async initializeCacheVersion(): Promise<void> {
     try {
-      const exists = await this.redis.exists(this.versionKey);
-      if (exists === 0) {
-        await this.redis.set(this.versionKey, "1");
+      const currentVersion = await this.cacheManager.get<string>(
+        this.versionKey,
+      );
+      if (!currentVersion) {
+        // Set with a very long TTL (effectively indefinite for a version key)
+        // Assuming cacheManager.set TTL is in milliseconds
+        await this.cacheManager.set(this.versionKey, "1", 0); // 0 for indefinite for some stores, or use a very large number
         this.logger.log("Initialized cache version to 1");
       }
     } catch (error) {
@@ -59,11 +72,11 @@ export class VenueCacheService {
    */
   async getCacheVersion(): Promise<string> {
     try {
-      const version = await this.redis.get(this.versionKey);
-      return version || "1";
+      const version = await this.cacheManager.get<string>(this.versionKey);
+      return version || "1"; // Default to "1" if not found or error
     } catch (error) {
       this.logger.warn(`Failed to get cache version: ${error.message}`);
-      return "1";
+      return "1"; // Default to "1" on error
     }
   }
 
@@ -72,8 +85,14 @@ export class VenueCacheService {
    */
   async incrementCacheVersion(): Promise<void> {
     try {
-      await this.redis.incr(this.versionKey);
-      this.logger.log("Incremented cache version");
+      let currentVersion = await this.cacheManager.get<string>(this.versionKey);
+      let newVersion = 1;
+      if (currentVersion && !isNaN(parseInt(currentVersion, 10))) {
+        newVersion = parseInt(currentVersion, 10) + 1;
+      }
+      // Set with a very long TTL
+      await this.cacheManager.set(this.versionKey, newVersion.toString(), 0);
+      this.logger.log(`Incremented cache version to ${newVersion}`);
     } catch (error) {
       this.logger.warn(`Failed to increment cache version: ${error.message}`);
     }
@@ -99,18 +118,18 @@ export class VenueCacheService {
    */
   async trackAdminEdit(venueId: string, fields: string[]): Promise<void> {
     try {
-      const editKey = `${this.adminEditKey}:${venueId}`;
+      const editKey = `${this.adminEditKeyPrefix}:${venueId}`;
+      let adminEdits =
+        (await this.cacheManager.get<Record<string, string>>(editKey)) || {};
 
-      // Store edited fields as a hash
-      const pipeline = this.redis.pipeline();
+      const now = Date.now().toString();
       fields.forEach((field) => {
-        pipeline.hset(editKey, field, Date.now().toString());
+        adminEdits[field] = now;
       });
 
-      // Set expiration for the edit tracking (7 days)
-      pipeline.expire(editKey, 7 * 24 * 60 * 60);
-
-      await pipeline.exec();
+      // Set expiration for the edit tracking (7 days in milliseconds)
+      const ttlMs = 7 * 24 * 60 * 60 * 1000;
+      await this.cacheManager.set(editKey, adminEdits, ttlMs);
     } catch (error) {
       this.logger.warn(`Failed to track admin edit: ${error.message}`);
     }
@@ -121,9 +140,10 @@ export class VenueCacheService {
    */
   async hasAdminEdits(venueId: string): Promise<boolean> {
     try {
-      const editKey = `${this.adminEditKey}:${venueId}`;
-      const exists = await this.redis.exists(editKey);
-      return exists === 1;
+      const editKey = `${this.adminEditKeyPrefix}:${venueId}`;
+      const edits =
+        await this.cacheManager.get<Record<string, string>>(editKey);
+      return !!edits && Object.keys(edits).length > 0;
     } catch (error) {
       this.logger.warn(`Failed to check admin edits: ${error.message}`);
       return false;
@@ -135,8 +155,10 @@ export class VenueCacheService {
    */
   async getAdminEditedFields(venueId: string): Promise<Record<string, string>> {
     try {
-      const editKey = `${this.adminEditKey}:${venueId}`;
-      return await this.redis.hgetall(editKey);
+      const editKey = `${this.adminEditKeyPrefix}:${venueId}`;
+      return (
+        (await this.cacheManager.get<Record<string, string>>(editKey)) || {}
+      );
     } catch (error) {
       this.logger.warn(`Failed to get admin edited fields: ${error.message}`);
       return {};
@@ -149,10 +171,12 @@ export class VenueCacheService {
   async get<T>(type: string, params: Record<string, any>): Promise<T | null> {
     try {
       const key = await this.generateKey(type, params);
-      const cached = await this.redis.get(key);
-      return cached ? JSON.parse(cached) : null;
+      const cached = await this.cacheManager.get<string>(key); // Assume data is stored as JSON string
+      return cached ? (JSON.parse(cached) as T) : null;
     } catch (error) {
-      this.logger.warn(`Failed to get cached data: ${error.message}`);
+      this.logger.warn(
+        `Failed to get cached data for key generation params ${type} - ${JSON.stringify(params)}: ${error.message}`,
+      );
       return null;
     }
   }
@@ -164,13 +188,16 @@ export class VenueCacheService {
     type: string,
     params: Record<string, any>,
     data: any,
-    ttl: number = this.defaultTTL,
+    ttlSeconds: number = this.defaultTTL, // Changed parameter name to clarify unit
   ): Promise<void> {
     try {
       const key = await this.generateKey(type, params);
-      await this.redis.setex(key, ttl, JSON.stringify(data));
+      const ttlMs = ttlSeconds * 1000; // Convert seconds to milliseconds
+      await this.cacheManager.set(key, JSON.stringify(data), ttlMs);
     } catch (error) {
-      this.logger.warn(`Failed to cache data: ${error.message}`);
+      this.logger.warn(
+        `Failed to cache data for key generation params ${type} - ${JSON.stringify(params)}: ${error.message}`,
+      );
     }
   }
 
@@ -180,9 +207,11 @@ export class VenueCacheService {
   async invalidate(type: string, params: Record<string, any>): Promise<void> {
     try {
       const key = await this.generateKey(type, params);
-      await this.redis.del(key);
+      await this.cacheManager.del(key);
     } catch (error) {
-      this.logger.warn(`Failed to invalidate cache: ${error.message}`);
+      this.logger.warn(
+        `Failed to invalidate cache for key generation params ${type} - ${JSON.stringify(params)}: ${error.message}`,
+      );
     }
   }
 
@@ -195,35 +224,29 @@ export class VenueCacheService {
     updatedFields: string[] = [],
   ): Promise<void> {
     try {
-      // Get all venue-related keys
-      const version = await this.getCacheVersion();
-      const pattern = `venue:*:${version}:*venueId:${venueId}*`;
-      const keys = await this.redis.keys(pattern);
-
-      if (keys.length > 0) {
-        // If many fields were updated or certain critical fields, delete all affected keys
-        if (
-          updatedFields.length > 5 ||
-          updatedFields.includes("name") ||
-          updatedFields.includes("location") ||
-          updatedFields.includes("adminOverrides")
-        ) {
-          this.logger.log(
-            `Invalidating ${keys.length} cache entries for venue ${venueId}`,
-          );
-          await this.redis.del(...keys);
-        } else {
-          // For minor updates, track the edit but keep cache valid
-          // This lets us display "admin edited" indicators without invalidating the whole cache
-          await this.trackAdminEdit(venueId, updatedFields);
-          this.logger.log(
-            `Tracked admin edits for venue ${venueId} without cache invalidation`,
-          );
-        }
+      // If many fields were updated or certain critical fields, increment global version
+      if (
+        updatedFields.length > 5 ||
+        updatedFields.includes("name") ||
+        updatedFields.includes("location") ||
+        updatedFields.includes("adminOverrides") // Assuming 'adminOverrides' is a critical field
+      ) {
+        this.logger.log(
+          `Invalidating all caches due to significant update for venue ${venueId} (fields: ${updatedFields.join(", ")})`,
+        );
+        await this.clearAll(); // This increments the main cache version
+      } else if (updatedFields.length > 0) {
+        // For minor updates, just track the edit.
+        // The cache entries remain valid but can be marked as "stale" or "admin edited" by the consumer if needed.
+        await this.trackAdminEdit(venueId, updatedFields);
+        this.logger.log(
+          `Tracked admin edits for venue ${venueId} (fields: ${updatedFields.join(", ")}) without full cache invalidation.`,
+        );
       }
+      // If updatedFields is empty, do nothing.
     } catch (error) {
       this.logger.warn(
-        `Failed to selectively invalidate cache: ${error.message}`,
+        `Failed to selectively invalidate cache for venue ${venueId}: ${error.message}`,
       );
     }
   }

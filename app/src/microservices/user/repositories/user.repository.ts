@@ -180,47 +180,102 @@ export class UserRepository {
       // Add blocked users to excluded ids
       excludedIds.push(...blockedUserIds);
 
-      // Calculate distance using PostgreSQL's ST_Distance_Sphere
-      const queryBuilder = this.userRepository
-        .createQueryBuilder("user")
-        .select("user.*")
-        .addSelect(
-          `ST_Distance_Sphere(
-          ST_MakePoint(user.location_longitude, user.location_latitude),
-          ST_MakePoint(:longitude, :latitude)
-        ) as distance`,
-          "distance",
-        )
-        .where("user.id NOT IN (:...excludedIds)", { excludedIds })
-        .andWhere("user.location_latitude IS NOT NULL")
-        .andWhere("user.location_longitude IS NOT NULL")
-        .andWhere(
-          `ST_Distance_Sphere(
-          ST_MakePoint(user.location_longitude, user.location_latitude),
-          ST_MakePoint(:longitude, :latitude)
-        ) <= :radius`,
-          {
-            latitude,
-            longitude,
-            radius: radiusInKm * 1000, // Convert km to meters
-          },
-        )
-        .orderBy("distance", "ASC")
-        .limit(limit)
-        .offset(offset);
+      // Convert radius to meters
+      const radiusInMeters = radiusInKm * 1000;
 
-      const users = await queryBuilder.getRawAndEntities();
-      const count = await queryBuilder.getCount();
+      // Build excluded IDs placeholders for SQL (safe from injection)
+      const excludedIdsPlaceholders = excludedIds
+        .map((_, index) => `$${index + 4}`)
+        .join(", ");
 
-      // Attach distance to user entities
-      const usersWithDistance = users.entities.map((user, index) => {
-        const distanceInMeters = users.raw[index].distance;
-        const distanceInKm = Math.round((distanceInMeters / 1000) * 10) / 10; // Round to 1 decimal place
-        return {
-          ...user,
-          distance: distanceInKm,
-        } as UserWithDistance;
-      });
+      // Raw SQL query using proven PostGIS pattern from event repository
+      const query = `
+        SELECT 
+          u.*,
+          ST_Distance(
+            geography(ST_SetSRID(ST_MakePoint(u.location_longitude, u.location_latitude), 4326)),
+            geography(ST_SetSRID(ST_MakePoint($1, $2), 4326))
+          ) as distance_meters
+        FROM users u
+        WHERE u.id NOT IN (${excludedIdsPlaceholders})
+          AND u.location_latitude IS NOT NULL
+          AND u.location_longitude IS NOT NULL
+          AND ST_DWithin(
+            geography(ST_SetSRID(ST_MakePoint(u.location_longitude, u.location_latitude), 4326)),
+            geography(ST_SetSRID(ST_MakePoint($1, $2), 4326)),
+            $3
+          )
+        ORDER BY distance_meters ASC
+        LIMIT $${excludedIds.length + 4} OFFSET $${excludedIds.length + 5}
+      `;
+
+      // Count query for pagination
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM users u
+        WHERE u.id NOT IN (${excludedIdsPlaceholders})
+          AND u.location_latitude IS NOT NULL
+          AND u.location_longitude IS NOT NULL
+          AND ST_DWithin(
+            geography(ST_SetSRID(ST_MakePoint(u.location_longitude, u.location_latitude), 4326)),
+            geography(ST_SetSRID(ST_MakePoint($1, $2), 4326)),
+            $3
+          )
+      `;
+
+      // Execute queries with parameters
+      const queryParams = [
+        longitude,
+        latitude,
+        radiusInMeters,
+        ...excludedIds,
+        limit,
+        offset,
+      ];
+      const countParams = [longitude, latitude, radiusInMeters, ...excludedIds];
+
+      const [rawUsers, countResult] = await Promise.all([
+        this.userRepository.manager.query(query, queryParams),
+        this.userRepository.manager.query(countQuery, countParams),
+      ]);
+
+      // Map raw results to User entities with distance
+      const usersWithDistance: UserWithDistance[] = rawUsers.map(
+        (rawUser: any) => {
+          // Create User entity instance
+          const user = new User();
+          Object.assign(user, {
+            id: rawUser.id,
+            email: rawUser.email,
+            username: rawUser.username,
+            displayName: rawUser.display_name,
+            photoURL: rawUser.photo_url,
+            bio: rawUser.bio,
+            interests: rawUser.interests,
+            isVerified: rawUser.is_verified,
+            isPremium: rawUser.is_premium,
+            isAgeVerified: rawUser.is_age_verified,
+            isOnline: rawUser.is_online,
+            locationLatitude: rawUser.location_latitude,
+            locationLongitude: rawUser.location_longitude,
+            status: rawUser.status,
+            roles: rawUser.roles,
+            createdAt: rawUser.created_at,
+            updatedAt: rawUser.updated_at,
+          });
+
+          // Add distance in kilometers, rounded to 1 decimal place
+          const distanceInKm =
+            Math.round((rawUser.distance_meters / 1000) * 10) / 10;
+
+          return {
+            ...user,
+            distance: distanceInKm,
+          } as UserWithDistance;
+        },
+      );
+
+      const count = parseInt(countResult[0].total);
 
       return [usersWithDistance, count];
     } catch (error) {
@@ -268,48 +323,111 @@ export class UserRepository {
       // Add blocked users to excluded ids
       excludedIds.push(...blockedUserIds);
 
-      // Calculate distance using PostgreSQL's ST_Distance_Sphere
-      const queryBuilder = this.userRepository
-        .createQueryBuilder("user")
-        .select("user.*")
-        .addSelect(
-          `ST_Distance_Sphere(
-          ST_MakePoint(user.location_longitude, user.location_latitude),
-          ST_MakePoint(:longitude, :latitude)
-        ) as distance`,
-          "distance",
-        )
-        .where("user.id NOT IN (:...excludedIds)", { excludedIds })
-        .andWhere("user.location_latitude IS NOT NULL")
-        .andWhere("user.location_longitude IS NOT NULL")
-        .andWhere("user.last_active >= :activeAfter", { activeAfter })
-        .andWhere(
-          `ST_Distance_Sphere(
-          ST_MakePoint(user.location_longitude, user.location_latitude),
-          ST_MakePoint(:longitude, :latitude)
-        ) <= :radius`,
-          {
-            latitude,
-            longitude,
-            radius: radiusInKm * 1000, // Convert km to meters
-          },
-        )
-        .orderBy("distance", "ASC")
-        .limit(limit)
-        .offset(offset);
+      // Convert radius to meters
+      const radiusInMeters = radiusInKm * 1000;
 
-      const users = await queryBuilder.getRawAndEntities();
-      const count = await queryBuilder.getCount();
+      // Build excluded IDs placeholders for SQL (safe from injection)
+      const excludedIdsPlaceholders = excludedIds
+        .map((_, index) => `$${index + 5}`)
+        .join(", ");
 
-      // Attach distance to user entities
-      const usersWithDistance = users.entities.map((user, index) => {
-        const distanceInMeters = users.raw[index].distance;
-        const distanceInKm = Math.round((distanceInMeters / 1000) * 10) / 10; // Round to 1 decimal place
-        return {
-          ...user,
-          distance: distanceInKm,
-        } as UserWithDistance;
-      });
+      // Raw SQL query with additional last_active filter
+      const query = `
+        SELECT 
+          u.*,
+          ST_Distance(
+            geography(ST_SetSRID(ST_MakePoint(u.location_longitude, u.location_latitude), 4326)),
+            geography(ST_SetSRID(ST_MakePoint($1, $2), 4326))
+          ) as distance_meters
+        FROM users u
+        WHERE u.id NOT IN (${excludedIdsPlaceholders})
+          AND u.location_latitude IS NOT NULL
+          AND u.location_longitude IS NOT NULL
+          AND u.last_active >= $4
+          AND ST_DWithin(
+            geography(ST_SetSRID(ST_MakePoint(u.location_longitude, u.location_latitude), 4326)),
+            geography(ST_SetSRID(ST_MakePoint($1, $2), 4326)),
+            $3
+          )
+        ORDER BY distance_meters ASC
+        LIMIT $${excludedIds.length + 5} OFFSET $${excludedIds.length + 6}
+      `;
+
+      // Count query for pagination
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM users u
+        WHERE u.id NOT IN (${excludedIdsPlaceholders})
+          AND u.location_latitude IS NOT NULL
+          AND u.location_longitude IS NOT NULL
+          AND u.last_active >= $4
+          AND ST_DWithin(
+            geography(ST_SetSRID(ST_MakePoint(u.location_longitude, u.location_latitude), 4326)),
+            geography(ST_SetSRID(ST_MakePoint($1, $2), 4326)),
+            $3
+          )
+      `;
+
+      // Execute queries with parameters
+      const queryParams = [
+        longitude,
+        latitude,
+        radiusInMeters,
+        activeAfter,
+        ...excludedIds,
+        limit,
+        offset,
+      ];
+      const countParams = [
+        longitude,
+        latitude,
+        radiusInMeters,
+        activeAfter,
+        ...excludedIds,
+      ];
+
+      const [rawUsers, countResult] = await Promise.all([
+        this.userRepository.manager.query(query, queryParams),
+        this.userRepository.manager.query(countQuery, countParams),
+      ]);
+
+      // Map raw results to User entities with distance
+      const usersWithDistance: UserWithDistance[] = rawUsers.map(
+        (rawUser: any) => {
+          // Create User entity instance
+          const user = new User();
+          Object.assign(user, {
+            id: rawUser.id,
+            email: rawUser.email,
+            username: rawUser.username,
+            displayName: rawUser.display_name,
+            photoURL: rawUser.photo_url,
+            bio: rawUser.bio,
+            interests: rawUser.interests,
+            isVerified: rawUser.is_verified,
+            isPremium: rawUser.is_premium,
+            isAgeVerified: rawUser.is_age_verified,
+            isOnline: rawUser.is_online,
+            locationLatitude: rawUser.location_latitude,
+            locationLongitude: rawUser.location_longitude,
+            status: rawUser.status,
+            roles: rawUser.roles,
+            createdAt: rawUser.created_at,
+            updatedAt: rawUser.updated_at,
+          });
+
+          // Add distance in kilometers, rounded to 1 decimal place
+          const distanceInKm =
+            Math.round((rawUser.distance_meters / 1000) * 10) / 10;
+
+          return {
+            ...user,
+            distance: distanceInKm,
+          } as UserWithDistance;
+        },
+      );
+
+      const count = parseInt(countResult[0].total);
 
       return [usersWithDistance, count];
     } catch (error) {

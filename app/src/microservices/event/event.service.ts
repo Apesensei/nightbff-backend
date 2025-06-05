@@ -6,6 +6,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { MessagePattern, Payload, RpcException } from "@nestjs/microservices";
 import {
   EventRepository,
   FindEventsOptions,
@@ -21,6 +22,14 @@ import { EventVisibility } from "./enums/event-visibility.enum";
 import { PlanAnalyticsService } from "./services/plan-analytics.service";
 import { PlanTrendingService } from "./services/plan-trending.service";
 import { InterestService } from "../interest/services/interest.service";
+import {
+  GetEventsWithoutCityIdRequestDto,
+  GetEventsWithoutCityIdResponseDto,
+  UpdateEventCityIdRequestDto,
+  UpdateEventCityIdResponseDto,
+  EVENT_GET_WITHOUT_CITY_ID_PATTERN,
+  EVENT_UPDATE_CITY_ID_PATTERN,
+} from "./dto/event-backfill.dto";
 
 // Import TrendingPlansRequestDto
 interface TrendingPlansRequestDto {
@@ -486,10 +495,8 @@ export class EventService {
       plans.map((plan) => this.transformToResponseDto(plan, userId)),
     );
 
-    // Track this view for analytics (batch tracking)
-    if (plans.length > 0 && userId) {
-      this.planAnalyticsService.trackPlanView("trending_section", userId);
-    }
+    // Note: Removed trackPlanView call with "trending_section" as it's not a valid plan ID
+    // Section-level analytics should be tracked differently if needed
 
     return {
       items,
@@ -548,4 +555,112 @@ export class EventService {
       userProfileImage: "https://example.com/profile.jpg", // Would be fetched from user service
     });
   }
+
+  async getAttendeeCount(eventId: string): Promise<number> {
+    return this.eventRepository.getAttendeeCount(eventId);
+  }
+
+  // --- Backfill RPC Handlers/Service Methods ---
+
+  @MessagePattern(EVENT_GET_WITHOUT_CITY_ID_PATTERN)
+  async handleGetEventsWithoutCityId(
+    @Payload() payload: GetEventsWithoutCityIdRequestDto,
+  ): Promise<GetEventsWithoutCityIdResponseDto> {
+    this.logger.debug(
+      `RPC Handler: Received ${EVENT_GET_WITHOUT_CITY_ID_PATTERN} with payload: ${JSON.stringify(payload)}`,
+    );
+    try {
+      const [events, total] = await this.findEventsWithoutCityId(
+        payload.limit ?? 100, // Use default
+        payload.offset ?? 0, // Use default
+      );
+      // Note: The event objects might contain more data than needed (e.g., Venue relation)
+      // Consider mapping to a leaner DTO if performance becomes an issue.
+      return { events, total };
+    } catch (error) {
+      this.logger.error(
+        `RPC Error in ${EVENT_GET_WITHOUT_CITY_ID_PATTERN}: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(
+        error.message || "Failed to fetch events without cityId",
+      );
+    }
+  }
+
+  @MessagePattern(EVENT_UPDATE_CITY_ID_PATTERN)
+  async handleUpdateEventCityId(
+    @Payload() payload: UpdateEventCityIdRequestDto,
+  ): Promise<UpdateEventCityIdResponseDto> {
+    this.logger.debug(
+      `RPC Handler: Received ${EVENT_UPDATE_CITY_ID_PATTERN} for event ${payload.eventId}`,
+    );
+    try {
+      const success = await this.updateEventCityId(
+        payload.eventId,
+        payload.cityId,
+      );
+      return { success };
+    } catch (error) {
+      this.logger.error(
+        `RPC Error in ${EVENT_UPDATE_CITY_ID_PATTERN} for event ${payload.eventId}: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(
+        error.message || `Failed to update cityId for event ${payload.eventId}`,
+      );
+    }
+  }
+
+  /**
+   * Service method to find events without cityId.
+   * @param limit - Batch size.
+   * @param offset - Skip count.
+   * @returns Events and total count.
+   */
+  async findEventsWithoutCityId(
+    limit: number,
+    offset: number,
+  ): Promise<[Event[], number]> {
+    this.logger.debug(
+      `Fetching events without cityId, limit: ${limit}, offset: ${offset}`,
+    );
+    try {
+      return await this.eventRepository.findWithoutCityId(limit, offset);
+    } catch (error) {
+      this.logger.error(
+        `Error fetching events without cityId: ${error.message}`,
+        error.stack,
+      );
+      // Let the RPC handler manage throwing RpcException
+      throw error;
+    }
+  }
+
+  /**
+   * Service method to update cityId for an event.
+   * @param eventId - ID of the event.
+   * @param cityId - ID of the city.
+   * @returns Boolean indicating success.
+   */
+  async updateEventCityId(eventId: string, cityId: string): Promise<boolean> {
+    this.logger.debug(`Updating cityId for event ${eventId} to ${cityId}`);
+    try {
+      const result = await this.eventRepository.updateCityId(eventId, cityId);
+      if (result.affected === 0) {
+        this.logger.warn(`Event ${eventId} not found or cityId not updated.`);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error updating cityId for event ${eventId}: ${error.message}`,
+        error.stack,
+      );
+      // Let the RPC handler manage throwing RpcException
+      throw error;
+    }
+  }
+
+  // --- End Backfill RPC Handlers/Service Methods ---
 }

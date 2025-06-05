@@ -1,13 +1,34 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
-import { TableForeignKey } from "typeorm";
+import { MigrationInterface, QueryRunner, TableForeignKey } from "typeorm";
 
 export class CreateChatTables1694500000000 implements MigrationInterface {
+  public readonly name = "CreateChatTables1694500000000";
+
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Explicitly create chat_type_enum if it doesn't exist
+    const chatTypeEnumExists = await queryRunner.query(
+      `SELECT 1 FROM pg_type WHERE typname = 'chat_type_enum' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')`,
+    );
+    if (chatTypeEnumExists.length === 0) {
+      await queryRunner.query(
+        `CREATE TYPE "public"."chat_type_enum" AS ENUM('DIRECT', 'GROUP', 'EVENT')`,
+      );
+    }
+
+    // Explicitly create chat_participants_role_enum if it doesn't exist
+    const chatParticipantRoleEnumExists = await queryRunner.query(
+      `SELECT 1 FROM pg_type WHERE typname = 'chat_participants_role_enum' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')`,
+    );
+    if (chatParticipantRoleEnumExists.length === 0) {
+      await queryRunner.query(
+        `CREATE TYPE "public"."chat_participants_role_enum" AS ENUM('MEMBER', 'ADMIN', 'OWNER')`,
+      );
+    }
+
     // Create chat table
     await queryRunner.query(`
       CREATE TABLE "chat" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-        "type" varchar NOT NULL,
+        "type" "public"."chat_type_enum" NOT NULL DEFAULT 'DIRECT',
         "title" varchar,
         "imageUrl" varchar,
         "creatorId" uuid,
@@ -45,6 +66,7 @@ export class CreateChatTables1694500000000 implements MigrationInterface {
       CREATE TABLE "chat_participants" (
         "chatId" uuid NOT NULL,
         "userId" uuid NOT NULL,
+        "role" "public"."chat_participants_role_enum" NOT NULL DEFAULT 'MEMBER',
         CONSTRAINT "PK_chat_participants" PRIMARY KEY ("chatId", "userId")
       )
     `);
@@ -120,15 +142,29 @@ export class CreateChatTables1694500000000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop foreign keys
-    await queryRunner.dropForeignKey(
-      "chat_participants",
-      "FK_chat_participants_user",
-    );
-    await queryRunner.dropForeignKey(
-      "chat_participants",
-      "FK_chat_participants_chat",
-    );
-    await queryRunner.dropForeignKey("message", "FK_message_chat");
+    const fksToDrop = [
+      { table: "chat_participants", constraint: "FK_chat_participants_userId" },
+      { table: "chat_participants", constraint: "FK_chat_participants_chatId" },
+      { table: "message", constraint: "FK_messages_senderId" },
+      { table: "message", constraint: "FK_messages_chatId" },
+    ];
+
+    for (const fk of fksToDrop) {
+      try {
+        const constraintExists = await queryRunner.query(`
+                SELECT constraint_name 
+                FROM information_schema.table_constraints 
+                WHERE table_name = '${fk.table}' AND constraint_name = '${fk.constraint}' AND constraint_type = 'FOREIGN KEY'
+            `);
+        if (constraintExists.length > 0) {
+          await queryRunner.dropForeignKey(fk.table, fk.constraint);
+        }
+      } catch (error) {
+        console.warn(
+          `Warning: Could not drop foreign key ${fk.constraint} on table ${fk.table}. It might not exist or name is different. Error: ${error.message}`,
+        );
+      }
+    }
 
     // Drop indexes
     await queryRunner.query(`DROP INDEX "IDX_message_chatId"`);
@@ -145,5 +181,23 @@ export class CreateChatTables1694500000000 implements MigrationInterface {
     await queryRunner.dropTable("chat_participants");
     await queryRunner.dropTable("message");
     await queryRunner.dropTable("chat");
+
+    // Explicitly drop chat_type_enum if it exists
+    const chatTypeEnumExists = await queryRunner.query(
+      `SELECT 1 FROM pg_type WHERE typname = 'chat_type_enum' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')`,
+    );
+    if (chatTypeEnumExists.length > 0) {
+      await queryRunner.query(`DROP TYPE IF EXISTS "public"."chat_type_enum"`);
+    }
+
+    // Explicitly drop chat_participants_role_enum if it exists
+    const chatParticipantRoleEnumExists = await queryRunner.query(
+      `SELECT 1 FROM pg_type WHERE typname = 'chat_participants_role_enum' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')`,
+    );
+    if (chatParticipantRoleEnumExists.length > 0) {
+      await queryRunner.query(
+        `DROP TYPE IF EXISTS "public"."chat_participants_role_enum"`,
+      );
+    }
   }
 }

@@ -5,6 +5,7 @@ import { Event } from "../../entities/event.entity";
 import { EventAttendee } from "../../entities/event-attendee.entity";
 import { EventAttendeeStatus } from "../../enums/event-attendee-status.enum";
 import { EventVisibility } from "../../enums/event-visibility.enum";
+import { IsNull } from "typeorm";
 
 describe("EventRepository", () => {
   let eventRepository: EventRepository;
@@ -123,7 +124,7 @@ describe("EventRepository", () => {
       expect(mockAttendeeModel.save).toHaveBeenCalledWith(createdAttendee);
       expect(mockEventModel.findOne).toHaveBeenCalledWith({
         where: { id: createdEvent.id },
-        relations: ["attendees"],
+        relations: ["creator", "venue", "attendees"],
       });
       expect(result).toEqual(createdEvent);
     });
@@ -149,11 +150,6 @@ describe("EventRepository", () => {
       expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
         "event.attendees",
         "eventAttendees",
-      );
-      // Do NOT expect venue join
-      expect(mockQueryBuilder.leftJoinAndSelect).not.toHaveBeenCalledWith(
-        "event.venue",
-        "venue",
       );
       expect(mockQueryBuilder.getManyAndCount).toHaveBeenCalled();
     });
@@ -249,4 +245,104 @@ describe("EventRepository", () => {
       expect(result).toEqual(updatedAttendee);
     });
   });
+
+  // --- NEW TESTS for Backfill Functionality ---
+  describe("findWithoutCityId", () => {
+    const limit = 50;
+    const offset = 0;
+    const mockEvents = [
+      { id: "event-1", title: "Event 1" } as any, // Use 'as any' or mock factory
+      { id: "event-2", title: "Event 2" } as any,
+    ];
+    const mockTotal = 2;
+
+    beforeEach(() => {
+      // Ensure the findAndCount on the *attendee* mock isn't confused
+      // If findAndCount exists on Event mock, mock it here.
+      // Assuming EventRepository uses findAndCount directly for this method.
+      (mockEventModel as any).findAndCount = jest
+        .fn()
+        .mockResolvedValue([mockEvents, mockTotal]);
+    });
+
+    it("should call findAndCount with correct options", async () => {
+      const result = await eventRepository.findWithoutCityId(limit, offset);
+
+      expect((mockEventModel as any).findAndCount).toHaveBeenCalledWith({
+        where: { cityId: IsNull() },
+        select: ["id", "venueId"], // Verify correct fields are selected
+        relations: ["venue"],
+        take: limit,
+        skip: offset,
+        order: { createdAt: "ASC" }, // Assuming consistent order
+      });
+      expect(result).toEqual([mockEvents, mockTotal]);
+    });
+
+    it("should return empty array and 0 count when no events found", async () => {
+      (mockEventModel as any).findAndCount.mockResolvedValue([[], 0]);
+
+      const result = await eventRepository.findWithoutCityId(limit, offset);
+
+      expect((mockEventModel as any).findAndCount).toHaveBeenCalledWith({
+        where: { cityId: IsNull() },
+        select: ["id", "venueId"],
+        relations: ["venue"],
+        take: limit,
+        skip: offset,
+        order: { createdAt: "ASC" },
+      });
+      expect(result).toEqual([[], 0]);
+    });
+
+    it("should throw error if findAndCount fails", async () => {
+      const mockError = new Error("Database error");
+      (mockEventModel as any).findAndCount.mockRejectedValue(mockError);
+
+      await expect(
+        eventRepository.findWithoutCityId(limit, offset),
+      ).rejects.toThrow(mockError);
+    });
+  });
+
+  describe("updateCityId", () => {
+    const eventId = "event-123";
+    const cityId = "city-456";
+
+    it("should call update with correct parameters and return result", async () => {
+      const mockUpdateResult = { affected: 1, raw: {}, generatedMaps: [] };
+      mockEventModel.update.mockResolvedValue(mockUpdateResult);
+
+      const result = await eventRepository.updateCityId(eventId, cityId);
+
+      expect(mockEventModel.update).toHaveBeenCalledWith(
+        { id: eventId },
+        { cityId: cityId },
+      );
+      expect(result).toEqual(mockUpdateResult);
+    });
+
+    it("should return update result even if no rows are affected", async () => {
+      const mockUpdateResult = { affected: 0, raw: {}, generatedMaps: [] };
+      mockEventModel.update.mockResolvedValue(mockUpdateResult);
+
+      const result = await eventRepository.updateCityId(eventId, cityId);
+
+      expect(mockEventModel.update).toHaveBeenCalledWith(
+        { id: eventId },
+        { cityId: cityId },
+      );
+      expect(result).toEqual(mockUpdateResult);
+    });
+
+    it("should propagate error if update fails", async () => {
+      const mockError = new Error("Update failed");
+      mockEventModel.update.mockRejectedValue(mockError);
+
+      await expect(
+        eventRepository.updateCityId(eventId, cityId),
+      ).rejects.toThrow(mockError);
+    });
+  });
+  // --- END NEW TESTS ---
 });

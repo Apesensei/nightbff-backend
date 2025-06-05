@@ -1,0 +1,361 @@
+version: '3.8'
+
+networks:
+  perf_network:
+    driver: bridge
+
+volumes:
+  postgres_perf_data:
+  redis_perf_data:
+  prometheus_perf_data:
+  grafana_perf_data:
+
+services:
+  # --- Database ---
+  postgres_perf:
+    image: ghcr.io/baosystems/postgis:16-3.5
+    container_name: nightbff_postgres_perf
+    platform: linux/arm64/v8 # Ensure platform is specified for ARM64
+    volumes:
+      - postgres_perf_data:/var/lib/postgresql/data
+    env_file: # Keep env_file for other app-specific DB vars if any, but override PG setup vars
+      - ../config/.env.performance
+    networks:
+      - perf_network
+    ports:
+      - "5434:5432" # Map for potential external access/debugging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-nightbff_user} -d $${POSTGRES_DB:-nightbff_perf}"] # Use default values or from env
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Migrator Service ---
+  migrator:
+    build:
+      context: ../../app
+      dockerfile: Dockerfile
+    container_name: nightbff_migrator_perf
+    volumes:
+      - ../config/.env.performance:/usr/src/app/.env.performance:ro
+    environment:
+      - NODE_ENV=performance
+    networks:
+      - perf_network
+    depends_on:
+      postgres_perf:
+        condition: service_healthy
+    command: |
+      sh -c "
+        echo 'Migrator: Waiting for postgres_perf:5432...' && \
+        while ! nc -z postgres_perf 5432; do sleep 1; done && \
+        echo 'Migrator: PostgreSQL started. Running migrations...' && \
+        node scripts/run-migration.js && \
+        echo 'Migrator: Migrations finished. Exiting.'
+      "
+    restart: 'no'
+
+  # --- Cache ---
+  redis_perf:
+    image: redis:latest
+    container_name: nightbff_redis_perf
+    volumes:
+      - redis_perf_data:/data
+    networks:
+      - perf_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Mock Server ---
+  mock-google-maps:
+    build:
+      context: ../mock-google-maps # Assumes Dockerfile is in this directory
+      dockerfile: Dockerfile
+    container_name: nightbff_mock_google_maps_perf
+    networks:
+      - perf_network
+    expose:
+      - "3000" # Corrected: Internal port the mock server listens on (from server.js)
+    restart: unless-stopped
+    # Add healthcheck if possible for the mock server
+
+  # --- Application Services ---
+  auth:
+    build:
+      context: ../../app
+      dockerfile: Dockerfile
+    container_name: nightbff_auth_perf
+    volumes: # Mount the perf env file as .env.performance inside container
+      - ../config/.env.performance:/usr/src/app/.env.performance:ro
+    environment: # ADD THIS BLOCK or MODIFY
+      - NODE_ENV=performance
+      - SERVICE_NAME=auth
+    networks:
+      - perf_network
+    ports:
+      - "3012:3000" # Map internal 3000 to host 3012 for auth service
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres_perf:
+        condition: service_healthy
+      redis_perf:
+        condition: service_healthy
+    restart: unless-stopped
+
+  chat:
+    build:
+      context: ../../app
+      dockerfile: Dockerfile
+    container_name: nightbff_chat_perf
+    volumes: # Mount the perf env file as .env.performance inside container
+      - ../config/.env.performance:/usr/src/app/.env.performance:ro
+    environment: # ADD THIS BLOCK or MODIFY
+      - NODE_ENV=performance
+      - SERVICE_NAME=chat
+    networks:
+      - perf_network
+    ports:
+      - "3013:3000" # Map internal 3000 to host 3013 for chat service
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres_perf:
+        condition: service_healthy
+      redis_perf:
+        condition: service_healthy
+    restart: unless-stopped
+
+  event:
+    build:
+      context: ../../app
+      dockerfile: Dockerfile
+    container_name: nightbff_event_perf
+    volumes: # Mount the perf env file as .env.performance inside container
+      - ../config/.env.performance:/usr/src/app/.env.performance:ro
+    environment: # ADD THIS BLOCK or MODIFY
+      - NODE_ENV=performance
+      - SERVICE_NAME=event
+    networks:
+      - perf_network
+    ports:
+      - "3014:3000" # Map internal 3000 to host 3014 for event service
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres_perf:
+        condition: service_healthy
+      redis_perf:
+        condition: service_healthy
+      mock-google-maps: # Assuming event service uses mock
+        condition: service_started # Use service_healthy if mock has healthcheck
+    restart: unless-stopped
+
+  interest:
+    build:
+      context: ../../app
+      dockerfile: Dockerfile
+    container_name: nightbff_interest_perf
+    volumes: # Mount the perf env file as .env.performance inside container
+      - ../config/.env.performance:/usr/src/app/.env.performance:ro
+    environment: # ADD THIS BLOCK or MODIFY
+      - NODE_ENV=performance
+      - SERVICE_NAME=interest
+    networks:
+      - perf_network
+    ports:
+      - "3015:3000" # Map internal 3000 to host 3015 for interest service
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres_perf:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notification:
+    build:
+      context: ../../app
+      dockerfile: Dockerfile
+    container_name: nightbff_notification_perf
+    volumes: # Mount the perf env file as .env.performance inside container
+      - ../config/.env.performance:/usr/src/app/.env.performance:ro
+    environment: # ADD THIS BLOCK or MODIFY
+      - NODE_ENV=performance
+      - SERVICE_NAME=notification
+    networks:
+      - perf_network
+    ports:
+      - "3016:3000" # Map internal 3000 to host 3016 for notification service
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres_perf:
+        condition: service_healthy
+      redis_perf: # Assuming notifications might use Redis
+        condition: service_healthy
+    restart: unless-stopped
+
+  plan:
+    build:
+      context: ../../app
+      dockerfile: Dockerfile
+    container_name: nightbff_plan_perf
+    volumes: # Mount the perf env file as .env.performance inside container
+      - ../config/.env.performance:/usr/src/app/.env.performance:ro
+    environment: # ADD THIS BLOCK or MODIFY
+      - NODE_ENV=performance
+      - SERVICE_NAME=plan
+    networks:
+      - perf_network
+    ports: # Example: map plan service if direct access is needed for testing setup
+      - "3010:3000" # Map internal 3000 to host 3010
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres_perf:
+        condition: service_healthy
+      redis_perf:
+        condition: service_healthy
+      mock-google-maps: # Assuming plan service uses mock
+        condition: service_started # Use service_healthy if mock has healthcheck
+    restart: unless-stopped
+
+  user:
+    build:
+      context: ../../app
+      dockerfile: Dockerfile
+    container_name: nightbff_user_perf
+    volumes: # Mount the perf env file as .env.performance inside container
+      - ../config/.env.performance:/usr/src/app/.env.performance:ro
+    environment: # ADD THIS BLOCK or MODIFY
+      - NODE_ENV=performance
+      - SERVICE_NAME=user
+    networks:
+      - perf_network
+    ports: # Example: map user service if direct access is needed
+      - "3011:3000" # Map internal 3000 to host 3011
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres_perf:
+        condition: service_healthy
+      redis_perf:
+        condition: service_healthy
+      mock-google-maps: # Assuming user service uses mock (e.g., on login location update)
+        condition: service_started # Use service_healthy if mock has healthcheck
+    restart: unless-stopped
+
+  venue:
+    build:
+      context: ../../app
+      dockerfile: Dockerfile
+    container_name: nightbff_venue_perf
+    volumes: # Mount the perf env file as .env.performance inside container
+      - ../config/.env.performance:/usr/src/app/.env.performance:ro
+    environment: # ADD THIS BLOCK or MODIFY
+      - NODE_ENV=performance
+      - SERVICE_NAME=venue
+    networks:
+      - perf_network
+    ports:
+      - "3017:3000" # Map internal 3000 to host 3017 for venue service
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres_perf:
+        condition: service_healthy
+      redis_perf:
+        condition: service_healthy
+      mock-google-maps: # Assuming venue service uses mock
+        condition: service_started # Use service_healthy if mock has healthcheck
+    restart: unless-stopped
+
+  # --- Monitoring ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: nightbff_prometheus_perf
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_perf_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - perf_network
+    ports:
+      - "9091:9090" # Map for accessing Prometheus UI
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: nightbff_grafana_perf
+    volumes:
+      - grafana_perf_data:/var/lib/grafana
+      # - ../monitoring/grafana/provisioning/:/etc/grafana/provisioning/ # Optional: Mount provisioning configs
+      # - ../monitoring/grafana/dashboards/:/var/lib/grafana/dashboards/ # Optional: Mount dashboard definitions
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin # Change default password if needed
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - perf_network
+    ports:
+      - "3002:3000" # Map for accessing Grafana UI
+    restart: unless-stopped
+
+  node-exporter: # Monitors the host machine Docker is running on
+    image: prom/node-exporter:latest
+    container_name: nightbff_node_exporter_perf
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"'
+    networks:
+      - perf_network
+    # No port mapping needed, Prometheus scrapes internally
+    restart: unless-stopped
+
+  cadvisor: # Monitors containers
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: nightbff_cadvisor_perf
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - perf_network
+    ports:
+      - "8081:8080" # Remapped to avoid potential conflict with mock server
+    restart: unless-stopped
+
+  # --- Load Generator ---
+  k6:
+    image: grafana/k6:latest
+    container_name: nightbff_k6_perf
+    volumes:
+      - ../k6-scripts:/scripts # Mount scripts directory
+    networks:
+      - perf_network
+    entrypoint: ["sleep", "infinity"] # Keep container running for exec
+    depends_on: # Depends on all services it might test
+      - auth
+      - chat
+      - event
+      - interest
+      - notification
+      - plan
+      - user
+      - venue
+      - mock-google-maps
+    restart: unless-stopped 

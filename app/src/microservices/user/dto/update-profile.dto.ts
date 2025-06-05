@@ -15,17 +15,31 @@ export class UpdateProfileDto {
   @IsOptional()
   bio?: string;
 
-  @ApiProperty({ enum: Gender, enumName: 'Gender', description: "User's gender", required: false, example: Gender.FEMALE })
+  @ApiProperty({
+    enum: Gender,
+    enumName: "Gender",
+    description: "User's gender",
+    required: false,
+    example: Gender.FEMALE,
+  })
   @IsEnum(Gender)
   @IsOptional()
   gender?: Gender;
 
-  @ApiProperty({ description: "User's birthday (YYYY-MM-DD)", required: false, example: '1995-07-21' })
+  @ApiProperty({
+    description: "User's birthday (YYYY-MM-DD)",
+    required: false,
+    example: "1995-07-21",
+  })
   @IsDateString()
   @IsOptional()
   birthday?: string;
 
-  @ApiProperty({ type: [String], description: "Array of favorite venue IDs", required: false })
+  @ApiProperty({
+    type: [String],
+    description: "Array of favorite venue IDs",
+    required: false,
+  })
   @IsArray()
   @IsOptional()
   favoriteVenues?: string[];
@@ -35,7 +49,10 @@ export class UpdateProfileDto {
   @IsOptional()
   profileCoverUrl?: string;
 
-  @ApiProperty({ description: "Instagram profile username/URL", required: false })
+  @ApiProperty({
+    description: "Instagram profile username/URL",
+    required: false,
+  })
   @IsString()
   @IsOptional()
   socialInstagram?: string;
@@ -50,7 +67,11 @@ export class UpdateProfileDto {
   @IsOptional()
   socialTiktok?: string;
 
-  @ApiProperty({ description: "Profile visibility", required: false, default: true })
+  @ApiProperty({
+    description: "Profile visibility",
+    required: false,
+    default: true,
+  })
   @IsBoolean()
   @IsOptional()
   isPublic?: boolean;

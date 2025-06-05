@@ -2,7 +2,7 @@ import { Injectable, Inject, Logger } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import type { Cache } from "cache-manager";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { EventRepository } from '../repositories/event.repository';
+import { EventRepository } from "../repositories/event.repository";
 
 @Injectable()
 export class PlanAnalyticsService {
@@ -24,8 +24,8 @@ export class PlanAnalyticsService {
       timestamp: new Date(),
     });
 
-    // Invalidate cache for this plan's trending score
-    this.cacheManager.del(`plan_trending_score:${planId}`);
+    // Safely invalidate cache for this plan's trending score
+    this.safeCacheDelete(`plan_trending_score:${planId}`);
   }
 
   /**
@@ -37,6 +37,26 @@ export class PlanAnalyticsService {
       userId,
       timestamp: new Date(),
     });
+  }
+
+  /**
+   * Safely delete cache key - handles cache stores that don't support del()
+   */
+  private async safeCacheDelete(key: string): Promise<void> {
+    try {
+      // Check if the cache manager has a del method
+      if (typeof this.cacheManager.del === "function") {
+        await this.cacheManager.del(key);
+      } else {
+        // If del() is not available, log a warning
+        this.logger.warn(
+          `Cache store does not support del() method for key: ${key}`,
+        );
+      }
+    } catch (error) {
+      // Log error but don't crash the service
+      this.logger.error(`Failed to delete cache key ${key}:`, error);
+    }
   }
 
   /**

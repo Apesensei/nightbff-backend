@@ -8,7 +8,14 @@ const path = require('path');
 
     // --- 1. Load Environment Variables ---
     const nodeEnv = process.env.NODE_ENV || 'development';
-    const envFileName = nodeEnv === 'production' ? '.env.production' : '.env.development';
+    let envFileName;
+    if (nodeEnv === 'production') {
+        envFileName = '.env.production';
+    } else if (nodeEnv === 'performance') {
+        envFileName = '.env.performance';
+    } else {
+        envFileName = '.env.development';
+    }
     const projectRoot = process.cwd(); 
     const envFilePath = path.resolve(projectRoot, envFileName);
 
@@ -28,22 +35,36 @@ const path = require('path');
     let AppDataSource;
     try {
         // Use require(), targeting the compiled JS file
-        const dataSourcePath = path.resolve(projectRoot, 'dist/data-source.js');
+        const dataSourcePath = path.resolve(projectRoot, 'dist/src/data-source.js');
         console.log(`Requiring DataSource from: ${dataSourcePath}`);
         const dataSourceModule = require(dataSourcePath);
         
-        // Access the default export provided by CJS interop
-        AppDataSource = dataSourceModule.default;
+        // Attempt to access the DataSource instance
+        if (dataSourceModule && dataSourceModule.AppDataSource && typeof dataSourceModule.AppDataSource.initialize === 'function') {
+            AppDataSource = dataSourceModule.AppDataSource;
+            console.log('Successfully accessed AppDataSource via dataSourceModule.AppDataSource');
+        } else if (dataSourceModule && dataSourceModule.default && typeof dataSourceModule.default.initialize === 'function') {
+            AppDataSource = dataSourceModule.default;
+            console.log('Successfully accessed AppDataSource via dataSourceModule.default');
+        } else if (dataSourceModule && typeof dataSourceModule.initialize === 'function') {
+            AppDataSource = dataSourceModule;
+            console.log('Successfully accessed AppDataSource directly from module');
+        } else {
+            console.error(`Failed to find a valid DataSource instance in the module loaded from ${dataSourcePath}.`);
+            console.error('dataSourceModule keys:', dataSourceModule ? Object.keys(dataSourceModule) : 'null');
+            if (dataSourceModule) {
+                console.error('typeof dataSourceModule.AppDataSource:', typeof dataSourceModule.AppDataSource);
+                console.error('typeof dataSourceModule.default:', typeof dataSourceModule.default);
+                console.error('typeof dataSourceModule.initialize:', typeof dataSourceModule.initialize);
+            }
+            throw new Error('Invalid DataSource module structure.');
+        }
         
         if (!AppDataSource || typeof AppDataSource.initialize !== 'function') {
-            // Fallback check if .default didn't work as expected
-            if (dataSourceModule && typeof dataSourceModule.initialize === 'function') {
-                AppDataSource = dataSourceModule; 
-            } else {
-                 throw new Error(`Failed to require a valid DataSource instance from ${dataSourcePath}. Module content: ${JSON.stringify(dataSourceModule)}`);
-            }
+            // This block should ideally not be reached if the above logic works
+            throw new Error('AppDataSource is not a valid DataSource instance after attempting all access methods.');
         }
-        console.log('Successfully required DataSource.');
+        console.log('Successfully identified AppDataSource.');
     } catch (requireError) {
         console.error('Error requiring DataSource:', requireError);
         console.error('Ensure you have run `npm run build` successfully before running this script.');

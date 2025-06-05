@@ -1,7 +1,6 @@
 import {
   Injectable,
   BadRequestException,
-  Inject,
   Logger,
   NotFoundException,
   InternalServerErrorException,
@@ -344,7 +343,7 @@ export class UserDiscoveryService {
   ): UserProfile[] {
     // Filter out null/undefined genders FIRST (PREFER_NOT_TO_SAY check removed as enum value is gone)
     const validGenderCandidates = candidates.filter(
-      (candidate) => candidate.gender
+      (candidate) => candidate.gender,
     );
 
     // Handle null or undefined preference - operate on the filtered list

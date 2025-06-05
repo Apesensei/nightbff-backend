@@ -70,4 +70,24 @@ export class UserService {
   async searchUsers(query: string): Promise<User[]> {
     return this.userRepository.searchUsers(query);
   }
+
+  /**
+   * @summary Updates the user's location coordinates.
+   *
+   * @description Updates the user's latitude and longitude in the database.
+   * Uses the existing UserRepository updateUserLocation method.
+   *
+   * @param {string} userId - The UUID of the user to update.
+   * @param {number} latitude - The user's latitude coordinate.
+   * @param {number} longitude - The user's longitude coordinate.
+   * @returns {Promise<User>} The updated User entity.
+   * @throws {NotFoundException} If no user is found with the given ID.
+   */
+  async updateUserLocation(
+    userId: string,
+    latitude: number,
+    longitude: number,
+  ): Promise<User> {
+    return this.userRepository.updateUserLocation(userId, latitude, longitude);
+  }
 }

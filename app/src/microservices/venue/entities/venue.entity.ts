@@ -42,14 +42,18 @@ export class Venue {
   address: string;
 
   @Column({
-    type: 'geometry',
-    spatialFeatureType: 'Point',
+    type: "geometry",
+    spatialFeatureType: "Point",
     srid: 4326, // Standard WGS 84 spatial reference system
     nullable: true,
   })
   @Index({ spatial: true }) // Add spatial index decorator
   location?: string; // Start with string (WKT/GeoJSON), adjust if TypeORM handles Point object directly
   // Or potentially: location?: Point;
+
+  @Index() // Added index for cityId
+  @Column({ name: "city_id", type: "uuid", nullable: true })
+  cityId?: string;
 
   @Column({ nullable: true, length: 50 })
   googlePlaceId?: string;
@@ -151,4 +155,7 @@ export class Venue {
 
   @UpdateDateColumn({ type: "timestamp with time zone" })
   updatedAt: Date;
+
+  // Non-column property for calculated distance in geo-searches
+  distance?: number;
 }

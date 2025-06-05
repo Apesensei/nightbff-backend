@@ -8,10 +8,11 @@ import {
   HttpStatus,
   Delete,
   Param,
+  Req,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
-import { CurrentUser } from "../../auth/decorators/current-user.decorator";
 import { MediaUploadService } from "../services/media-upload.service";
 import {
   ApiTags,
@@ -21,6 +22,13 @@ import {
   ApiConsumes,
   ApiBody,
 } from "@nestjs/swagger";
+import { Request } from "express";
+import { User } from "../../auth/entities/user.entity";
+
+// Define interface for request with user
+interface RequestWithUser extends Request {
+  user?: User;
+}
 
 @ApiTags("Chat Media")
 @ApiBearerAuth()
@@ -59,13 +67,17 @@ export class MediaUploadController {
   @UseInterceptors(FileInterceptor("file"))
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
-    @CurrentUser("id") userId: string,
+    @Req() req: RequestWithUser,
   ): Promise<{ url: string }> {
     if (!file) {
       throw new BadRequestException("No file uploaded");
     }
 
-    const url = await this.mediaUploadService.uploadFile(file, userId);
+    if (!req.user) {
+      throw new UnauthorizedException();
+    }
+
+    const url = await this.mediaUploadService.uploadFile(file, req.user.id);
     return { url };
   }
 
@@ -86,8 +98,12 @@ export class MediaUploadController {
   })
   async deleteFile(
     @Param("filename") filename: string,
-    @CurrentUser("id") userId: string,
+    @Req() req: RequestWithUser,
   ): Promise<{ success: boolean }> {
+    if (!req.user) {
+      throw new UnauthorizedException();
+    }
+
     // Construct URL from filename
     // This is a simple approach; in a real app, you might want to store file metadata in a database
     const baseUrl = process.env.API_URL || "http://localhost:3000";
@@ -95,7 +111,7 @@ export class MediaUploadController {
 
     // Validate that the file belongs to the user before deletion
     // For this example, we're using a filename pattern that includes the user ID
-    if (!filename.startsWith(userId)) {
+    if (!filename.startsWith(req.user.id)) {
       throw new BadRequestException("You can only delete your own files");
     }
 

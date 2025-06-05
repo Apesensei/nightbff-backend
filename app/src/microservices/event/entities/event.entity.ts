@@ -29,6 +29,10 @@ export class Event {
   @Index() // Add index for filtering by venue
   venueId?: string;
 
+  @Index() // Added index for cityId
+  @Column({ name: "city_id", type: "uuid", nullable: true })
+  cityId?: string;
+
   @Column({ nullable: true })
   customLocation?: string;
 
