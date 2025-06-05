@@ -1,6 +1,6 @@
-import { JwtService } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Test } from '@nestjs/testing';
+import { JwtService } from "@nestjs/jwt";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { Test } from "@nestjs/testing";
 
 /**
  * Generates a JWT token suitable for test environments.
@@ -16,39 +16,44 @@ export async function generateTestJwt(
   payload: { userId: string; [key: string]: any },
   expiresIn?: string,
 ): Promise<string> {
-
   // Determine if running in a CI environment where .env files might not exist
-  const isCI = process.env.CI === 'true';
+  const isCI = process.env.CI === "true";
 
   // Create a minimal standalone NestJS module to access ConfigService
   const moduleRef = await Test.createTestingModule({
     imports: [
       ConfigModule.forRoot({
         // Load .env.test specifically, unless in CI where env vars are expected directly
-        envFilePath: isCI ? undefined : '.env.test',
+        envFilePath: isCI ? undefined : ".env.test",
         // If in CI, ignore .env file absence; otherwise, it might warn/error
         ignoreEnvFile: isCI,
         // Allow environment variables to override .env file values
-        load: [() => ({ /* Add default test values here if needed */ })], // Optional default values
+        load: [
+          () => ({
+            /* Add default test values here if needed */
+          }),
+        ], // Optional default values
       }),
     ],
     providers: [
-        // Provide JwtService using the loaded configuration
-        {
-            provide: JwtService,
-            useFactory: (configService: ConfigService) => {
-                const secret = configService.get<string>('JWT_SECRET');
-                if (!secret) {
-                    // Provide a default secret ONLY FOR TESTS if none is found
-                    // WARNING: Do not use this default in production!
-                    console.warn('JWT_SECRET not found in test config, using default test secret.');
-                    return new JwtService({ secret: 'DEFAULT_TEST_SECRET_CHANGE_ME' });
-                }
-                return new JwtService({ secret });
-            },
-            inject: [ConfigService],
+      // Provide JwtService using the loaded configuration
+      {
+        provide: JwtService,
+        useFactory: (configService: ConfigService) => {
+          const secret = configService.get<string>("JWT_SECRET");
+          if (!secret) {
+            // Provide a default secret ONLY FOR TESTS if none is found
+            // WARNING: Do not use this default in production!
+            console.warn(
+              "JWT_SECRET not found in test config, using default test secret.",
+            );
+            return new JwtService({ secret: "DEFAULT_TEST_SECRET_CHANGE_ME" });
+          }
+          return new JwtService({ secret });
         },
-        ConfigService, // Ensure ConfigService itself is provided
+        inject: [ConfigService],
+      },
+      ConfigService, // Ensure ConfigService itself is provided
     ],
   }).compile();
 
@@ -56,7 +61,7 @@ export async function generateTestJwt(
   const configService = moduleRef.get(ConfigService);
 
   // Use the loaded config for expiration, with a sensible test default
-  const defaultExpiresIn = configService.get<string>('JWT_EXPIRES_IN', '1h');
+  const defaultExpiresIn = configService.get<string>("JWT_EXPIRES_IN", "1h");
 
   // Ensure the jwtService instance has the secret correctly configured
   // (The factory above should handle this)
@@ -68,13 +73,15 @@ export async function generateTestJwt(
   const finalPayload = { sub: payload.userId, ...payload };
 
   try {
-      const token = jwtService.sign(finalPayload, options);
-       // Optional: Close the temporary module context if needed
-      // await moduleRef.close();
-      return token;
+    const token = jwtService.sign(finalPayload, options);
+    // Optional: Close the temporary module context if needed
+    // await moduleRef.close();
+    return token;
   } catch (error) {
-      console.error("Error signing JWT in test helper:", error);
-      // await moduleRef.close();
-      throw new Error("Failed to generate test JWT. Check JWT_SECRET configuration.");
+    console.error("Error signing JWT in test helper:", error);
+    // await moduleRef.close();
+    throw new Error(
+      "Failed to generate test JWT. Check JWT_SECRET configuration.",
+    );
   }
-} 
+}

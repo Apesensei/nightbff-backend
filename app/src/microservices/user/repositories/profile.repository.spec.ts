@@ -85,12 +85,9 @@ describe("ProfileRepository (Integration)", () => {
     };
 
     // Use the base repository to save the profile
-    const profile = await baseProfileRepository.save(
-      baseProfileRepository.create(profileData),
-    );
+    await baseProfileRepository.save(baseProfileRepository.create(profileData));
 
     // Re-fetch to ensure relations are loaded if necessary (depends on repo logic)
-    // This assumes ProfileRepository can find by userId or similar
     const savedProfile = await baseProfileRepository.findOne({
       where: { userId: user.id },
       relations: ["user"],
@@ -153,15 +150,15 @@ describe("ProfileRepository (Integration)", () => {
 
     it("should respect the fetchLimit", async () => {
       // Arrange: Seed more data than the limit
-      const user1 = await seedUserAndProfile({
+      await seedUserAndProfile({
         email: "user1@test.com",
         lastActiveAt: new Date(Date.now() - 1000),
       });
-      const user2 = await seedUserAndProfile({
+      await seedUserAndProfile({
         email: "user2@test.com",
         lastActiveAt: new Date(Date.now() - 2000),
       });
-      const user3 = await seedUserAndProfile({
+      await seedUserAndProfile({
         email: "user3@test.com",
         lastActiveAt: new Date(Date.now() - 3000),
       });

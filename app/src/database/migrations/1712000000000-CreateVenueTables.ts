@@ -98,16 +98,26 @@ export class CreateVenueTables1712000000000 implements MigrationInterface {
     );
 
     // Add FK for owner_id if users table exists (it should now)
-    await queryRunner.createForeignKey(
-      "venues",
-      new TableForeignKey({
-        columnNames: ["owner_id"],
-        referencedColumnNames: ["id"],
-        referencedTableName: "users",
-        onDelete: "SET NULL", // Or "CASCADE" depending on desired behavior
-        onUpdate: "CASCADE",
-      }),
-    );
+    const foreignKeyName = "FK_venues_owner_id_users";
+    const foreignKeyExists = await queryRunner.query(`
+      SELECT constraint_name
+      FROM information_schema.table_constraints
+      WHERE table_name = 'venues' AND constraint_name = '${foreignKeyName}'
+    `);
+
+    if (!foreignKeyExists.length) {
+      await queryRunner.createForeignKey(
+        "venues",
+        new TableForeignKey({
+          name: foreignKeyName, // Explicitly named constraint
+          columnNames: ["owner_id"],
+          referencedColumnNames: ["id"],
+          referencedTableName: "users",
+          onDelete: "SET NULL",
+          onUpdate: "CASCADE",
+        }),
+      );
+    }
 
     // --- Create venue_hours table ---
     await queryRunner.createTable(
@@ -148,16 +158,27 @@ export class CreateVenueTables1712000000000 implements MigrationInterface {
       true,
     );
 
-    await queryRunner.createForeignKey(
-      "venue_hours",
-      new TableForeignKey({
-        columnNames: ["venue_id"],
-        referencedColumnNames: ["id"],
-        referencedTableName: "venues",
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
-      }),
-    );
+    // FK for venue_hours to venues
+    const venueHoursFkName = "FK_venue_hours_venue_id_venues";
+    const venueHoursFkExists = await queryRunner.query(`
+      SELECT constraint_name
+      FROM information_schema.table_constraints
+      WHERE table_name = 'venue_hours' AND constraint_name = '${venueHoursFkName}'
+    `);
+
+    if (!venueHoursFkExists.length) {
+      await queryRunner.createForeignKey(
+        "venue_hours",
+        new TableForeignKey({
+          name: venueHoursFkName, // Explicitly named constraint
+          columnNames: ["venue_id"],
+          referencedColumnNames: ["id"],
+          referencedTableName: "venues",
+          onDelete: "CASCADE",
+          onUpdate: "CASCADE",
+        }),
+      );
+    }
 
     // --- Create venue_events table ---
     await queryRunner.createTable(
@@ -228,16 +249,29 @@ export class CreateVenueTables1712000000000 implements MigrationInterface {
       true,
     );
 
-    await queryRunner.createForeignKey(
-      "venue_events",
-      new TableForeignKey({
-        columnNames: ["venue_id"],
-        referencedColumnNames: ["id"],
-        referencedTableName: "venues",
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
-      }),
-    );
+    // FK for venue_events to venues
+    const venueEventsFkName = "FK_venue_events_venue_id_venues";
+    const venueEventsFkExistsResult = await queryRunner.query(`
+      SELECT constraint_name 
+      FROM information_schema.referential_constraints 
+      WHERE constraint_name = '${venueEventsFkName}' AND 
+            unique_constraint_schema = 'public' AND -- Assuming venues table is in public schema
+            constraint_schema = 'public' -- Assuming venue_events table is in public schema
+    `);
+
+    if (venueEventsFkExistsResult.length === 0) {
+      await queryRunner.createForeignKey(
+        "venue_events",
+        new TableForeignKey({
+          name: venueEventsFkName, // Explicitly named constraint
+          columnNames: ["venue_id"],
+          referencedColumnNames: ["id"],
+          referencedTableName: "venues",
+          onDelete: "CASCADE",
+          onUpdate: "CASCADE",
+        }),
+      );
+    }
 
     // --- Create venue_reviews table ---
     await queryRunner.createTable(

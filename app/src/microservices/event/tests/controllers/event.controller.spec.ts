@@ -151,7 +151,7 @@ describe("EventController", () => {
 
       // Act
       const result = await eventController.findAll(
-        userId,
+        { user: { id: userId } } as any,
         expectedLimit,
         undefined,
         expectedTitle,
@@ -191,7 +191,7 @@ describe("EventController", () => {
 
       // Act: Call the controller endpoint method
       const result = await eventController.findAll(
-        userId,
+        { user: { id: userId } } as any,
         undefined, // limit
         undefined, // offset
         undefined, // search
@@ -224,7 +224,7 @@ describe("EventController", () => {
 
       // Act: Call the controller endpoint method
       const result = await eventController.findAll(
-        userId,
+        { user: { id: userId } } as any,
         undefined, // limit
         undefined, // offset
         undefined, // search
@@ -251,9 +251,9 @@ describe("EventController", () => {
       mockAuthGuard.canActivate.mockResolvedValue(false);
 
       // Act & Assert
-      await expect(eventController.findAll(userId)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        eventController.findAll({ user: { id: userId } } as any),
+      ).rejects.toThrow(UnauthorizedException);
       expect(mockEventService.findAll).not.toHaveBeenCalled();
     });
   });
@@ -436,7 +436,7 @@ describe("EventController", () => {
 
       // Act & Assert
       await expect(
-        eventController.searchPlans(userId, searchDto),
+        eventController.searchPlans({ user: { id: userId } } as any, searchDto),
       ).rejects.toThrow(UnauthorizedException);
       expect(mockEventService.searchPlans).not.toHaveBeenCalled();
     });
@@ -468,7 +468,10 @@ describe("EventController", () => {
       mockEventService.findAll.mockResolvedValue(mockFindAllResult);
 
       // Act
-      const result = await eventController.searchPlans(userId, searchDto);
+      const result = await eventController.searchPlans(
+        { user: { id: userId } } as any,
+        searchDto,
+      );
 
       // Assert
       // Verify findAll was called with the correct mapped options and userId

@@ -13,6 +13,7 @@ import {
   MoreThan,
   FindOptionsWhere,
   LessThan,
+  UpdateResult,
 } from "typeorm";
 import { Venue } from "../entities/venue.entity";
 import { VenueSortBy } from "../dto/venue-search.dto";
@@ -43,7 +44,7 @@ export class VenueRepository {
   async findById(id: string): Promise<Venue> {
     const venue = await this.venueRepository.findOne({
       where: { id },
-      relations: ["venueTypes", "venueHours", "venuePhotos"],
+      relations: ["venueTypes", "hours", "venuePhotos"],
     });
 
     if (!venue) {
@@ -82,7 +83,7 @@ export class VenueRepository {
         .createQueryBuilder("venue")
         // Selectively join necessary relations
         .leftJoinAndSelect("venue.venueTypes", "venueType")
-        .leftJoinAndSelect("venue.venueHours", "venueHour") // Needed for openNow filter
+        .leftJoinAndSelect("venue.hours", "venueHour") // Needed for openNow filter
         .leftJoinAndSelect(
           "venue.venuePhotos",
           "venuePhoto",
@@ -107,44 +108,30 @@ export class VenueRepository {
         const longitude = options.longitude;
         const radiusMeters = radiusMiles * 1609.34; // Convert miles to meters
 
-        // Remove Approx bounding box logic
-        // const latDelta = radiusMiles / 69;
-        // const lngDelta = radiusMiles / 55;
-        // queryBuilder
-        //   .andWhere("venue.latitude BETWEEN :minLat AND :maxLat", { ... })
-        //   .andWhere("venue.longitude BETWEEN :minLng AND :maxLng", { ... });
-
         // Add PostGIS ST_DWithin for efficient radius filtering
         queryBuilder.andWhere(
           `ST_DWithin(
-            venue.location::geography, -- Cast geometry to geography
-            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
-            :radiusMeters
+            venue.location::geography,
+            ST_SetSRID(ST_MakePoint(:searchLongitude, :searchLatitude), 4326)::geography,
+            :searchRadiusMeters
           )`,
           {
-            latitude: latitude,
-            longitude: longitude,
-            radiusMeters: radiusMeters,
+            searchLatitude: latitude,
+            searchLongitude: longitude,
+            searchRadiusMeters: radiusMeters,
           },
         );
-
-        // Remove Haversine distance calculation
-        // queryBuilder
-        //   .addSelect(`( 6371 * acos(...) )`, "distance")
-        //   .setParameter("latitude", latitude)
-        //   .setParameter("longitude", longitude);
 
         // Add PostGIS ST_Distance for sorting (distance in meters)
         queryBuilder.addSelect(
           `ST_Distance(
             venue.location::geography, 
-            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+            ST_SetSRID(ST_MakePoint(:distanceLongitude, :distanceLatitude), 4326)::geography
             )`,
-          "distance"
-          );
-        queryBuilder.setParameter("latitude", latitude);
-        queryBuilder.setParameter("longitude", longitude);
-
+          "distance",
+        );
+        queryBuilder.setParameter("distanceLatitude", latitude);
+        queryBuilder.setParameter("distanceLongitude", longitude);
       }
       // If neither venueIds nor lat/lng provided, it becomes a general search
 
@@ -229,23 +216,63 @@ export class VenueRepository {
           }
       }
 
-      // --- Conditional Pagination ---
+      // --- Apply Standard Pagination (only if not filtering by venueIds) ---
       if (!(options.venueIds && options.venueIds.length > 0)) {
-        // Apply pagination ONLY if NOT filtering by specific venue IDs
-        queryBuilder.take(limit).skip(offset);
-      } // Else: Fetch all matching venues as the service will handle pagination
+        queryBuilder.skip(offset).take(limit);
+      }
 
-      // Execute query and return results with count
-      return await queryBuilder.getManyAndCount();
+      // Execute query
+      const [venues, total] = await queryBuilder.getManyAndCount();
+
+      // If it was a geo-search, attach the calculated distance to each venue entity
+      if (isGeoSearch) {
+        venues.forEach((venue) => {
+          // Type assertion needed as distance is added via addSelect
+          venue.distance = (venue as any).distance;
+        });
+      }
+
+      return [venues, total];
     } catch (error) {
-      const logger = new Logger(VenueRepository.name); // Add logger instance if needed
-      logger.error(`Failed to search venues: ${error.message}`, error.stack);
-      // Re-throw or handle appropriately
-      throw new InternalServerErrorException(
-        `Failed to search venues: ${error.message}`,
-      );
+      // Add specific logging or error handling here
+      throw new InternalServerErrorException("Failed to search venues", error);
     }
   }
+
+  // --- Backfill Methods ---
+
+  /**
+   * Finds venues that do not have a cityId, with pagination.
+   * @param limit - Number of records per batch
+   * @param offset - Number of records to skip
+   * @returns Tuple containing an array of venues and the total count matching the criteria.
+   */
+  async findWithoutCityId(
+    limit: number,
+    offset: number,
+  ): Promise<[Venue[], number]> {
+    return this.venueRepository.findAndCount({
+      where: {
+        cityId: IsNull(),
+      },
+      select: ["id", "location"], // Only select necessary fields for backfill
+      order: { createdAt: "ASC" }, // Process older venues first
+      take: limit,
+      skip: offset,
+    });
+  }
+
+  /**
+   * Updates the cityId for a specific venue.
+   * @param venueId - The ID of the venue to update.
+   * @param cityId - The ID of the city to associate.
+   * @returns TypeORM UpdateResult.
+   */
+  async updateCityId(venueId: string, cityId: string): Promise<UpdateResult> {
+    return this.venueRepository.update({ id: venueId }, { cityId: cityId });
+  }
+
+  // --- End Backfill Methods ---
 
   /**
    * Update a venue with admin overrides
@@ -560,25 +587,33 @@ export class VenueRepository {
     }
   }
 
-  // --- Add new method for finding stale venues --- 
-  async findStaleLocations(cutoffDate: Date, limit: number = 1000): Promise<Pick<Venue, 'id' | 'location'>[]> {
+  // --- Add new method for finding stale venues ---
+  async findStaleLocations(
+    cutoffDate: Date,
+    limit: number = 1000,
+  ): Promise<Pick<Venue, "id" | "location">[]> {
     const logger = new Logger(VenueRepository.name);
     try {
-        logger.debug(`Finding stale venues with lastRefreshed < ${cutoffDate.toISOString()} or NULL, limit ${limit}`);
-        return await this.venueRepository.find({
-            select: ['id', 'location'], // Select only necessary fields
-            where: [
-                { lastRefreshed: IsNull() },
-                { lastRefreshed: LessThan(cutoffDate) }
-            ],
-            take: limit, // Limit the number processed per run
-            order: {
-                lastRefreshed: 'ASC' // Process oldest first (optional)
-            }
-        });
+      logger.debug(
+        `Finding stale venues with lastRefreshed < ${cutoffDate.toISOString()} or NULL, limit ${limit}`,
+      );
+      return await this.venueRepository.find({
+        select: ["id", "location"], // Select only necessary fields
+        where: [
+          { lastRefreshed: IsNull() },
+          { lastRefreshed: LessThan(cutoffDate) },
+        ],
+        take: limit, // Limit the number processed per run
+        order: {
+          lastRefreshed: "ASC", // Process oldest first (optional)
+        },
+      });
     } catch (error) {
-        logger.error(`Failed to find stale venues: ${error.message}`, error.stack);
-        throw new InternalServerErrorException('Failed to retrieve stale venues');
+      logger.error(
+        `Failed to find stale venues: ${error.message}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException("Failed to retrieve stale venues");
     }
   }
   // --- End new method ---

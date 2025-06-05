@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # --- Application Services ---
+  # These would typically run on the 'app_server' EC2 instance
+
+  nightbff_app:
+    build:
+      context: ../../app # Context is the root of the 'app' directory
+      dockerfile: Dockerfile # Points to app/Dockerfile
+    container_name: nightbff_app
+    env_file:
+      - ../.env.performance # Path to performance environment variables
+    ports:
+      # The internal port is defined by EXPOSE in Dockerfile (e.g., 3000) 
+      # and the PORT env var in .env.performance. 
+      # Map it to a host port, e.g., 3000 on host to 3000 in container.
+      - "3000:3000" 
+    restart: unless-stopped
+   
+
+  # --- Monitoring Agents for the App Server ---
+  # These will monitor the host where nightbff_app runs (app_server EC2 instance)
+  node_exporter_app: # As targeted in prometheus.yml
+    image: prom/node-exporter:v1.7.0
+    container_name: node_exporter_app
+    pid: host # Share host PID namespace for more accurate host metrics
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9101:9100" 
+    restart: unless-stopped
+
+  cadvisor_app: # As targeted in prometheus.yml
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor_app
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw # Docker socket
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8081:8080" 
+    restart: unless-stopped
+      
+  # Note: node_exporter_workers and cadvisor_workers are removed for now.
+  # If you have separate worker processes that need to run in different containers
+  # (e.g., BullMQ consumers running as distinct Node.js apps),
+  # we would need to define Dockerfiles and service definitions for them.
+  # If workers are part of the main nightbff_app process (e.g. NestJS @Cron jobs or @nestjs/bull consumers within the same app),
+  # then this single app container is sufficient.
+
+# Removed postgres_performance and redis_performance external network definitions here
+# as they should already be part of performance_net for depends_on to work. 

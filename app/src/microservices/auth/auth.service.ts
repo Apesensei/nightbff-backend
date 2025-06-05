@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
 import { SupabaseProvider } from "@/common/database/supabase.provider";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { SignInDto } from "./dto/sign-in.dto";
@@ -16,6 +17,7 @@ import { AuthRepository } from "./repositories/auth.repository";
  * @description Handles user sign-up, sign-in, and sign-out processes,
  * interacting with both Supabase Auth for authentication and the local
  * AuthRepository for storing/retrieving user data in the application database.
+ * Returns local JWT tokens for consistent validation across the application.
  */
 @Injectable()
 export class AuthService {
@@ -23,6 +25,7 @@ export class AuthService {
     private readonly supabaseProvider: SupabaseProvider,
     private readonly configService: ConfigService,
     private readonly authRepository: AuthRepository,
+    private readonly jwtService: JwtService,
   ) {}
 
   /**
@@ -90,42 +93,121 @@ export class AuthService {
   /**
    * @summary Authenticates a user.
    *
-   * @description Signs in a user using email and password via Supabase Auth.
-   * Retrieves the corresponding user profile data from the local database.
+   * @description Signs in a user using email and password. In performance mode,
+   * validates against local database only. In normal mode, uses Supabase Auth.
+   * Generates and returns a local JWT token for subsequent API calls.
    *
    * @param {SignInDto} signInDto - User login data (email, password).
-   * @returns {Promise<object>} Object containing user data and Supabase session details (tokens).
-   * @throws {UnauthorizedException} If Supabase Auth returns an error (invalid credentials).
+   * @returns {Promise<object>} Object containing user data and local JWT session details.
+   * @throws {UnauthorizedException} If authentication fails.
    * @throws {InternalServerErrorException} For other unexpected errors.
    */
   async signIn(signInDto: SignInDto) {
     try {
-      const supabase = this.supabaseProvider.getClient();
+      const isPerformanceMode =
+        this.configService.get<string>("PERFORMANCE_MODE") === "true";
+      const authMode = this.configService.get<string>("AUTH_MODE", "supabase");
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: signInDto.email,
-        password: signInDto.password,
-      });
+      let userId: string;
+      let userEmail: string;
 
-      if (error) {
-        throw new UnauthorizedException("Invalid credentials");
+      if (isPerformanceMode || authMode === "local") {
+        // Performance mode: validate credentials against local database only
+        console.log("🚀 Performance mode: Using local authentication");
+
+        // For performance testing, we'll lookup user by email and validate a basic password
+        // This assumes users were seeded with a known password pattern
+        const localUser = await this.authRepository.getUserByEmail(
+          signInDto.email,
+        );
+
+        if (!localUser) {
+          throw new UnauthorizedException("Invalid credentials");
+        }
+
+        // In performance mode, we accept a standard password for all test users
+        // In a real implementation, you'd hash and compare passwords properly
+        const performancePassword = this.configService.get<string>(
+          "PERFORMANCE_AUTH_PASSWORD",
+          "password123",
+        );
+        if (signInDto.password !== performancePassword) {
+          throw new UnauthorizedException("Invalid credentials");
+        }
+
+        userId = localUser.id;
+        userEmail = localUser.email;
+      } else {
+        // Standard mode: use Supabase authentication
+        console.log("🔐 Standard mode: Using Supabase authentication");
+        const supabase = this.supabaseProvider.getClient();
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: signInDto.email,
+          password: signInDto.password,
+        });
+
+        if (error) {
+          throw new UnauthorizedException("Invalid credentials");
+        }
+
+        if (!data.user?.id || !data.user?.email) {
+          throw new UnauthorizedException(
+            "Invalid user data from authentication provider",
+          );
+        }
+
+        userId = data.user.id;
+        userEmail = data.user.email;
       }
 
-      // Get user profile
-      const userProfile = await this.authRepository.getUserById(data.user?.id);
+      // Get user profile from local database (common for both modes)
+      const userProfile = await this.authRepository.getUserById(userId);
+
+      if (!userProfile) {
+        throw new UnauthorizedException("User profile not found");
+      }
+
+      // Generate local JWT token (common for both modes)
+      const payload = {
+        sub: userId,
+        userId: userId,
+        email: userEmail,
+        username: userProfile?.username,
+      };
+
+      const accessToken = this.jwtService.sign(payload);
+      const expiresIn = this.configService.get<string>("JWT_EXPIRES_IN", "7d");
+
+      // Calculate expiration timestamp
+      const expiresAt = new Date();
+      const expirationValue = parseInt(expiresIn.replace(/\D/g, ""));
+      const expirationUnit = expiresIn.replace(/\d/g, "");
+
+      if (expirationUnit.includes("d")) {
+        expiresAt.setDate(expiresAt.getDate() + expirationValue);
+      } else if (expirationUnit.includes("h")) {
+        expiresAt.setHours(expiresAt.getHours() + expirationValue);
+      } else {
+        // Default to days if unit is unclear
+        expiresAt.setDate(expiresAt.getDate() + expirationValue);
+      }
 
       return {
         success: true,
         data: {
           user: {
-            id: data.user?.id,
-            email: data.user?.email,
-            ...userProfile,
+            id: userId,
+            email: userEmail,
+            username: userProfile.username,
+            displayName: userProfile.displayName,
+            isVerified: userProfile.isVerified,
+            isPremium: userProfile.isPremium,
           },
           session: {
-            accessToken: data.session?.access_token,
-            refreshToken: data.session?.refresh_token,
-            expiresAt: data.session?.expires_at,
+            accessToken: accessToken,
+            refreshToken: null, // We'll implement refresh tokens later if needed
+            expiresAt: expiresAt.toISOString(),
           },
         },
       };
@@ -133,6 +215,7 @@ export class AuthService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
+      console.error("Auth service error:", error);
       throw new InternalServerErrorException("Failed to sign in");
     }
   }

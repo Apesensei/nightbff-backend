@@ -33,6 +33,11 @@ const createMockVenueRepository = (): Partial<
 > => ({
   search: jest.fn(),
   findById: jest.fn(), // Add other methods if VenueService calls them indirectly
+  findWithoutCityId: jest.fn(), // Added for new tests
+  updateCityId: jest.fn(), // Added for new tests
+  update: jest.fn(), // Added for completeness
+  incrementViewCount: jest.fn(), // Existing dependency
+  // Add other methods as needed by existing tests
 });
 
 const createMockInterestService = (): Partial<
@@ -180,8 +185,12 @@ describe("VenueService", () => {
   >;
   let mockPlanTrendingService: ReturnType<typeof createMockPlanTrendingService>;
   let mockConfigService: ReturnType<typeof createMockConfigService>;
-  let mockScannedAreaRepository: ReturnType<typeof createMockScannedAreaRepository>;
-  let mockVenueScanProducerService: ReturnType<typeof createMockVenueScanProducerService>;
+  let mockScannedAreaRepository: ReturnType<
+    typeof createMockScannedAreaRepository
+  >;
+  let mockVenueScanProducerService: ReturnType<
+    typeof createMockVenueScanProducerService
+  >;
   let logger: Logger;
   let loggerDebugSpy: jest.SpyInstance;
   let loggerErrorSpy: jest.SpyInstance;
@@ -192,7 +201,7 @@ describe("VenueService", () => {
   const mockVenue: Venue = {
     id: "venue-1",
     name: "Test Venue",
-    location: 'POINT(-74.006 40.7128)',
+    location: "POINT(-74.006 40.7128)",
     address: "123 Test St",
     rating: 4.5,
     reviewCount: 100,
@@ -549,15 +558,18 @@ describe("VenueService", () => {
     });
 
     it("(Regular Interest ID - Interest -> No Events) should return empty if interestService returns no event IDs", async () => {
-      // Arrange
+      // 1. Setup Mocks
+      mockInterestService.getEventIdsByInterest!.mockResolvedValueOnce([]); // Interest returns no event IDs
+
+      // Crucially, mock the repository search to return an empty iterable
+      mockVenueRepository.search!.mockResolvedValueOnce([[], 0]);
+
+      // 2. Call Service
       const searchDto: VenueSearchDto = {
         interestId: mockInterestId,
         limit: 10,
         offset: 0,
       };
-      mockInterestService.getEventIdsByInterest!.mockResolvedValue([]); // No events for this interest
-
-      // Act
       const result = await service.searchVenues(searchDto, mockUserId);
 
       // Assert
@@ -576,26 +588,27 @@ describe("VenueService", () => {
     });
 
     it("(Regular Interest ID - Interest+Events -> No Venues) should return empty if events have no associated venues", async () => {
-      // Arrange
+      // 1. Setup Mocks
       const searchDto: VenueSearchDto = {
         interestId: mockInterestId,
         limit: 10,
         offset: 0,
       };
-      const mockEventsWithNullVenue: Partial<Event>[] = [
-        { id: "e1", venueId: undefined, trendingScore: 10 },
-        { id: "e2", venueId: undefined, trendingScore: 5 },
-      ];
-
-      mockInterestService.getEventIdsByInterest!.mockResolvedValue([
-        "e1",
-        "e2",
-      ]);
-      mockEventRepository.findByIdsWithDetails!.mockResolvedValue(
-        mockEventsWithNullVenue,
+      const mockEventIds = ["event-1", "event-2"];
+      mockInterestService.getEventIdsByInterest!.mockResolvedValueOnce(
+        mockEventIds,
       );
+      // Mock findByIdsWithDetails to return events WITHOUT venue IDs
+      mockEventRepository.findByIdsWithDetails!.mockResolvedValueOnce([
+        { id: "event-1", venueId: null, trendingScore: 10 },
+        { id: "event-2", venueId: undefined, trendingScore: 5 },
+      ]);
 
-      // Act
+      // Crucially, mock the repository search to return an empty iterable
+      // This might not even be called if getVenueIdsForEvents returns empty, but good practice.
+      mockVenueRepository.search!.mockResolvedValueOnce([[], 0]);
+
+      // 2. Call Service
       const result = await service.searchVenues(searchDto, mockUserId);
 
       // Assert
@@ -603,7 +616,7 @@ describe("VenueService", () => {
         mockInterestId,
       );
       expect(mockEventRepository.findByIdsWithDetails).toHaveBeenCalledWith(
-        ["e1", "e2"],
+        mockEventIds,
         ["id", "venueId", "trendingScore"],
       );
       // Venue repository should not be called as venueIds will be empty
@@ -660,14 +673,14 @@ describe("VenueService", () => {
       expect(mockEventRepository.findByIdsWithDetails).not.toHaveBeenCalled();
       // Venue repo SHOULD be called, but with standard options (reverted)
       expect(mockVenueRepository.search).toHaveBeenCalledTimes(1);
-      expect(mockVenueRepository.search).toHaveBeenCalledWith(
-        // Check for specific standard search parameters, exclude venueIds
-        expect.objectContaining({
-          query: searchDto.query,
-          limit: searchDto.limit,
-          offset: searchDto.offset,
-        }),
-      );
+      // Directly check the arguments passed to the mock
+      const receivedOptions = mockVenueRepository.search!.mock.calls[0][0];
+      expect(receivedOptions).toBeDefined();
+      expect(receivedOptions.query).toBe(searchDto.query);
+      expect(receivedOptions.limit).toBe(searchDto.limit); // Check limit
+      expect(receivedOptions.offset).toBe(searchDto.offset); // Check offset
+      expect(receivedOptions.venueIds).toBeUndefined(); // Ensure venueIds is not set
+
       // Verify the result matches the fallback standard search
       expect(result.items).toHaveLength(1);
       expect(result.items[0].id).toEqual("v-fallback");
@@ -857,4 +870,91 @@ describe("VenueService", () => {
 
     // --- End 'For You' test cases ---
   });
+
+  // --- NEW TESTS for Backfill Functionality ---
+
+  describe("findVenuesWithoutCityId", () => {
+    const limit = 50;
+    const offset = 0;
+    const mockVenues: Venue[] = [mockVenue]; // Reuse mockVenue or create specific ones
+    const mockTotal = 1;
+
+    it("should call venueRepository.findWithoutCityId with correct args and return results", async () => {
+      mockVenueRepository.findWithoutCityId!.mockResolvedValue([
+        mockVenues,
+        mockTotal,
+      ]);
+
+      const result = await service.findVenuesWithoutCityId(limit, offset);
+
+      expect(mockVenueRepository.findWithoutCityId).toHaveBeenCalledWith(
+        limit,
+        offset,
+      );
+      expect(result).toEqual([mockVenues, mockTotal]);
+    });
+
+    it("should return empty array and 0 total if repository finds none", async () => {
+      mockVenueRepository.findWithoutCityId!.mockResolvedValue([[], 0]);
+
+      const result = await service.findVenuesWithoutCityId(limit, offset);
+
+      expect(mockVenueRepository.findWithoutCityId).toHaveBeenCalledWith(
+        limit,
+        offset,
+      );
+      expect(result).toEqual([[], 0]);
+    });
+
+    it("should propagate errors from venueRepository.findWithoutCityId", async () => {
+      const mockError = new Error("Repository find failed");
+      mockVenueRepository.findWithoutCityId!.mockRejectedValue(mockError);
+
+      await expect(
+        service.findVenuesWithoutCityId(limit, offset),
+      ).rejects.toThrow(mockError);
+    });
+  });
+
+  describe("updateVenueCityId", () => {
+    const venueId = "venue-test-id";
+    const cityId = "city-test-id";
+
+    it("should call venueRepository.updateCityId and return true if affected > 0", async () => {
+      const mockUpdateResult = { affected: 1, raw: {}, generatedMaps: [] };
+      mockVenueRepository.updateCityId!.mockResolvedValue(mockUpdateResult);
+
+      const result = await service.updateVenueCityId(venueId, cityId);
+
+      expect(mockVenueRepository.updateCityId).toHaveBeenCalledWith(
+        venueId,
+        cityId,
+      );
+      expect(result).toBe(true);
+    });
+
+    it("should call venueRepository.updateCityId and return false if affected === 0", async () => {
+      const mockUpdateResult = { affected: 0, raw: {}, generatedMaps: [] };
+      mockVenueRepository.updateCityId!.mockResolvedValue(mockUpdateResult);
+
+      const result = await service.updateVenueCityId(venueId, cityId);
+
+      expect(mockVenueRepository.updateCityId).toHaveBeenCalledWith(
+        venueId,
+        cityId,
+      );
+      expect(result).toBe(false);
+    });
+
+    it("should propagate errors from venueRepository.updateCityId", async () => {
+      const mockError = new Error("Repository update failed");
+      mockVenueRepository.updateCityId!.mockRejectedValue(mockError);
+
+      await expect(service.updateVenueCityId(venueId, cityId)).rejects.toThrow(
+        mockError,
+      );
+    });
+  });
+
+  // --- END NEW TESTS ---
 });

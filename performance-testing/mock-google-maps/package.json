@@ -1,0 +1,15 @@
+{
+  "name": "mock-google-maps",
+  "version": "1.0.0",
+  "description": "Mock Google Maps API server for performance testing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "morgan": "^1.10.0"
+  },
+  "author": "AI Assistant",
+  "license": "MIT"
+} 

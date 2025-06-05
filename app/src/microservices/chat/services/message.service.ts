@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   UnauthorizedException,
+  Inject,
+  forwardRef,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, Not, IsNull, In } from "typeorm";
@@ -35,6 +37,7 @@ export class MessageService {
     private readonly messageRepository: Repository<Message>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @Inject(forwardRef(() => ChatService))
     private readonly chatService: ChatService,
     private readonly eventEmitter: EventEmitter2,
   ) {}

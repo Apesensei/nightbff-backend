@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle' # Allows reloading config via API
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - performance_net
+
+  grafana:
+    image: grafana/grafana:10.1.5
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    networks:
+      - performance_net
+
+  node_exporter_monitoring:
+    image: prom/node-exporter:v1.7.0
+    container_name: node_exporter_monitoring # Specific to monitoring server
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+    networks:
+      - performance_net
+      
+  cadvisor_monitoring: # cAdvisor for the monitoring server itself
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor_monitoring
+    privileged: true # Required for cAdvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      # - /dev/disk/:/dev/disk:ro # Uncomment if disk io stats are needed and available
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - performance_net
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  performance_net:
+    external: true # Assumes performance_net is created by docker-compose.infra.yml or manually 

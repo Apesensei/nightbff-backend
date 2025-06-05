@@ -10,6 +10,21 @@ export class CreateUserTable1694400000000 implements MigrationInterface {
   name = "CreateUserTable1694400000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Ensure uuid-ossp extension is available for uuid_generate_v4()
+    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+
+    // Check if users_status_enum type exists
+    const enumExistsResult = await queryRunner.query(
+      `SELECT 1 FROM pg_type WHERE typname = 'users_status_enum' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')`,
+    );
+
+    if (enumExistsResult.length === 0) {
+      // Explicitly create enum type if it doesn't exist
+      await queryRunner.query(
+        `CREATE TYPE "public"."users_status_enum" AS ENUM('active', 'inactive', 'suspended')`,
+      );
+    }
+
     // Create users table based on User entity
     await queryRunner.createTable(
       new Table({
@@ -97,8 +112,9 @@ export class CreateUserTable1694400000000 implements MigrationInterface {
           {
             name: "status",
             type: "enum",
-            enum: ["active", "inactive", "suspended"],
-            default: "'active'", // Default needs quotes for enum
+            enumName: "users_status_enum", // Use the explicitly created enum
+            enum: ["active", "inactive", "suspended"], // Still provide for TypeORM metadata
+            default: "'active'",
             isNullable: false,
           },
           {
@@ -136,5 +152,14 @@ export class CreateUserTable1694400000000 implements MigrationInterface {
     // Drop indices if created
     // await queryRunner.dropIndex("users", "IDX_user_location");
     await queryRunner.dropTable("users");
+
+    // Check if users_status_enum type exists before trying to drop it
+    const enumExistsResult = await queryRunner.query(
+      `SELECT 1 FROM pg_type WHERE typname = 'users_status_enum' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')`,
+    );
+
+    if (enumExistsResult.length > 0) {
+      await queryRunner.query(`DROP TYPE "public"."users_status_enum"`);
+    }
   }
 }

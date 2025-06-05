@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, IsNull, Not, In } from "typeorm";
+import { Repository, IsNull, Not } from "typeorm";
 import { UserProfile } from "../entities/user-profile.entity";
 
 const DEFAULT_FETCH_LIMIT = 100;

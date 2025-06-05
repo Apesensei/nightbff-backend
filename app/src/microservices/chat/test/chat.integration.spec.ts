@@ -9,7 +9,7 @@ import {
 import { Repository } from "typeorm";
 import { JwtService } from "@nestjs/jwt";
 import { EventEmitterModule } from "@nestjs/event-emitter";
-import { ConfigModule } from "@nestjs/config";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 // Remove DatabaseModule if TypeOrmModule.forRootAsync is used or options provided directly
 // import { DatabaseModule } from "@/common/database/database.module";
 // Remove direct Testcontainers import from here
@@ -30,30 +30,10 @@ import { Message, MessageType } from "../entities/message.entity";
 import { User } from "../../auth/entities/user.entity";
 import { AuthModule } from "../../auth/auth.module";
 import { EventModule } from "../../event/event.module"; // Added import
+import { InterestModule } from "../../interest/interest.module"; // Added import for InterestModule
+import { CACHE_MANAGER } from "@nestjs/cache-manager"; // Import CACHE_MANAGER
+import KeyvRedis from "@keyv/redis"; // Import KeyvRedis
 
-// --- Add missing entity imports ---
-import { Event } from "../../event/entities/event.entity";
-import { EventAttendee } from "../../event/entities/event-attendee.entity";
-import { Interest } from "../../interest/entities/interest.entity";
-import { UserInterest } from "../../interest/entities/user-interest.entity";
-import { EventInterest } from "../../interest/entities/event-interest.entity";
-// --- End missing entity imports ---
-
-// --- Add missing AgeVerification entity import ---
-import { AgeVerification } from "../../auth/entities/age-verification.entity";
-// --- End missing AgeVerification entity import ---
-
-// Remove ALL Controller and Service imports if not directly used for setup/assertions
-// import { ChatService } from "../services/chat.service";
-// import { ChatController } from "../controllers/chat.controller";
-// import { MessageController } from "../controllers/message.controller";
-// import { ChatParticipantsController } from "../controllers/chat-participants.controller";
-
-// Remove DTO imports if not directly used for assertions
-// import { ChatResponseDto } from "../dto/chat-response.dto";
-// import { MessageResponseDto } from "../dto/message-response.dto";
-
-// Remove Testcontainers variables from here
 // let postgresContainer: StartedPostgreSqlContainer;
 let app: INestApplication;
 let typeOrmOptions: TypeOrmModuleOptions; // Store options from helper
@@ -75,6 +55,34 @@ describe("Chat API (e2e)", () => {
     typeOrmOptions = dbSetup.typeOrmOptions;
     // postgresContainer variable is managed within the helper
 
+    // --- Manually create a KeyvRedis store for CACHE_MANAGER override --- //
+    const configServiceForCache = new ConfigService(); // Assuming .env.test is loaded globally by ConfigModule
+    const redisHost = configServiceForCache.get<string>(
+      "REDIS_HOST",
+      "localhost",
+    );
+    const redisPort = configServiceForCache.get<number>("REDIS_PORT", 6379);
+    const redisPassword = configServiceForCache.get<string>("REDIS_PASSWORD");
+    const redisUsername = configServiceForCache.get<string>("REDIS_USERNAME");
+    let redisUri = "redis://";
+    if (redisUsername && redisPassword) {
+      redisUri += `${encodeURIComponent(redisUsername)}:${encodeURIComponent(redisPassword)}@`;
+    } else if (redisPassword) {
+      redisUri += `:${encodeURIComponent(redisPassword)}@`;
+    }
+    redisUri += `${redisHost}:${redisPort}`;
+    const keyvRedisStore = new KeyvRedis(redisUri);
+    const manualCacheManager = {
+      store: keyvRedisStore,
+      get: async (key: string) => keyvRedisStore.get(key),
+      set: async (key: string, value: any, ttl?: number) =>
+        keyvRedisStore.set(key, value, ttl),
+      del: async (key: string) => keyvRedisStore.delete(key),
+      reset: async () => keyvRedisStore.clear(),
+      // Add other methods if InterestAnalyticsService uses them, e.g., mget, mset, wrap
+    };
+    // --- End of manual store creation ---
+
     console.log("Compiling module...");
     const compiledModule: TestingModule = await Test.createTestingModule({
       imports: [
@@ -85,8 +93,12 @@ describe("Chat API (e2e)", () => {
         AuthModule,
         ChatModule,
         EventModule,
+        InterestModule, // Added InterestModule here
       ],
-    }).compile();
+    })
+      .overrideProvider(CACHE_MANAGER)
+      .useValue(manualCacheManager) // Override CACHE_MANAGER globally for this test module
+      .compile();
     console.log("Module compiled.");
 
     app = compiledModule.createNestApplication();

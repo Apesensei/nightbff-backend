@@ -1,5 +1,6 @@
 # Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
 
-# Override .gitignore for specific .env files needed by Cursor
-!.env.dev
-!.env.test
+# Override .gitignore for all .env files needed by Cursor
+# This will make all files starting with .env (e.g., .env, .env.local, .env.development)
+# visible to Cursor across the entire workspace.
+!**/.env*

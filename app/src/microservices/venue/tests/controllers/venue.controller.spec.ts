@@ -6,6 +6,11 @@ import { PaginatedVenueResponseDto } from "../../dto/paginated-venue-response.dt
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { JwtAuthGuard } from "../../../auth/guards/jwt-auth.guard";
 import { UnauthorizedException } from "@nestjs/common";
+import {
+  GetVenuesWithoutCityIdRequestDto,
+  UpdateVenueCityIdRequestDto,
+} from "../../dto/venue-backfill.dto";
+import { RpcException } from "@nestjs/microservices";
 
 describe("VenueController", () => {
   let controller: VenueController;
@@ -39,6 +44,8 @@ describe("VenueController", () => {
     searchVenues: jest.fn().mockResolvedValue(mockPaginatedResponse), // Default mock for searchVenues
     findById: jest.fn(),
     transformToVenueResponseDto: jest.fn(),
+    findVenuesWithoutCityId: jest.fn(),
+    updateVenueCityId: jest.fn(),
     // Add mocks for other methods like findById if needed by other controller endpoints
   };
 
@@ -193,6 +200,110 @@ describe("VenueController", () => {
     });
     // --- END NEW SKIPPED TEST CASE ---
   });
+
+  // --- NEW TESTS for RPC Handlers ---
+
+  describe("RPC Handlers (Backfill)", () => {
+    describe("handleGetVenuesWithoutCityId", () => {
+      const requestPayload: GetVenuesWithoutCityIdRequestDto = {
+        limit: 50,
+        offset: 10,
+      };
+      const mockVenues = [
+        {
+          id: "v-no-city-1",
+          name: "Venue Missing City 1",
+          location: { type: "Point", coordinates: [1, 1] },
+        } as any, // Use 'as any' or a proper mock factory
+      ];
+      const mockTotal = 1;
+
+      it("should call service.findVenuesWithoutCityId and return results", async () => {
+        mockVenueService.findVenuesWithoutCityId.mockResolvedValue([
+          mockVenues,
+          mockTotal,
+        ]);
+
+        const result =
+          await controller.handleGetVenuesWithoutCityId(requestPayload);
+
+        expect(service.findVenuesWithoutCityId).toHaveBeenCalledWith(
+          requestPayload.limit,
+          requestPayload.offset,
+        );
+        expect(result).toEqual({ venues: mockVenues, total: mockTotal });
+      });
+
+      it("should use default limit/offset if not provided", async () => {
+        mockVenueService.findVenuesWithoutCityId.mockResolvedValue([
+          mockVenues,
+          mockTotal,
+        ]);
+        const payloadWithoutDefaults = {}; // Empty payload
+
+        await controller.handleGetVenuesWithoutCityId(payloadWithoutDefaults);
+
+        expect(service.findVenuesWithoutCityId).toHaveBeenCalledWith(100, 0); // Check default values
+      });
+
+      it("should throw RpcException if service throws error", async () => {
+        const mockError = new Error("Service failure");
+        mockVenueService.findVenuesWithoutCityId.mockRejectedValue(mockError);
+
+        await expect(
+          controller.handleGetVenuesWithoutCityId(requestPayload),
+        ).rejects.toThrow(RpcException);
+        await expect(
+          controller.handleGetVenuesWithoutCityId(requestPayload),
+        ).rejects.toThrow(mockError.message); // Check if original message is preserved
+      });
+    });
+
+    describe("handleUpdateVenueCityId", () => {
+      const requestPayload: UpdateVenueCityIdRequestDto = {
+        venueId: "venue-to-update",
+        cityId: "new-city-id",
+      };
+
+      it("should call service.updateVenueCityId and return { success: true } on success", async () => {
+        mockVenueService.updateVenueCityId.mockResolvedValue(true);
+
+        const result = await controller.handleUpdateVenueCityId(requestPayload);
+
+        expect(service.updateVenueCityId).toHaveBeenCalledWith(
+          requestPayload.venueId,
+          requestPayload.cityId,
+        );
+        expect(result).toEqual({ success: true });
+      });
+
+      it("should call service.updateVenueCityId and return { success: false } if no rows affected", async () => {
+        mockVenueService.updateVenueCityId.mockResolvedValue(false);
+
+        const result = await controller.handleUpdateVenueCityId(requestPayload);
+
+        expect(service.updateVenueCityId).toHaveBeenCalledWith(
+          requestPayload.venueId,
+          requestPayload.cityId,
+        );
+        expect(result).toEqual({ success: false });
+      });
+
+      it("should throw RpcException if service throws error", async () => {
+        const mockError = new Error("Update failed");
+        mockVenueService.updateVenueCityId.mockRejectedValue(mockError);
+
+        await expect(
+          controller.handleUpdateVenueCityId(requestPayload),
+        ).rejects.toThrow(RpcException);
+        await expect(
+          controller.handleUpdateVenueCityId(requestPayload),
+        ).rejects.toThrow(mockError.message);
+      });
+    });
+  });
+
+  // --- END NEW TESTS ---
 
   // Add describe blocks for other controller methods (getTrendingVenues, followVenue, etc.)
   // with relevant test cases.

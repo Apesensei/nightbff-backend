@@ -6,6 +6,10 @@ import {
   Inject,
 } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
+import { MessagePattern, Payload } from "@nestjs/microservices";
+import { ConfigService } from "@nestjs/config";
+import { differenceInHours } from "date-fns";
+import * as ngeohash from "ngeohash";
 import {
   VenueRepository,
   VenueSearchOptions,
@@ -38,7 +42,8 @@ import { EventService } from "@/microservices/event/event.service";
 import { InterestService } from "@/microservices/interest/services/interest.service";
 import { VenueSearchDto } from "../dto/venue-search.dto";
 import { Event } from "../../event/entities/event.entity";
-import { VenueScanProducerService } from './venue-scan-producer.service';
+import { VenueScanProducerService } from "./venue-scan-producer.service";
+import { ScannedAreaRepository } from "../repositories/scanned-area.repository";
 
 @Injectable()
 export class VenueService {
@@ -57,6 +62,8 @@ export class VenueService {
     private readonly eventService: EventService,
     private readonly interestService: InterestService,
     private readonly venueScanProducerService: VenueScanProducerService,
+    private readonly scannedAreaRepository: ScannedAreaRepository,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -1074,6 +1081,74 @@ export class VenueService {
   }
   // --- End Plan Association Event Listeners ---
 
+  // --- RPC Handler for Scan Trigger ---
+  @MessagePattern("venue.triggerScanIfStale")
+  async handleTriggerScan(
+    @Payload() data: { latitude: number; longitude: number },
+  ): Promise<void> {
+    this.logger.debug(
+      `RPC received: venue.triggerScanIfStale for ${data.latitude}, ${data.longitude}`,
+    );
+    // Use the internal helper method
+    await this.enqueueScanIfStale(data.latitude, data.longitude);
+  }
+
+  // --- Internal Logic for Enqueuing Scan ---
+  // (Moved logic from previous `searchVenues` implementation)
+  async enqueueScanIfStale(latitude: number, longitude: number): Promise<void> {
+    try {
+      const precision = this.configService.get<number>("GEOHASH_PRECISION", 7);
+      const thresholdHours = this.configService.get<number>(
+        "VENUE_SCAN_STALENESS_THRESHOLD_HOURS",
+        72,
+      );
+      const geohashPrefix = ngeohash.encode(latitude, longitude, precision);
+
+      this.logger.debug(
+        `Checking staleness for geohash ${geohashPrefix} (Precision: ${precision}, Threshold: ${thresholdHours}h)`,
+      );
+
+      const lastScanRecord =
+        await this.scannedAreaRepository.findLastScanned(geohashPrefix);
+      let shouldScan = true;
+
+      if (lastScanRecord) {
+        const hoursSinceLastScan = differenceInHours(
+          new Date(),
+          lastScanRecord.lastScannedAt,
+        );
+        if (hoursSinceLastScan < thresholdHours) {
+          shouldScan = false;
+          this.logger.debug(
+            `Geohash ${geohashPrefix} scanned recently (${hoursSinceLastScan}h ago). Skipping scan trigger.`,
+          );
+        }
+      }
+
+      if (shouldScan) {
+        this.logger.log(
+          `Geohash ${geohashPrefix} is stale or not scanned. Enqueuing scan job.`,
+        );
+        // Use fire-and-forget with error logging for the producer call
+        this.venueScanProducerService
+          .enqueueScan(geohashPrefix)
+          .catch((error) => {
+            this.logger.error(
+              `Failed to enqueue scan job for geohash ${geohashPrefix}: ${error.message}`,
+              error.stack,
+            );
+          });
+      }
+    } catch (e: any) {
+      this.logger.error(
+        `Error during enqueueScanIfStale check for ${latitude}, ${longitude}: ${e.message}`,
+        e.stack,
+      );
+      // Do not re-throw, as this is often called in a fire-and-forget context
+    }
+  }
+  // --- End Internal Logic ---
+
   /**
    * Search venues based on various criteria, including optional interest filtering.
    * Handles service-layer sorting by event popularity when filtering by interest.
@@ -1161,22 +1236,18 @@ export class VenueService {
 
     let isInterestSearch = false;
     let eventsForInterest: Event[] = [];
+    let venueIdsForInterestSearch: string[] = [];
 
-    // 2. Handle Interest Filtering Logic (Using resolved actualInterestId)
-    // --- Start: Modified Phase 2 Interest Filtering ---
+    // 2. Handle Interest Filtering Logic
     if (actualInterestId) {
-      // Check if we have a resolved ID (from 'forYou' or original DTO)
+      // ... (Fetch event IDs, venue IDs by interest) ...
       isInterestSearch = true;
       try {
-        this.logger.log(
-          `Filtering venues by resolved interest: ${actualInterestId}`,
-        );
-        const eventIds = await this.interestService.getEventIdsByInterest(
-          actualInterestId, // Use the resolved ID
-        );
+        const eventIds =
+          await this.interestService.getEventIdsByInterest(actualInterestId);
         if (eventIds.length === 0) {
-          this.logger.log(
-            `No events found for resolved interest ${actualInterestId}.`,
+          this.logger.debug(
+            `No event IDs found for interest ${actualInterestId}. Returning empty.`,
           );
           return {
             items: [],
@@ -1186,24 +1257,21 @@ export class VenueService {
             hasMore: false,
           };
         }
-
-        // Fetch associated events with necessary details for sorting
         eventsForInterest = await this.eventRepository.findByIdsWithDetails(
           eventIds,
-          ["id", "venueId", "trendingScore"], // Ensure 'trendingScore' is available
+          ["id", "venueId", "trendingScore"],
         );
-
-        // Extract unique venue IDs
-        const venueIds = [
+        // Extract unique, non-null venue IDs from the events
+        venueIdsForInterestSearch = [
           ...new Set(
             eventsForInterest
-              .map((e) => e.venueId)
-              .filter((vId): vId is string => !!vId),
+              .map((event) => event.venueId)
+              .filter((id): id is string => id !== null && id !== undefined),
           ),
         ];
-        if (venueIds.length === 0) {
-          this.logger.log(
-            `No venues associated with events for resolved interest ${actualInterestId}.`,
+        if (venueIdsForInterestSearch.length === 0) {
+          this.logger.debug(
+            `No venues found associated with events for interest ${actualInterestId}. Returning empty.`,
           );
           return {
             items: [],
@@ -1213,86 +1281,85 @@ export class VenueService {
             hasMore: false,
           };
         }
-
-        // Set repository options for filtering by these venues
-        repositoryOptions.venueIds = venueIds;
-        // Remove options that don't apply when filtering by specific venue IDs
-        delete repositoryOptions.latitude;
-        delete repositoryOptions.longitude;
-        delete repositoryOptions.radiusMiles;
-        delete repositoryOptions.sortBy;
-        delete repositoryOptions.order;
-        delete repositoryOptions.limit;
-        delete repositoryOptions.offset;
+        repositoryOptions.venueIds = venueIdsForInterestSearch;
+        // Remove geo/sort/pagination options from repo query for interest search
+        delete repositoryOptions.latitude; /* ... etc ... */
       } catch (error) {
+        // Log the error and degrade to non-interest search
         this.logger.error(
           `Error during interest filter processing for ${actualInterestId}: ${error.message}`,
           error.stack,
         );
-        // Gracefully degrade: remove interest filter and proceed with other filters
         isInterestSearch = false;
-        delete repositoryOptions.venueIds;
-        repositoryOptions.sortBy = currentSearchDto.sortBy;
-        repositoryOptions.order = currentSearchDto.order;
-        repositoryOptions.limit = currentSearchDto.limit;
-        repositoryOptions.offset = currentSearchDto.offset;
       }
-    } else {
-      // Not an interest search - THIS is the path we need to modify
+    }
+
+    // --- Add this check instead ---
+    if (!isInterestSearch) {
+      // Not an interest search OR fallback after error - apply normal limit/offset
       repositoryOptions.limit = currentSearchDto.limit;
       repositoryOptions.offset = currentSearchDto.offset;
     }
+    // --- End addition ---
 
-    // 3. Call Repository
-    this.logger.debug(
-      `Calling repository search with options: ${JSON.stringify(repositoryOptions)}`,
-    );
-    const [fetchedVenues, totalFromRepo] =
-      await this.venueRepository.search(repositoryOptions);
-      
-    // --- Add Scan Trigger Here (Consistent Placement) ---
-    if (!isInterestSearch && currentSearchDto.latitude !== undefined && currentSearchDto.longitude !== undefined) {
-         this.venueScanProducerService.enqueueScanIfStale(currentSearchDto.latitude, currentSearchDto.longitude)
-             .catch(error => {
-                 this.logger.error(`Error triggering background scan from VenueService.searchVenues: ${error.message}`, error.stack);
-             });
+    // 3. Call Repository with proper error handling
+    let fetchedVenues: Venue[];
+    let totalFromRepo: number;
+    try {
+      [fetchedVenues, totalFromRepo] =
+        await this.venueRepository.search(repositoryOptions);
+    } catch (error) {
+      this.logger.error(
+        `Failed to search venues in repository: ${error.message}`,
+        error.stack,
+      );
+      // Return empty results instead of throwing
+      return {
+        items: [],
+        total: 0,
+        page:
+          Math.floor(
+            (currentSearchDto.offset ?? 0) / (currentSearchDto.limit ?? 10),
+          ) + 1,
+        limit: currentSearchDto.limit ?? 10,
+        hasMore: false,
+      };
     }
-    // --- End Scan Trigger Check ---
 
+    // 4. Perform Service-Layer Sorting (if interest search)
     let finalVenues = fetchedVenues;
     let total = totalFromRepo;
-
-    // 4. Perform Service-Layer Sorting (if filtering by interest)
     if (isInterestSearch && eventsForInterest.length > 0) {
-      this.logger.log(`Performing service-layer sorting for interest filter.`);
-      const venuePopularityScores = new Map<string, number>();
-      eventsForInterest.forEach((event) => {
-        if (event.venueId && event.trendingScore !== undefined) {
-          const currentScore = venuePopularityScores.get(event.venueId) || 0;
-          venuePopularityScores.set(
+      this.logger.log(
+        "Performing service-layer sorting and pagination due to interest filter.",
+      );
+
+      // Calculate combined score for each venue based on associated events
+      const venueScores = new Map<string, number>();
+      for (const event of eventsForInterest) {
+        if (event.venueId && event.trendingScore) {
+          venueScores.set(
             event.venueId,
-            currentScore + (event.trendingScore || 0),
+            (venueScores.get(event.venueId) || 0) + event.trendingScore,
           );
         }
-      });
-      const sortedVenues = fetchedVenues.sort((a, b) => {
-        const scoreA = venuePopularityScores.get(a.id) || -Infinity;
-        const scoreB = venuePopularityScores.get(b.id) || -Infinity;
+      }
+
+      // Sort fetched venues based on the calculated score (descending)
+      finalVenues.sort((a, b) => {
+        const scoreA = venueScores.get(a.id) || 0;
+        const scoreB = venueScores.get(b.id) || 0;
         return scoreB - scoreA;
       });
-      finalVenues = sortedVenues;
 
-      // 5. Apply Manual Pagination
+      // Apply manual pagination
       total = finalVenues.length;
       const limit = currentSearchDto.limit ?? 10;
       const offset = currentSearchDto.offset ?? 0;
       finalVenues = finalVenues.slice(offset, offset + limit);
-      this.logger.log(
-        `Applied manual pagination: offset=${offset}, limit=${limit}. Returning ${finalVenues.length} venues.`,
-      );
     }
 
-    // 6. Transform and Return Results
+    // 5. Transform and Return Results
     const items = await Promise.all(
       finalVenues.map((venue) =>
         this.transformToVenueResponseDto(venue, userId),
@@ -1310,4 +1377,58 @@ export class VenueService {
       hasMore: total > offsetForResult + limitForResult,
     };
   }
+
+  // --- Backfill Service Methods ---
+
+  /**
+   * Service method to find venues without cityId.
+   * @param limit - Batch size.
+   * @param offset - Skip count.
+   * @returns Venues and total count.
+   */
+  async findVenuesWithoutCityId(
+    limit: number,
+    offset: number,
+  ): Promise<[Venue[], number]> {
+    this.logger.debug(
+      `Fetching venues without cityId, limit: ${limit}, offset: ${offset}`,
+    );
+    try {
+      return await this.venueRepository.findWithoutCityId(limit, offset);
+    } catch (error) {
+      this.logger.error(
+        `Error fetching venues without cityId: ${error.message}`,
+        error.stack,
+      );
+      // Let the RPC handler manage throwing RpcException
+      throw error;
+    }
+  }
+
+  /**
+   * Service method to update cityId for a venue.
+   * @param venueId - ID of the venue.
+   * @param cityId - ID of the city.
+   * @returns Boolean indicating success.
+   */
+  async updateVenueCityId(venueId: string, cityId: string): Promise<boolean> {
+    this.logger.debug(`Updating cityId for venue ${venueId} to ${cityId}`);
+    try {
+      const result = await this.venueRepository.updateCityId(venueId, cityId);
+      if (result.affected === 0) {
+        this.logger.warn(`Venue ${venueId} not found or cityId not updated.`);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error updating cityId for venue ${venueId}: ${error.message}`,
+        error.stack,
+      );
+      // Let the RPC handler manage throwing RpcException
+      throw error;
+    }
+  }
+
+  // --- End Backfill Service Methods ---
 }

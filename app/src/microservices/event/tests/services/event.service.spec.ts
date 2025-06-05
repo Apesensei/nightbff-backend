@@ -22,6 +22,11 @@ import { EventAttendee } from "../../entities/event-attendee.entity";
 import { JoinEventDto } from "../../dto/join-event.dto";
 import { CreateEventDto } from "../../dto/create-event.dto";
 import { EventResponseDto } from "../../dto/event-response.dto";
+import {
+  GetEventsWithoutCityIdRequestDto,
+  UpdateEventCityIdRequestDto,
+} from "../../dto/event-backfill.dto";
+import { RpcException } from "@nestjs/microservices";
 
 describe("EventService", () => {
   let eventService: EventService;
@@ -105,6 +110,8 @@ describe("EventService", () => {
       updateTrendingScore: jest.fn(),
       getTrendingPlans: jest.fn(),
       findByIdsWithDetails: jest.fn(),
+      findWithoutCityId: jest.fn(),
+      updateCityId: jest.fn(),
     };
 
     const mockPlanAnalyticsService = {
@@ -598,6 +605,209 @@ describe("EventService", () => {
         ),
       );
       expect(result).toEqual({ events: [], total: 0 });
+    });
+  });
+
+  describe("Backfill Methods", () => {
+    describe("findEventsWithoutCityId", () => {
+      const limit = 50;
+      const offset = 0;
+      const mockEvents = [
+        { id: "event-no-city-1" } as any,
+        { id: "event-no-city-2" } as any,
+      ];
+      const mockTotal = 2;
+
+      it("should call repository.findWithoutCityId and return results", async () => {
+        mockEventRepository.findWithoutCityId!.mockResolvedValue([
+          mockEvents,
+          mockTotal,
+        ]);
+
+        const result = await eventService.findEventsWithoutCityId(
+          limit,
+          offset,
+        );
+
+        expect(mockEventRepository.findWithoutCityId).toHaveBeenCalledWith(
+          limit,
+          offset,
+        );
+        expect(result).toEqual([mockEvents, mockTotal]);
+      });
+
+      it("should return empty array and 0 total if repo finds none", async () => {
+        mockEventRepository.findWithoutCityId!.mockResolvedValue([[], 0]);
+
+        const result = await eventService.findEventsWithoutCityId(
+          limit,
+          offset,
+        );
+
+        expect(mockEventRepository.findWithoutCityId).toHaveBeenCalledWith(
+          limit,
+          offset,
+        );
+        expect(result).toEqual([[], 0]);
+      });
+
+      it("should propagate errors from the repository", async () => {
+        const mockError = new Error("Repo Find Error");
+        mockEventRepository.findWithoutCityId!.mockRejectedValue(mockError);
+
+        await expect(
+          eventService.findEventsWithoutCityId(limit, offset),
+        ).rejects.toThrow(mockError);
+      });
+    });
+
+    describe("updateEventCityId", () => {
+      const eventId = "event-to-update-id";
+      const cityId = "new-city-id";
+
+      it("should call repository.updateCityId and return true if affected > 0", async () => {
+        const mockUpdateResult = { affected: 1, raw: {}, generatedMaps: [] };
+        mockEventRepository.updateCityId!.mockResolvedValue(mockUpdateResult);
+
+        const result = await eventService.updateEventCityId(eventId, cityId);
+
+        expect(mockEventRepository.updateCityId).toHaveBeenCalledWith(
+          eventId,
+          cityId,
+        );
+        expect(result).toBe(true);
+      });
+
+      it("should call repository.updateCityId and return false if affected === 0", async () => {
+        const mockUpdateResult = { affected: 0, raw: {}, generatedMaps: [] };
+        mockEventRepository.updateCityId!.mockResolvedValue(mockUpdateResult);
+
+        const result = await eventService.updateEventCityId(eventId, cityId);
+
+        expect(mockEventRepository.updateCityId).toHaveBeenCalledWith(
+          eventId,
+          cityId,
+        );
+        expect(result).toBe(false);
+      });
+
+      it("should propagate errors from the repository", async () => {
+        const mockError = new Error("Repo Update Error");
+        mockEventRepository.updateCityId!.mockRejectedValue(mockError);
+
+        await expect(
+          eventService.updateEventCityId(eventId, cityId),
+        ).rejects.toThrow(mockError);
+      });
+    });
+
+    describe("handleGetEventsWithoutCityId (RPC Handler)", () => {
+      const requestPayload: GetEventsWithoutCityIdRequestDto = {
+        limit: 25,
+        offset: 5,
+      };
+      const mockEvents = [{ id: "rpc-event-1" } as any];
+      const mockTotal = 1;
+
+      it("should call findEventsWithoutCityId and return results", async () => {
+        // Mock the internal service method call
+        const findSpy = jest
+          .spyOn(eventService, "findEventsWithoutCityId")
+          .mockResolvedValue([mockEvents, mockTotal]);
+
+        const result =
+          await eventService.handleGetEventsWithoutCityId(requestPayload);
+
+        expect(findSpy).toHaveBeenCalledWith(
+          requestPayload.limit,
+          requestPayload.offset,
+        );
+        expect(result).toEqual({ events: mockEvents, total: mockTotal });
+        findSpy.mockRestore(); // Clean up spy
+      });
+
+      it("should use default limit/offset if not provided", async () => {
+        const findSpy = jest
+          .spyOn(eventService, "findEventsWithoutCityId")
+          .mockResolvedValue([mockEvents, mockTotal]);
+        const payloadWithoutDefaults = {}; // Empty payload
+
+        await eventService.handleGetEventsWithoutCityId(payloadWithoutDefaults);
+
+        expect(findSpy).toHaveBeenCalledWith(100, 0); // Check default values
+        findSpy.mockRestore();
+      });
+
+      it("should throw RpcException if service method throws", async () => {
+        const mockError = new Error("Internal Service Failure");
+        const findSpy = jest
+          .spyOn(eventService, "findEventsWithoutCityId")
+          .mockRejectedValue(mockError);
+
+        await expect(
+          eventService.handleGetEventsWithoutCityId(requestPayload),
+        ).rejects.toThrow(RpcException);
+        await expect(
+          eventService.handleGetEventsWithoutCityId(requestPayload),
+        ).rejects.toThrow(mockError.message);
+
+        findSpy.mockRestore();
+      });
+    });
+
+    describe("handleUpdateEventCityId (RPC Handler)", () => {
+      const requestPayload: UpdateEventCityIdRequestDto = {
+        eventId: "rpc-event-update-id",
+        cityId: "rpc-city-id",
+      };
+
+      it("should call updateEventCityId and return { success: true }", async () => {
+        const updateSpy = jest
+          .spyOn(eventService, "updateEventCityId")
+          .mockResolvedValue(true);
+
+        const result =
+          await eventService.handleUpdateEventCityId(requestPayload);
+
+        expect(updateSpy).toHaveBeenCalledWith(
+          requestPayload.eventId,
+          requestPayload.cityId,
+        );
+        expect(result).toEqual({ success: true });
+        updateSpy.mockRestore();
+      });
+
+      it("should call updateEventCityId and return { success: false }", async () => {
+        const updateSpy = jest
+          .spyOn(eventService, "updateEventCityId")
+          .mockResolvedValue(false);
+
+        const result =
+          await eventService.handleUpdateEventCityId(requestPayload);
+
+        expect(updateSpy).toHaveBeenCalledWith(
+          requestPayload.eventId,
+          requestPayload.cityId,
+        );
+        expect(result).toEqual({ success: false });
+        updateSpy.mockRestore();
+      });
+
+      it("should throw RpcException if service method throws", async () => {
+        const mockError = new Error("Internal Update Failure");
+        const updateSpy = jest
+          .spyOn(eventService, "updateEventCityId")
+          .mockRejectedValue(mockError);
+
+        await expect(
+          eventService.handleUpdateEventCityId(requestPayload),
+        ).rejects.toThrow(RpcException);
+        await expect(
+          eventService.handleUpdateEventCityId(requestPayload),
+        ).rejects.toThrow(mockError.message);
+
+        updateSpy.mockRestore();
+      });
     });
   });
 });

@@ -1,0 +1,85 @@
+# Dockerfile.nestjs.template
+
+# ---- Base Stage ----
+# Use a specific Node.js version. Alpine is smaller.
+# Make sure this Node version is compatible with your NestJS version and dependencies.
+FROM node:18-alpine AS base
+WORKDIR /usr/src/app
+
+# Install global dependencies if any (e.g., Nest CLI, if needed for runtime, though usually not)
+# RUN npm install -g @nestjs/cli
+
+# ---- Dependencies Stage ----
+FROM base AS dependencies
+# Copy package.json and package-lock.json (or yarn.lock)
+COPY package*.json ./
+# COPY yarn.lock ./ # Uncomment if using Yarn
+
+# Install production dependencies
+RUN npm ci --only=production
+# RUN yarn install --production --frozen-lockfile # Uncomment if using Yarn
+
+# ---- Build Stage ----
+# This stage builds the TypeScript application
+FROM base AS build
+# Copy package.json and package-lock.json (or yarn.lock) again for build-time devDependencies
+COPY package*.json ./
+# COPY yarn.lock ./ # Uncomment if using Yarn
+
+# Install all dependencies (including devDependencies for building)
+RUN npm install
+# RUN yarn install --frozen-lockfile # Uncomment if using Yarn
+
+# Copy application source code
+# Important: If your tsconfig.json references paths outside this service's directory (e.g., shared libs in a monorepo),
+# the COPY commands and build context in docker-compose.app.yml will need careful adjustment.
+# For a standalone service structure (Dockerfile within the service dir, context is service dir):
+# COPY . .
+# For your structure (Dockerfile in service dir, context is `../../app`):
+# We need to copy the specific service's source and any shared files/configs it needs from `app/`
+# This example assumes the Dockerfile will be placed in e.g. app/src/microservices/plan/Dockerfile
+# and the build context in docker-compose.app.yml is `../../app` (i.e., the root `app/` folder)
+
+# Copy the entire app source. Adjust if only parts are needed for this specific microservice build.
+# This makes the build context (../../app) available.
+COPY . .
+
+# Run the build command (assuming it's defined in package.json, e.g., "build": "nest build")
+# You might need to specify the project if you have multiple projects in tsconfig.build.json
+# For example: RUN npm run build <service-name-in-tsconfig>
+RUN npm run build
+
+# ---- Production Stage ----
+# This stage creates the final, small production image
+FROM base AS production
+
+# Create a non-root user and group
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Copy production dependencies from the 'dependencies' stage
+COPY --chown=appuser:appgroup --from=dependencies /usr/src/app/node_modules ./node_modules
+
+# Copy the built application (dist folder) from the 'build' stage
+# Ensure the path to 'dist' is correct relative to your build context and where the build output goes.
+# If your build context is `../../app` and your service builds to `app/dist/src/microservices/plan`,
+# then the source path here would be `/usr/src/app/dist/src/microservices/your-service-name`
+# For a simpler setup where `npm run build` in the service directory outputs to `dist` in that directory:
+COPY --chown=appuser:appgroup --from=build /usr/src/app/dist ./dist
+
+# Copy package.json (optional, but can be useful for identifying versions, etc.)
+COPY --chown=appuser:appgroup package.json .
+
+# Set the user for running the application
+USER appuser
+
+# Expose the port the application runs on (make sure this matches your app's config)
+EXPOSE 3000
+
+# Define the command to run the application
+# This should point to your service's main.js in the dist folder.
+# Example: CMD ["node", "dist/main.js"]
+# If your service `plan` has its main at `dist/src/microservices/plan/main.js` (relative to app root)
+# and the Dockerfile is in `app/src/microservices/plan/` and `COPY --from=build /usr/src/app/dist ./dist` was used,
+# then the CMD might be ["node", "dist/src/microservices/plan/main.js"] -> check your dist structure.
+# For a simpler structure where dist/main.js is directly in the service's build output copied to ./dist:
+CMD ["node", "dist/main.js"] 

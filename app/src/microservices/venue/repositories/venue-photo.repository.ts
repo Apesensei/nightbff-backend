@@ -180,4 +180,20 @@ export class VenuePhotoRepository {
       },
     });
   }
+
+  /**
+   * Update image URLs after background processing
+   */
+  async updateImageUrls(
+    id: string,
+    imageUrls: {
+      thumbnailUrl: string;
+      mediumUrl: string;
+      largeUrl: string;
+    },
+  ): Promise<VenuePhoto> {
+    const photo = await this.findById(id);
+    this.photoRepository.merge(photo, imageUrls);
+    return this.photoRepository.save(photo);
+  }
 }

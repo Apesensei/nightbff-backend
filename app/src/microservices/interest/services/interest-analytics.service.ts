@@ -17,6 +17,45 @@ export class InterestAnalyticsService {
     private readonly interestRepository: InterestRepository,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {
+    this.logger.log("InterestAnalyticsService constructor called.");
+    this.logger.verbose(
+      "Inspecting injected CACHE_MANAGER instance properties:",
+    );
+    if (this.cacheManager && typeof this.cacheManager === "object") {
+      this.logger.verbose(
+        `  typeof this.cacheManager.get: ${typeof (this.cacheManager as any).get}`,
+      );
+      this.logger.verbose(
+        `  typeof this.cacheManager.set: ${typeof (this.cacheManager as any).set}`,
+      );
+      this.logger.verbose(
+        `  typeof this.cacheManager.del: ${typeof (this.cacheManager as any).del}`,
+      );
+      const internalStore = (this.cacheManager as any).store;
+      if (internalStore) {
+        this.logger.verbose(`  (this.cacheManager as any).store exists.`);
+        this.logger.verbose(
+          `  typeof (this.cacheManager as any).store: ${typeof internalStore}`,
+        );
+        if (typeof internalStore === "object" && internalStore.constructor) {
+          this.logger.verbose(
+            `  (this.cacheManager as any).store.constructor.name: ${internalStore.constructor.name}`,
+          );
+        }
+        this.logger.verbose(
+          `  typeof (this.cacheManager as any).store.get: ${typeof (internalStore as any).get}`,
+        );
+      } else {
+        this.logger.warn(
+          "  (this.cacheManager as any).store is null or undefined.",
+        );
+      }
+    } else {
+      this.logger.error(
+        "CACHE_MANAGER is not an object or is null/undefined at injection point!",
+      );
+    }
+
     // Initialize analytics on startup
     this.initializeUsageCountMap();
   }
