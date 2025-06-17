@@ -10,6 +10,7 @@ import {
 import { AuthService } from "./auth.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { SignInDto } from "./dto/sign-in.dto";
+import { FrontendAuthResponseDto } from './dto/auth-response.dto';
 
 // Response DTOs for better Swagger documentation
 export class AuthResponseDto {
@@ -253,5 +254,113 @@ export class AuthController {
   })
   async signOut(): Promise<SignOutResponseDto> {
     return this.authService.signOut();
+  }
+
+  // Frontend-compatible endpoints for iOS app integration
+  @Post("frontend/signin")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: "Frontend-compatible sign in (iOS App)",
+    description: `
+    Frontend-compatible authentication endpoint specifically designed for iOS app integration.
+    Returns simplified response format expected by the mobile app.
+    
+    **Response Format:**
+    - \`token\`: JWT access token
+    - \`user\`: User object with id, name, email
+    
+    **Usage by Frontend:**
+    1. Store the token securely (iOS Keychain/SecureStore)
+    2. Use token in Authorization header: \`Bearer YOUR_TOKEN\`
+    3. Handle 401/403 responses to trigger re-authentication
+    `
+  })
+  @ApiBody({ 
+    type: SignInDto,
+    examples: {
+      mobileApp: {
+        summary: "iOS App Login",
+        value: {
+          email: "alex@nightbff.com",
+          password: "SecurePass123!"
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: "User authenticated successfully",
+    type: FrontendAuthResponseDto,
+    schema: {
+      example: {
+        token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        user: {
+          id: "12345678-1234-1234-1234-123456789012",
+          name: "Alex Johnson",
+          email: "alex@nightbff.com"
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: "Invalid credentials - iOS app should show login error" 
+  })
+  async frontendSignIn(@Body() signInDto: SignInDto): Promise<FrontendAuthResponseDto> {
+    const authResult = await this.authService.signIn(signInDto);
+    
+    // Transform backend response to frontend-compatible format
+    return {
+      token: authResult.data?.session?.accessToken || '',
+      user: {
+        id: authResult.data?.user?.id || '',
+        name: authResult.data?.user?.displayName || '',
+        email: authResult.data?.user?.email || ''
+      }
+    };
+  }
+
+  @Post("frontend/signup")
+  @ApiOperation({ 
+    summary: "Frontend-compatible sign up (iOS App)",
+    description: `
+    Frontend-compatible registration endpoint for iOS app.
+    Creates user account and returns simplified response format.
+    `
+  })
+  @ApiBody({ 
+    type: SignUpDto,
+    examples: {
+      mobileApp: {
+        summary: "iOS App Registration",
+        value: {
+          email: "alex@nightbff.com",
+          username: "alex_nightlife",
+          displayName: "Alex Johnson",
+          password: "SecurePass123!"
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: "User registered successfully - iOS app should navigate to sign in",
+    schema: {
+      example: {
+        success: true,
+        message: "Account created successfully. Please sign in."
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: "Registration failed - iOS app should show validation errors" 
+  })
+  async frontendSignUp(@Body() signUpDto: SignUpDto): Promise<{ success: boolean; message: string }> {
+    const result = await this.authService.signUp(signUpDto);
+    return {
+      success: result.success,
+      message: "Account created successfully. Please sign in."
+    };
   }
 }
