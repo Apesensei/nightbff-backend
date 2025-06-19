@@ -4,6 +4,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
 } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 import { SupabaseProvider } from "@/common/database/supabase.provider";
 import { AuthService } from "../../auth.service";
 import { AuthRepository } from "../../repositories/auth.repository";
@@ -31,12 +32,17 @@ describe("AuthService", () => {
     // Add other methods if needed by other tests
   });
 
+  const mockJwtService = () => ({
+    sign: jest.fn(() => "mock-jwt-token"),
+  });
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: SupabaseProvider, useFactory: mockSupabaseProvider },
         { provide: AuthRepository, useFactory: mockAuthRepository },
+        { provide: JwtService, useFactory: mockJwtService },
         // Mock ConfigService if needed, providing default values
         {
           provide: ConfigService,

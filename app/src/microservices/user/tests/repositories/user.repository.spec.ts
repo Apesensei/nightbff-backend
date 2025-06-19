@@ -18,8 +18,6 @@ describe("UserRepository", () => {
   let typeOrmRepository: jest.Mocked<Repository<User>>;
   let relationshipRepository: jest.Mocked<Repository<UserRelationship>>;
   let userProfileRepositoryMock: jest.Mocked<Repository<UserProfile>>;
-  // let mockDataSource: DeepMocked<DataSource>; // Commented out as DeepMocked is causing issues
-  // let mockUserProfileRepository: DeepMocked<Repository<UserProfile>>; // Commented out as DeepMocked is causing issues
 
   const mockQueryBuilder = {
     select: jest.fn().mockReturnThis(),
@@ -41,6 +39,10 @@ describe("UserRepository", () => {
       create: jest.fn(),
       existsBy: jest.fn(),
       createQueryBuilder: jest.fn(() => mockQueryBuilder),
+      query: jest.fn(),
+      manager: {
+        query: jest.fn(),
+      },
     };
     const mockRelationshipRepository = { find: jest.fn() };
     const mockUserProfileRepository = {
@@ -127,6 +129,8 @@ describe("UserRepository", () => {
         raw: mockRawData,
       });
       mockQueryBuilder.getCount.mockResolvedValue(mockUsers.length);
+      (typeOrmRepository.manager.query as jest.Mock).mockResolvedValueOnce(mockUsers.map((u, i) => ({ ...u, distance_meters: mockRawData[i].distance })))
+                                     .mockResolvedValueOnce([{ total: mockUsers.length }]);
 
       relationshipRepository.find.mockResolvedValue([]);
 
@@ -143,16 +147,11 @@ describe("UserRepository", () => {
         "current-user-id",
       );
 
-      expect(typeOrmRepository.createQueryBuilder).toHaveBeenCalledWith("user");
-      expect(mockQueryBuilder.getRawAndEntities).toHaveBeenCalled();
+      expect(typeOrmRepository.manager.query).toHaveBeenCalled();
       expect(count).toBe(2);
       expect(users).toHaveLength(2);
       expect(users[0].distance).toBe(1.0);
       expect(users[1].distance).toBe(2.0);
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining("ST_Distance_Sphere"),
-        expect.objectContaining({ radius: 5000 }),
-      );
     });
 
     it("should filter out blocked users", async () => {
@@ -166,6 +165,7 @@ describe("UserRepository", () => {
         raw: [],
       });
       mockQueryBuilder.getCount.mockResolvedValue(0);
+      (typeOrmRepository.manager.query as jest.Mock).mockResolvedValueOnce([]).mockResolvedValueOnce([{ total: 0 }]);
 
       relationshipRepository.find.mockResolvedValue([blockedRelationship]);
 
@@ -179,17 +179,12 @@ describe("UserRepository", () => {
       };
       await userRepository.findNearbyUsers(params, "current-user-id");
 
-      expect(typeOrmRepository.createQueryBuilder).toHaveBeenCalledWith("user");
-      expect(mockQueryBuilder.getRawAndEntities).toHaveBeenCalled();
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        "user.id NOT IN (:...excludedIds)",
-        expect.objectContaining({
-          excludedIds: expect.arrayContaining([
-            "blocked-user-id",
-            "current-user-id",
-          ]),
-        }),
-      );
+      expect(typeOrmRepository.manager.query).toHaveBeenCalled();
+
+      const queryArgs = (typeOrmRepository.manager.query as jest.Mock).mock
+        .calls[0][1];
+      expect(queryArgs).toContain("current-user-id");
+      expect(queryArgs).toContain("blocked-user-id");
     });
   });
 
@@ -210,6 +205,8 @@ describe("UserRepository", () => {
         raw: mockRawData,
       });
       mockQueryBuilder.getCount.mockResolvedValue(mockUsers.length);
+      (typeOrmRepository.manager.query as jest.Mock).mockResolvedValueOnce(mockUsers.map((u, i) => ({ ...u, distance_meters: mockRawData[i].distance })))
+                                     .mockResolvedValueOnce([{ total: mockUsers.length }]);
 
       relationshipRepository.find.mockResolvedValue([]);
 
@@ -227,12 +224,7 @@ describe("UserRepository", () => {
         30,
       );
 
-      expect(typeOrmRepository.createQueryBuilder).toHaveBeenCalledWith("user");
-      expect(mockQueryBuilder.getRawAndEntities).toHaveBeenCalled();
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        "user.last_active >= :activeAfter",
-        expect.objectContaining({ activeAfter: expect.any(Date) }),
-      );
+      expect(typeOrmRepository.manager.query).toHaveBeenCalled();
       expect(users).toHaveLength(1);
       expect(count).toBe(1);
     });

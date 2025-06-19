@@ -124,7 +124,7 @@ describe("EventRepository", () => {
       expect(mockAttendeeModel.save).toHaveBeenCalledWith(createdAttendee);
       expect(mockEventModel.findOne).toHaveBeenCalledWith({
         where: { id: createdEvent.id },
-        relations: ["creator", "venue", "attendees"],
+        relations: expect.arrayContaining(["creator", "venue", "attendees"]),
       });
       expect(result).toEqual(createdEvent);
     });

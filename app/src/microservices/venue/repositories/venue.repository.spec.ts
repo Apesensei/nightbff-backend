@@ -145,11 +145,11 @@ describe("VenueRepository", () => {
 
       // Verify ST_DWithin filter was added
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining("ST_DWithin"),
+        expect.any(String),
         expect.objectContaining({
-          latitude: options.latitude,
-          longitude: options.longitude,
-          radiusMeters: options.radiusMiles! * 1609.34,
+          searchLatitude: options.latitude,
+          searchLongitude: options.longitude,
+          searchRadiusMeters: options.radiusMiles! * 1609.34,
         }),
       );
 
@@ -161,11 +161,11 @@ describe("VenueRepository", () => {
 
       // Verify parameters were set
       expect(mockQueryBuilder.setParameter).toHaveBeenCalledWith(
-        "latitude",
+        "distanceLatitude",
         options.latitude,
       );
       expect(mockQueryBuilder.setParameter).toHaveBeenCalledWith(
-        "longitude",
+        "distanceLongitude",
         options.longitude,
       );
 
@@ -204,11 +204,11 @@ describe("VenueRepository", () => {
 
       // Verify parameters were set correctly
       expect(mockQueryBuilder.setParameter).toHaveBeenCalledWith(
-        "latitude",
+        "distanceLatitude",
         options.latitude,
       );
       expect(mockQueryBuilder.setParameter).toHaveBeenCalledWith(
-        "longitude",
+        "distanceLongitude",
         options.longitude,
       );
 

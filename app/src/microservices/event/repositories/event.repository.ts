@@ -224,7 +224,7 @@ export class EventRepository {
     // Find one and include relevant relations
     return this.eventRepository.findOne({
       where: { id },
-      relations: ["attendees"],
+      relations: ["attendees", "creator", "venue"],
     });
   }
 
