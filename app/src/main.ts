@@ -6,7 +6,7 @@ import { ConfigService } from "@nestjs/config";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { Response } from "express";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
-import compression = require("compression");
+import compression from "compression";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -18,7 +18,8 @@ async function bootstrap() {
   // 🔥 SWAGGER DOCUMENTATION SETUP - COMPREHENSIVE API DOCS
   const config = new DocumentBuilder()
     .setTitle("NightBFF API")
-    .setDescription(`
+    .setDescription(
+      `
 # 🌃 NightBFF Backend API Documentation
 
 **Welcome to the NightBFF API!** This is your comprehensive guide to integrating with the NightBFF backend services.
@@ -68,13 +69,10 @@ This API follows a microservices architecture with the following modules:
 - **Interest Service** - User interests & matching algorithms
 
 Happy coding! 🎯
-    `)
-    .setVersion("1.0.0")
-    .setContact(
-      "NightBFF Team",
-      "https://nightbff.com", 
-      "api@nightbff.com"
+    `,
     )
+    .setVersion("1.0.0")
+    .setContact("NightBFF Team", "https://nightbff.com", "api@nightbff.com")
     .setLicense("MIT", "https://opensource.org/licenses/MIT")
     .addBearerAuth(
       {
@@ -85,14 +83,14 @@ Happy coding! 🎯
         description: "Enter JWT token",
         in: "header",
       },
-      "JWT-auth"
+      "JWT-auth",
     )
     .addServer("http://localhost:3000", "Local Development")
     .addServer("https://api.nightbff.com", "Production")
     .addTag("Authentication", "User authentication and authorization")
     .addTag("Users", "User profile management and discovery")
     .addTag("Chat", "Real-time messaging and media sharing")
-    .addTag("Events", "Event creation, management and discovery")  
+    .addTag("Events", "Event creation, management and discovery")
     .addTag("Venues", "Venue data, discovery and recommendations")
     .addTag("Plans", "Trip planning and city management")
     .addTag("Cities", "City data and trending destinations")
@@ -102,10 +100,7 @@ Happy coding! 🎯
     .build();
 
   const document = SwaggerModule.createDocument(app, config, {
-    operationIdFactory: (
-      controllerKey: string,
-      methodKey: string
-    ) => methodKey,
+    operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
     deepScanRoutes: true,
   });
 
@@ -202,7 +197,9 @@ Happy coding! 🎯
   const port = configService.get<number>("PORT") || 3000;
   await app.listen(port);
   console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 API Documentation available at: http://localhost:${port}/api/docs`);
+  console.log(
+    `📚 API Documentation available at: http://localhost:${port}/api/docs`,
+  );
   console.log(`📁 Static files served from: /uploads/`);
   console.log(`⚡ Compression and caching enabled for optimal performance`);
 }

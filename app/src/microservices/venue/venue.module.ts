@@ -97,8 +97,7 @@ import Keyv from "keyv";
     }),
     BullModule.registerQueueAsync({
       name: "image-processing",
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: async () => ({
         defaultJobOptions: {
           attempts: 3,
           backoff: {
@@ -109,7 +108,6 @@ import Keyv from "keyv";
           removeOnFail: 50,
         },
       }),
-      inject: [ConfigService],
     }),
     ClientsModule.registerAsync([
       {

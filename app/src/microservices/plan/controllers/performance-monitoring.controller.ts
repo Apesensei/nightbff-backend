@@ -204,7 +204,7 @@ export class PerformanceMonitoringController {
       await this.cacheManager.set("health:check", "ok", 10000);
       const cacheCheck = await this.cacheManager.get("health:check");
       health.checks.cache = cacheCheck === "ok" ? "healthy" : "unhealthy";
-    } catch (error) {
+    } catch {
       health.checks.cache = "unhealthy";
       health.status = "degraded";
     }
@@ -214,7 +214,7 @@ export class PerformanceMonitoringController {
       const memUsage = process.memoryUsage();
       const heapUsedMB = memUsage.heapUsed / 1024 / 1024;
       health.checks.memory = heapUsedMB < 512 ? "healthy" : "warning";
-    } catch (error) {
+    } catch {
       health.checks.memory = "unhealthy";
     }
 

@@ -2,12 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { HttpService } from "@nestjs/axios";
 import axiosRetry from "axios-retry";
-import axios, {
-  AxiosError,
-  AxiosInstance,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
-} from "axios";
+import axios, { AxiosError, AxiosInstance, AxiosResponse } from "axios";
 import { VenueCacheService } from "./venue-cache.service";
 import { RateLimiterService } from "./rate-limiter.service";
 

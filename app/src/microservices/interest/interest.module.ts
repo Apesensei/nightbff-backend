@@ -13,8 +13,6 @@ import { InterestRepository } from "./repositories/interest.repository";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import KeyvRedis from "@keyv/redis";
 import Keyv from "keyv";
-import { ScheduleModule } from "@nestjs/schedule";
-import { BullModule } from "@nestjs/bull";
 
 @Module({
   imports: [
@@ -112,8 +110,8 @@ import { BullModule } from "@nestjs/bull";
               `[InterestModule Custom CacheFactory_v4]   Inspecting cache.store: typeof get: ${typeof (storeInCache as any).get}`,
             );
             console.log(
-              `[InterestModule Custom CacheFachtory_v4]   Inspecting cache.store: typeof set: ${typeof (storeInCache as any).set}`,
-            ); // Typo fixed: CacheFachtory -> CacheFactory
+              `[InterestModule Custom CacheFactory_v4]   Inspecting cache.store: typeof set: ${typeof (storeInCache as any).set}`,
+            );
           } else {
             console.warn(
               "[InterestModule Custom CacheFactory_v4]   Cache object or cache.store is undefined after caching() call.",
@@ -126,8 +124,10 @@ import { BullModule } from "@nestjs/bull";
             const result = await originalGet(key);
             // Keyv wraps data as {value: actualData, expires: timestamp}
             // We need to unwrap it for cache-manager compatibility
-            if (result && typeof result === 'object' && 'value' in result) {
-              console.log(`[InterestModule CacheFactory_v4] Unwrapped Keyv data for key: ${key}`);
+            if (result && typeof result === "object" && "value" in result) {
+              console.log(
+                `[InterestModule CacheFactory_v4] Unwrapped Keyv data for key: ${key}`,
+              );
               return (result as any).value as T;
             }
             return result as T | undefined;
