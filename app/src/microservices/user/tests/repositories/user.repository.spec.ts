@@ -129,8 +129,14 @@ describe("UserRepository", () => {
         raw: mockRawData,
       });
       mockQueryBuilder.getCount.mockResolvedValue(mockUsers.length);
-      (typeOrmRepository.manager.query as jest.Mock).mockResolvedValueOnce(mockUsers.map((u, i) => ({ ...u, distance_meters: mockRawData[i].distance })))
-                                     .mockResolvedValueOnce([{ total: mockUsers.length }]);
+      (typeOrmRepository.manager.query as jest.Mock)
+        .mockResolvedValueOnce(
+          mockUsers.map((u, i) => ({
+            ...u,
+            distance_meters: mockRawData[i].distance,
+          })),
+        )
+        .mockResolvedValueOnce([{ total: mockUsers.length }]);
 
       relationshipRepository.find.mockResolvedValue([]);
 
@@ -165,7 +171,9 @@ describe("UserRepository", () => {
         raw: [],
       });
       mockQueryBuilder.getCount.mockResolvedValue(0);
-      (typeOrmRepository.manager.query as jest.Mock).mockResolvedValueOnce([]).mockResolvedValueOnce([{ total: 0 }]);
+      (typeOrmRepository.manager.query as jest.Mock)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ total: 0 }]);
 
       relationshipRepository.find.mockResolvedValue([blockedRelationship]);
 
@@ -205,8 +213,14 @@ describe("UserRepository", () => {
         raw: mockRawData,
       });
       mockQueryBuilder.getCount.mockResolvedValue(mockUsers.length);
-      (typeOrmRepository.manager.query as jest.Mock).mockResolvedValueOnce(mockUsers.map((u, i) => ({ ...u, distance_meters: mockRawData[i].distance })))
-                                     .mockResolvedValueOnce([{ total: mockUsers.length }]);
+      (typeOrmRepository.manager.query as jest.Mock)
+        .mockResolvedValueOnce(
+          mockUsers.map((u, i) => ({
+            ...u,
+            distance_meters: mockRawData[i].distance,
+          })),
+        )
+        .mockResolvedValueOnce([{ total: mockUsers.length }]);
 
       relationshipRepository.find.mockResolvedValue([]);
 

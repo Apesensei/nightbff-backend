@@ -2,11 +2,6 @@ import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 
-// Entities - Required for @InjectRepository()
-import { Chat } from "./entities/chat.entity";
-import { Message } from "./entities/message.entity";
-import { User } from "../auth/entities/user.entity";
-
 // Controllers
 import { ChatController } from "./controllers/chat.controller";
 import { MessageController } from "./controllers/message.controller";

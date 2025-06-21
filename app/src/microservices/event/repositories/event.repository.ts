@@ -209,14 +209,6 @@ export class EventRepository {
     // Execute query
     const [events, total] = await queryBuilder.getManyAndCount();
 
-    // Add distance to each event if location was used
-    if (options.location) {
-      events.forEach((event) => {
-        // Type assertion might be needed if distance is added via addSelect
-        // event.distance = (event as any).distance;
-      });
-    }
-
     return [events, total];
   }
 
@@ -338,14 +330,7 @@ export class EventRepository {
       };
     } = {},
   ): Promise<[Event[], number]> {
-    const {
-      limit = 10,
-      offset = 0,
-      userId,
-      startDate,
-      endDate,
-      location,
-    } = options;
+    const { limit = 10, offset = 0, startDate, endDate, location } = options;
 
     const queryBuilder = this.eventRepository
       .createQueryBuilder("event")

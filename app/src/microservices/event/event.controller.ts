@@ -24,7 +24,6 @@ import { FindEventsOptions } from "./repositories/event.repository";
 import { TrendingPlansRequestDto } from "./dto/trending-plans-request.dto";
 import { PlanSearchDto } from "./dto/plan-search.dto";
 import { PaginatedEventResponseDto } from "./dto/paginated-event-response.dto";
-import { CurrentUser } from "@/microservices/auth/decorators/current-user.decorator";
 import {
   ApiBearerAuth,
   ApiOperation,

@@ -1,16 +1,15 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from "@nestjs/common";
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
   ApiBody,
-  ApiHeader,
-  ApiExtraModels
+  ApiExtraModels,
 } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { SignInDto } from "./dto/sign-in.dto";
-import { FrontendAuthResponseDto } from './dto/auth-response.dto';
+import { FrontendAuthResponseDto } from "./dto/auth-response.dto";
 
 // Response DTOs for better Swagger documentation
 export class AuthResponseDto {
@@ -45,7 +44,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("signup")
-  @ApiOperation({ 
+  @ApiOperation({
     summary: "Register a new user",
     description: `
     Register a new user account with email and password.
@@ -60,9 +59,9 @@ export class AuthController {
     1. Creates account in Supabase Auth
     2. Stores user profile in local database
     3. Returns user details (without session - user must sign in)
-    `
+    `,
   })
-  @ApiBody({ 
+  @ApiBody({
     type: SignUpDto,
     description: "User registration details",
     examples: {
@@ -72,13 +71,13 @@ export class AuthController {
           email: "alex@nightbff.com",
           username: "alex_nightlife",
           displayName: "Alex Johnson",
-          password: "SecurePass123!"
-        }
-      }
-    }
+          password: "SecurePass123!",
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: "User registered successfully",
     type: AuthResponseDto,
     schema: {
@@ -90,33 +89,33 @@ export class AuthController {
             id: "12345678-1234-1234-1234-123456789012",
             email: "alex@nightbff.com",
             username: "alex_nightlife",
-            displayName: "Alex Johnson"
-          }
-        }
-      }
-    }
+            displayName: "Alex Johnson",
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 400, 
+  @ApiResponse({
+    status: 400,
     description: "Validation failed or email already exists",
     schema: {
       example: {
         statusCode: 400,
         message: ["Email already exists", "Password too weak"],
-        error: "Bad Request"
-      }
-    }
+        error: "Bad Request",
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 500, 
+  @ApiResponse({
+    status: 500,
     description: "Internal server error during registration",
     schema: {
       example: {
         statusCode: 500,
         message: "Failed to register user",
-        error: "Internal Server Error"
-      }
-    }
+        error: "Internal Server Error",
+      },
+    },
   })
   async signUp(@Body() signUpDto: SignUpDto): Promise<AuthResponseDto> {
     return this.authService.signUp(signUpDto);
@@ -124,7 +123,7 @@ export class AuthController {
 
   @Post("signin")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: "Sign in user",
     description: `
     Authenticate user with email and password.
@@ -141,9 +140,9 @@ export class AuthController {
     **Usage:**
     Use the returned accessToken in Authorization header for protected endpoints:
     \`Authorization: Bearer YOUR_ACCESS_TOKEN\`
-    `
+    `,
   })
-  @ApiBody({ 
+  @ApiBody({
     type: SignInDto,
     description: "User login credentials",
     examples: {
@@ -151,20 +150,20 @@ export class AuthController {
         summary: "Standard Login",
         value: {
           email: "alex@nightbff.com",
-          password: "SecurePass123!"
-        }
+          password: "SecurePass123!",
+        },
       },
       performanceMode: {
         summary: "Performance Testing Login",
         value: {
           email: "test.user@example.com",
-          password: "password123"
-        }
-      }
-    }
+          password: "password123",
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: "User signed in successfully",
     type: AuthResponseDto,
     schema: {
@@ -177,38 +176,38 @@ export class AuthController {
             username: "alex_nightlife",
             displayName: "Alex Johnson",
             isVerified: false,
-            isPremium: false
+            isPremium: false,
           },
           session: {
             accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
             refreshToken: null,
-            expiresAt: "2025-01-13T10:30:00.000Z"
-          }
-        }
-      }
-    }
+            expiresAt: "2025-01-13T10:30:00.000Z",
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 401, 
+  @ApiResponse({
+    status: 401,
     description: "Invalid credentials",
     schema: {
       example: {
         statusCode: 401,
         message: "Invalid credentials",
-        error: "Unauthorized"
-      }
-    }
+        error: "Unauthorized",
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 500, 
+  @ApiResponse({
+    status: 500,
     description: "Internal server error during authentication",
     schema: {
       example: {
         statusCode: 500,
         message: "Failed to sign in",
-        error: "Internal Server Error"
-      }
-    }
+        error: "Internal Server Error",
+      },
+    },
   })
   async signIn(@Body() signInDto: SignInDto): Promise<AuthResponseDto> {
     return this.authService.signIn(signInDto);
@@ -216,7 +215,7 @@ export class AuthController {
 
   @Post("signout")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: "Sign out user",
     description: `
     Sign out the current user by invalidating their Supabase session.
@@ -228,29 +227,29 @@ export class AuthController {
     - Call this endpoint when user logs out
     - Remove stored JWT token from local storage
     - Redirect to login screen
-    `
+    `,
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: "User signed out successfully",
     type: SignOutResponseDto,
     schema: {
       example: {
         success: true,
-        message: "User signed out successfully"
-      }
-    }
+        message: "User signed out successfully",
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 500, 
+  @ApiResponse({
+    status: 500,
     description: "Failed to sign out",
     schema: {
       example: {
         statusCode: 500,
         message: "Failed to sign out",
-        error: "Internal Server Error"
-      }
-    }
+        error: "Internal Server Error",
+      },
+    },
   })
   async signOut(): Promise<SignOutResponseDto> {
     return this.authService.signOut();
@@ -259,7 +258,7 @@ export class AuthController {
   // Frontend-compatible endpoints for iOS app integration
   @Post("frontend/signin")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: "Frontend-compatible sign in (iOS App)",
     description: `
     Frontend-compatible authentication endpoint specifically designed for iOS app integration.
@@ -273,22 +272,22 @@ export class AuthController {
     1. Store the token securely (iOS Keychain/SecureStore)
     2. Use token in Authorization header: \`Bearer YOUR_TOKEN\`
     3. Handle 401/403 responses to trigger re-authentication
-    `
+    `,
   })
-  @ApiBody({ 
+  @ApiBody({
     type: SignInDto,
     examples: {
       mobileApp: {
         summary: "iOS App Login",
         value: {
           email: "alex@nightbff.com",
-          password: "SecurePass123!"
-        }
-      }
-    }
+          password: "SecurePass123!",
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: "User authenticated successfully",
     type: FrontendAuthResponseDto,
     schema: {
@@ -297,38 +296,40 @@ export class AuthController {
         user: {
           id: "12345678-1234-1234-1234-123456789012",
           name: "Alex Johnson",
-          email: "alex@nightbff.com"
-        }
-      }
-    }
+          email: "alex@nightbff.com",
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: "Invalid credentials - iOS app should show login error" 
+  @ApiResponse({
+    status: 401,
+    description: "Invalid credentials - iOS app should show login error",
   })
-  async frontendSignIn(@Body() signInDto: SignInDto): Promise<FrontendAuthResponseDto> {
+  async frontendSignIn(
+    @Body() signInDto: SignInDto,
+  ): Promise<FrontendAuthResponseDto> {
     const authResult = await this.authService.signIn(signInDto);
-    
+
     // Transform backend response to frontend-compatible format
     return {
-      token: authResult.data?.session?.accessToken || '',
+      token: authResult.data?.session?.accessToken || "",
       user: {
-        id: authResult.data?.user?.id || '',
-        name: authResult.data?.user?.displayName || '',
-        email: authResult.data?.user?.email || ''
-      }
+        id: authResult.data?.user?.id || "",
+        name: authResult.data?.user?.displayName || "",
+        email: authResult.data?.user?.email || "",
+      },
     };
   }
 
   @Post("frontend/signup")
-  @ApiOperation({ 
+  @ApiOperation({
     summary: "Frontend-compatible sign up (iOS App)",
     description: `
     Frontend-compatible registration endpoint for iOS app.
     Creates user account and returns simplified response format.
-    `
+    `,
   })
-  @ApiBody({ 
+  @ApiBody({
     type: SignUpDto,
     examples: {
       mobileApp: {
@@ -337,30 +338,33 @@ export class AuthController {
           email: "alex@nightbff.com",
           username: "alex_nightlife",
           displayName: "Alex Johnson",
-          password: "SecurePass123!"
-        }
-      }
-    }
+          password: "SecurePass123!",
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 201, 
-    description: "User registered successfully - iOS app should navigate to sign in",
+  @ApiResponse({
+    status: 201,
+    description:
+      "User registered successfully - iOS app should navigate to sign in",
     schema: {
       example: {
         success: true,
-        message: "Account created successfully. Please sign in."
-      }
-    }
+        message: "Account created successfully. Please sign in.",
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: "Registration failed - iOS app should show validation errors" 
+  @ApiResponse({
+    status: 400,
+    description: "Registration failed - iOS app should show validation errors",
   })
-  async frontendSignUp(@Body() signUpDto: SignUpDto): Promise<{ success: boolean; message: string }> {
+  async frontendSignUp(
+    @Body() signUpDto: SignUpDto,
+  ): Promise<{ success: boolean; message: string }> {
     const result = await this.authService.signUp(signUpDto);
     return {
       success: result.success,
-      message: "Account created successfully. Please sign in."
+      message: "Account created successfully. Please sign in.",
     };
   }
 }

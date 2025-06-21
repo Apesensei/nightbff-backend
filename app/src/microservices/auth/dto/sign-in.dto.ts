@@ -5,7 +5,7 @@ export class SignInDto {
   @ApiProperty({
     description: "User's email address for authentication",
     example: "alex@nightbff.com",
-    format: "email"
+    format: "email",
   })
   @IsEmail({}, { message: "Please provide a valid email address" })
   @IsNotEmpty({ message: "Email is required" })
@@ -14,7 +14,7 @@ export class SignInDto {
   @ApiProperty({
     description: "User's password for authentication",
     example: "SecurePass123!",
-    minLength: 1
+    minLength: 1,
   })
   @IsString({ message: "Password must be a string" })
   @IsNotEmpty({ message: "Password is required" })

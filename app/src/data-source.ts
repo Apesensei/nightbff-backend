@@ -12,16 +12,15 @@ import * as fs from "fs"; // Added fs import
 const nodeEnv = process.env.NODE_ENV || "development"; // Default to development
 const isTest = nodeEnv === "test";
 const isProduction = nodeEnv === "production";
-const isPerformance = nodeEnv === "performance";
 
 console.log(`[DATA_SOURCE_DEBUG] NODE_ENV: ${nodeEnv}`); // DEBUG LOG
 
 // Load environment variables relative to the project root
 const projectRoot = process.cwd();
 const envFilePath =
-  process.env.NODE_ENV === "performance"
-    ? path.resolve(process.cwd(), ".env.performance")
-    : path.resolve(process.cwd(), ".env");
+  nodeEnv === "performance"
+    ? path.resolve(projectRoot, ".env.performance")
+    : path.resolve(projectRoot, ".env");
 
 console.log(`[DATA_SOURCE_DEBUG] Resolved envFilePath: ${envFilePath}`);
 console.log(`[DATA_SOURCE_DEBUG] process.cwd(): ${process.cwd()}`);
