@@ -25,6 +25,7 @@ describe('Plan Service Pact Test', () => {
   });
 
   afterAll(async () => {
+    await provider.verify();
     await provider.finalize();
     await app.close();
   });
