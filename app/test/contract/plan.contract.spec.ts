@@ -5,7 +5,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { CreatePlanDto } from '../../src/microservices/plan/dto/create-plan.dto';
 
-const { like, iso8601DateTimeWithMillis } = Matchers;
+const { like, iso8601Date } = Matchers;
 
 describe('Plan Service Pact Test', () => {
   let app: INestApplication;
@@ -40,8 +40,8 @@ describe('Plan Service Pact Test', () => {
     const expectedBody = {
       id: like('a-uuid-for-the-plan'),
       destination: like('Tokyo'),
-      startDate: iso8601DateTimeWithMillis('2025-10-15T00:00:00.000Z'),
-      endDate: iso8601DateTimeWithMillis('2025-10-20T00:00:00.000Z'),
+      startDate: iso8601Date('2025-10-15'),
+      endDate: iso8601Date('2025-10-20'),
       coverImage: like('https://example.com/tokyo.jpg'),
       user: {
         id: like('c6a9a2a3-9a3d-4e9e-b8d9-2e7a0e2a3b4c'),

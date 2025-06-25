@@ -110,6 +110,10 @@ describe("EventCityBackfillJob", () => {
         { provide: "EVENT_SERVICE_RPC", useValue: mockEventClient },
         { provide: "PLAN_SERVICE_RPC", useValue: mockPlanClient },
         { provide: GoogleMapsService, useValue: mockGoogleMapsService },
+        { provide: getRepositoryToken(Event), useValue: {} },
+        { provide: getRepositoryToken(Venue), useValue: {} },
+        { provide: getRepositoryToken(Plan), useValue: {} },
+        { provide: getRepositoryToken(City), useValue: {} },
         Logger,
       ],
     }).compile();
