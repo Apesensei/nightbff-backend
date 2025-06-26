@@ -7,9 +7,17 @@ const { like } = Matchers;
 describe('Auth Service Pact Test (consumer-style)', () => {
   const signinPath = '/api/auth/frontend/signin';
 
-  beforeAll(() => provider.setup());
-  afterEach(() => provider.verify());
-  afterAll(() => provider.finalize());
+  beforeAll(async () => {
+    await provider.setup();
+  });
+
+  afterEach(async () => {
+    await provider.verify();
+  });
+
+  afterAll(async () => {
+    await provider.finalize();
+  });
 
   it('signs in a user and returns frontend-compatible payload', async () => {
     const expectedBody = {
@@ -40,7 +48,7 @@ describe('Auth Service Pact Test (consumer-style)', () => {
       },
     });
 
-    const response = await axios.post(`http://localhost:1234${signinPath}`, {
+    const response = await axios.post(`http://127.0.0.1:1234${signinPath}`, {
       email: 'test@user.com',
       password: 'a-valid-password',
     });

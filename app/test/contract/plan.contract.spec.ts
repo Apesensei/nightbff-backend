@@ -19,9 +19,17 @@ describe('Plan Service Pact Test (consumer-style)', () => {
   const planPath = '/api/plans';
   const mockAuthToken = 'Bearer dummy-token';
 
-  beforeAll(() => provider.setup());
-  afterEach(() => provider.verify());
-  afterAll(() => provider.finalize());
+  beforeAll(async () => {
+    await provider.setup();
+  });
+
+  afterEach(async () => {
+    await provider.verify();
+  });
+
+  afterAll(async () => {
+    await provider.finalize();
+  });
 
   it('creates a new plan and returns payload expected by frontend', async () => {
     const createPlanDto: CreatePlanDto = {
@@ -61,7 +69,7 @@ describe('Plan Service Pact Test (consumer-style)', () => {
       },
     });
 
-    const response = await axios.post(`http://localhost:1235${planPath}`, createPlanDto, {
+    const response = await axios.post(`http://127.0.0.1:1235${planPath}`, createPlanDto, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: mockAuthToken,
