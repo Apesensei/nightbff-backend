@@ -1,36 +1,29 @@
-import { provider } from './pact.helper';
-import { Matchers } from '@pact-foundation/pact';
-import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { AppModule } from '../../src/app.module';
+import axios from 'axios';
+import { Pact, Matchers } from '@pact-foundation/pact';
+import * as path from 'path';
 import { CreatePlanDto } from '../../src/microservices/plan/dto/create-plan.dto';
 
 const { like, iso8601Date } = Matchers;
 
-describe('Plan Service Pact Test', () => {
-  let app: INestApplication;
+const provider = new Pact({
+  consumer: 'NightBFF-Frontend',
+  provider: 'NightBFF-Backend',
+  port: 1235,
+  log: path.resolve(process.cwd(), 'logs', 'pact-plan.log'),
+  dir: path.resolve(process.cwd(), 'pacts'),
+  logLevel: 'warn',
+  spec: 2,
+});
 
-  const mockAuthToken =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjNmE5YTJhMy05YTNkLTRlOWUtYjhkOS0yZTdhMGUyYTNiNGMiLCJpYXQiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+describe('Plan Service Pact Test (consumer-style)', () => {
+  const planPath = '/api/plans';
+  const mockAuthToken = 'Bearer dummy-token';
 
-  beforeAll(async () => {
-    await provider.setup();
+  beforeAll(() => provider.setup());
+  afterEach(() => provider.verify());
+  afterAll(() => provider.finalize());
 
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleRef.createNestApplication();
-    await app.init();
-  });
-
-  afterAll(async () => {
-    await provider.verify();
-    await provider.finalize();
-    await app.close();
-  });
-
-  describe('on plan creation', () => {
+  it('creates a new plan and returns payload expected by frontend', async () => {
     const createPlanDto: CreatePlanDto = {
       destination: 'Tokyo',
       startDate: '2025-10-15',
@@ -49,29 +42,36 @@ describe('Plan Service Pact Test', () => {
       },
     };
 
-    beforeEach(async () => {
-      await provider.addInteraction({
-        state: 'a user is authenticated',
-        uponReceiving: 'a request to create a new plan',
-        withRequest: {
-          method: 'POST',
-          path: '/api/plans',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${mockAuthToken}`,
-          },
-          body: createPlanDto as any,
+    await provider.addInteraction({
+      state: 'a user is authenticated',
+      uponReceiving: 'a request to create a new plan',
+      withRequest: {
+        method: 'POST',
+        path: planPath,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: mockAuthToken,
         },
-        willRespondWith: {
-          status: 201,
-          headers: { 'Content-Type': 'application/json; charset=utf-8' },
-          body: expectedBody,
-        },
-      });
+        body: createPlanDto as any,
+      },
+      willRespondWith: {
+        status: 201,
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: expectedBody,
+      },
     });
 
-    it('should return the newly created plan', () => {
-      expect(true).toBe(true);
+    const response = await axios.post(`http://localhost:1235${planPath}`, createPlanDto, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: mockAuthToken,
+      },
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.data).toMatchObject({
+      id: expect.any(String),
+      destination: 'Tokyo',
     });
   });
 }); 
