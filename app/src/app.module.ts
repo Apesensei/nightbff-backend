@@ -2,10 +2,11 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule, TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { EventEmitterModule } from "@nestjs/event-emitter";
-import { dataSourceOptions } from "./data-source";
+import { AppDataSource } from "./database/config/data-source";
 
 // Import Common Modules
 import { DatabaseModule } from "./common/database/database.module";
+import { FeatureFlagsModule } from "./common/feature-flags/feature-flags.module";
 
 // Import Feature Modules
 import { AuthModule } from "./microservices/auth/auth.module";
@@ -70,8 +71,9 @@ if (serviceName && serviceName in serviceModules) {
       ],
     }),
     DatabaseModule,
+    FeatureFlagsModule,
     TypeOrmModule.forRoot({
-      ...(dataSourceOptions as TypeOrmModuleOptions),
+      ...(AppDataSource.options as TypeOrmModuleOptions),
       autoLoadEntities: false,
       synchronize: false,
       migrationsRun: false,

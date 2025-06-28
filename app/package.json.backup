@@ -17,21 +17,11 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    
-    "typeorm": "typeorm-ts-node-commonjs -d data-source.ts",
-    "migration:create": "npm run typeorm migration:create src/database/migrations/schema/$npm_config_name",
-    "migration:generate": "npm run typeorm migration:generate src/database/migrations/schema/$npm_config_name",
-    "migration:run": "npm run typeorm migration:run",
-    "migration:revert": "npm run typeorm migration:revert",
-    "migration:show": "npm run typeorm migration:show",
-    "migration:validate": "ts-node src/database/utils/migration-validator.ts",
-    
-    "db:reset": "npm run db:drop && npm run db:create && npm run migration:run",
-    "db:create": "createdb $npm_config_name || echo 'Database exists'",
-    "db:drop": "dropdb $npm_config_name || echo 'Database does not exist'",
-    
-    "seed:run": "ts-node src/database/seeds/$NODE_ENV/index.ts",
-    "seed:dev": "NODE_ENV=development npm run seed:run"
+    "typeorm": "npm run build && tsc src/database/migrations/*.ts --outDir dist/database/migrations --module NodeNext --esModuleInterop --experimentalDecorators --emitDecoratorMetadata --sourceMap && node ./node_modules/typeorm/cli.js --dataSource dist/src/data-source.js",
+    "typeorm:create-migration": "npm run typeorm -- migration:create src/database/migrations/MigrationName",
+    "typeorm:generate-migration": "npm run typeorm -- migration:generate src/database/migrations/NewMigrationName",
+    "typeorm:run-migrations": "npm run typeorm -- migration:run",
+    "typeorm:revert-migration": "npm run typeorm -- migration:revert"
   },
   "keywords": [
     "nightlife",

@@ -110,6 +110,33 @@ describe("EventCityBackfillJob", () => {
         { provide: "EVENT_SERVICE_RPC", useValue: mockEventClient },
         { provide: "PLAN_SERVICE_RPC", useValue: mockPlanClient },
         { provide: GoogleMapsService, useValue: mockGoogleMapsService },
+        {
+          provide: getRepositoryToken(Event),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            save: jest.fn(),
+            update: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Venue),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Plan),
+          useValue: {
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(City),
+          useValue: {
+            findOne: jest.fn(),
+            save: jest.fn(),
+          },
+        },
         Logger,
       ],
     }).compile();

@@ -1,0 +1,107 @@
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/controllers/admin-backfill.controller.spec.ts
+   9:3  error  'ExecutionContext' is defined but never used  @typescript-eslint/no-unused-vars
+  10:3  error  'HttpStatus' is defined but never used        @typescript-eslint/no-unused-vars
+  11:3  error  'Logger' is defined but never used            @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/controllers/city.controller.spec.ts
+    2:10  error  'CacheModule' is defined but never used           @typescript-eslint/no-unused-vars
+    3:29  error  'Logger' is defined but never used                @typescript-eslint/no-unused-vars
+   78:11  error  'cacheKey' is assigned a value but never used     @typescript-eslint/no-unused-vars
+   90:13  error  'setSpy' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  115:13  error  'expectedDto' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/jobs/event-city-backfill.job.spec.ts
+    2:10  error  'ConfigService' is defined but never used          @typescript-eslint/no-unused-vars
+    4:10  error  'ClientProxy' is defined but never used            @typescript-eslint/no-unused-vars
+    7:10  error  'Repository' is defined but never used             @typescript-eslint/no-unused-vars
+   10:10  error  'UpdateResult' is defined but never used           @typescript-eslint/no-unused-vars
+   90:7   error  'loggerLogSpy' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  168:57  error  'payload' is defined but never used                @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/jobs/venue-city-backfill.job.integration.spec.ts
+   28:7   error  'venueClient' is assigned a value but never used        @typescript-eslint/no-unused-vars
+   29:7   error  'planClient' is assigned a value but never used         @typescript-eslint/no-unused-vars
+   30:7   error  'googleMapsService' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   90:43  error  'payload' is defined but never used                     @typescript-eslint/no-unused-vars
+   96:43  error  'payload' is defined but never used                     @typescript-eslint/no-unused-vars
+  110:19  error  'payload' is defined but never used                     @typescript-eslint/no-unused-vars
+  120:19  error  'payload' is defined but never used                     @typescript-eslint/no-unused-vars
+  142:19  error  'payload' is defined but never used                     @typescript-eslint/no-unused-vars
+  159:19  error  'payload' is defined but never used                     @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/jobs/venue-city-backfill.job.spec.ts
+    2:10  error  'ClientProxy' is defined but never used                      @typescript-eslint/no-unused-vars
+   11:10  error  'FIND_OR_CREATE_CITY_RPC_PATTERN' is defined but never used  @typescript-eslint/no-unused-vars
+   59:5   error  'loggerDebugSpy' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  131:41  error  'payload' is defined but never used                          @typescript-eslint/no-unused-vars
+  150:41  error  'payload' is defined but never used                          @typescript-eslint/no-unused-vars
+  181:41  error  'payload' is defined but never used                          @typescript-eslint/no-unused-vars
+  193:41  error  'payload' is defined but never used                          @typescript-eslint/no-unused-vars
+  205:41  error  'payload' is defined but never used                          @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/repositories/city.repository.spec.ts
+    7:10  error  'ConfigService' is defined but never used           @typescript-eslint/no-unused-vars
+    8:10  error  'UpdateResult' is defined but never used            @typescript-eslint/no-unused-vars
+  135:13  error  'expectedPoint' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/repositories/plan-user.repository.spec.ts
+  62:7  error  'ormRepository' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/repositories/plan.repository.spec.ts
+  40:7  error  'ormRepository' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/services/city-image.service.integration.spec.ts
+   5:10  error  'EventEmitter2' is defined but never used       @typescript-eslint/no-unused-vars
+   7:10  error  'of' is defined but never used                  @typescript-eslint/no-unused-vars
+   8:8   error  'Redis' is defined but never used               @typescript-eslint/no-unused-vars
+   9:10  error  'getRepositoryToken' is defined but never used  @typescript-eslint/no-unused-vars
+  10:10  error  'City' is defined but never used                @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/services/city-image.service.spec.ts
+  10:10  error  'CACHE_MANAGER' is defined but never used         @typescript-eslint/no-unused-vars
+  72:7   error  'redisClient' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/services/city.service.spec.ts
+  3:10  error  'Logger' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/plan/tests/services/plan.service.spec.ts
+    8:3   error  'Logger' is defined but never used                       @typescript-eslint/no-unused-vars
+   18:16  error  'uuidv4' is defined but never used                       @typescript-eslint/no-unused-vars
+  124:7   error  'planRepository' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  125:7   error  'cityRepository' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  126:7   error  'planUserRepository' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  127:7   error  'googleMapsService' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  128:7   error  'eventClient' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  129:7   error  'configService' is assigned a value but never used       @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/user/tests/services/user-discovery.service.spec.ts
+   42:8  error  'MockUserRepository' is defined but never used                    @typescript-eslint/no-unused-vars
+   45:8  error  'MockProfileViewRepository' is defined but never used             @typescript-eslint/no-unused-vars
+  467:9  error  'userProfileRepoMock' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  469:9  error  'currentUserQueryBuilderMock' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  484:9  error  'userProfileRepoMock' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  485:9  error  'userRelRepoMock' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  486:9  error  'currentUserQueryBuilderMock' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/venue/tests/services/google-maps.service.spec.ts
+    4:8   error  'axios' is defined but never used                   @typescript-eslint/no-unused-vars
+   14:10  error  'CACHE_MANAGER' is defined but never used           @typescript-eslint/no-unused-vars
+  177:7   error  'loggerWarnSpy' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/venue/tests/services/venue-maintenance.service.spec.ts
+   6:10  error  'getRepositoryToken' is defined but never used  @typescript-eslint/no-unused-vars
+   7:10  error  'getQueueToken' is defined but never used       @typescript-eslint/no-unused-vars
+  13:10  error  'Venue' is defined but never used               @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/src/microservices/venue/tests/services/venue-scan.consumer.spec.ts
+  14:10  error  'createMockVenue' is defined but never used            @typescript-eslint/no-unused-vars
+  50:9   error  'mockVenueTypes' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  84:7   error  'scannedAreaRepositoryMock' is defined but never used  @typescript-eslint/no-unused-vars
+  85:7   error  'configServiceMock' is defined but never used          @typescript-eslint/no-unused-vars
+
+/Users/saeidrafiei/Desktop/NightBFF PRD/app/test/user-discovery.e2e-spec.ts
+  11:10  error  'Not' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 70 problems (70 errors, 0 warnings)
+
