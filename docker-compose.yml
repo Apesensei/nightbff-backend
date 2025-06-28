@@ -11,11 +11,14 @@ services:
       POSTGRES_PASSWORD: your_strong_password # <-- CHANGE THIS!
       POSTGRES_DB: nightbff_dev
     ports:
-      - "5433:5432" # Map container port 5432 to host port 5433 (avoids conflicts)
+      - "5432:5432" # Map container port 5432 to host port 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - nightbff_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
 
 volumes:
   postgres_data:

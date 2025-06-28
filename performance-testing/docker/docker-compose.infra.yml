@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_perf_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432" # Exposing on 5433 to avoid conflict with local dev
+      - "5432:5432" # Exposing on 5432 to avoid conflict with local dev
     restart: unless-stopped
     networks:
       - performance_net
