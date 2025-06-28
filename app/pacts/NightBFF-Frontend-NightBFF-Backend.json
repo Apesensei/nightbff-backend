@@ -1,0 +1,121 @@
+{
+  "consumer": {
+    "name": "NightBFF-Frontend"
+  },
+  "interactions": [
+    {
+      "description": "a request to create a new plan",
+      "providerState": "a user is authenticated",
+      "request": {
+        "body": {
+          "coverImage": "https://example.com/tokyo.jpg",
+          "destination": "Tokyo",
+          "endDate": "2025-10-20",
+          "startDate": "2025-10-15"
+        },
+        "headers": {
+          "Authorization": "Bearer dummy-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/plans"
+      },
+      "response": {
+        "body": {
+          "coverImage": "https://example.com/tokyo.jpg",
+          "destination": "Tokyo",
+          "endDate": "2025-10-20",
+          "id": "a-uuid-for-the-plan",
+          "startDate": "2025-10-15",
+          "user": {
+            "id": "c6a9a2a3-9a3d-4e9e-b8d9-2e7a0e2a3b4c"
+          }
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.coverImage": {
+            "match": "type"
+          },
+          "$.body.destination": {
+            "match": "type"
+          },
+          "$.body.endDate": {
+            "match": "regex",
+            "regex": "^([\\+-]?\\d{4}(?!\\d{2}\\b))((-?)((0[1-9]|1[0-2])(\\3([12]\\d|0[1-9]|3[01]))?|W([0-4]\\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\\d|[12]\\d{2}|3([0-5]\\d|6[1-6])))?)$"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.startDate": {
+            "match": "regex",
+            "regex": "^([\\+-]?\\d{4}(?!\\d{2}\\b))((-?)((0[1-9]|1[0-2])(\\3([12]\\d|0[1-9]|3[01]))?|W([0-4]\\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\\d|[12]\\d{2}|3([0-5]\\d|6[1-6])))?)$"
+          },
+          "$.body.user.id": {
+            "match": "type"
+          }
+        },
+        "status": 201
+      }
+    },
+    {
+      "description": "a request to sign in for the frontend",
+      "providerState": "a user exists and credentials are valid",
+      "request": {
+        "body": {
+          "email": "test@user.com",
+          "password": "a-valid-password"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/auth/frontend/signin"
+      },
+      "response": {
+        "body": {
+          "token": "some.jwt.token",
+          "user": {
+            "email": "test@user.com",
+            "id": "c6a9a2a3-9a3d-4e9e-b8d9-2e7a0e2a3b4c",
+            "name": "Test User"
+          }
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.token": {
+            "match": "type"
+          },
+          "$.body.user.email": {
+            "match": "type"
+          },
+          "$.body.user.id": {
+            "match": "type"
+          },
+          "$.body.user.name": {
+            "match": "type"
+          }
+        },
+        "status": 200
+      }
+    }
+  ],
+  "metadata": {
+    "pact-js": {
+      "version": "15.0.1"
+    },
+    "pactRust": {
+      "ffi": "0.4.22",
+      "models": "1.2.3"
+    },
+    "pactSpecification": {
+      "version": "2.0.0"
+    }
+  },
+  "provider": {
+    "name": "NightBFF-Backend"
+  }
+}

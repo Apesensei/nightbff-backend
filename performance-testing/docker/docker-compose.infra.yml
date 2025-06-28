@@ -20,7 +20,7 @@ services:
     image: redis:7-alpine
     container_name: redis_performance
     ports:
-      - "6380:6379" # Exposing on 6380 to avoid conflict
+      - "6379:6379" # Standard port mapping for consistency
     volumes:
       - redis_perf_data:/data
     restart: unless-stopped

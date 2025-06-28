@@ -22,4 +22,4 @@ export const createMockQueryBuilder = () => {
 
 export const createMockRepository = () => ({
   createQueryBuilder: jest.fn(() => createMockQueryBuilder()),
-}); 
+});

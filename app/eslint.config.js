@@ -38,6 +38,15 @@ module.exports = [
     },
   },
   
+  // Configuration specifically for test files to relax certain rules
+  {
+    files: ["test/**/*.spec.ts", "test/**/*.test.ts"],
+    rules: {
+      // It's common to have unused variables in test setups (e.g., for mocks)
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  
   // Apply Prettier recommendations (must be last)
   eslintPluginPrettierRecommended, 
 ]; 
