@@ -24,7 +24,7 @@
     "migration:run": "npm run typeorm migration:run",
     "migration:revert": "npm run typeorm migration:revert",
     "migration:show": "npm run typeorm migration:show",
-    "migration:validate": "ts-node src/database/utils/migration-validator.ts",
+    "migration:validate": "npm run build --silent && node dist/src/database/utils/migration-validator.js",
     
     "db:reset": "npm run db:drop && npm run db:create && npm run migration:run",
     "db:create": "createdb $npm_config_name || echo 'Database exists'",
