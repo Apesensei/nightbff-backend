@@ -17,11 +17,24 @@ services:
     networks:
       - nightbff_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U nightbff_user -d nightbff_dev"]
       interval: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: nightbff_redis_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - nightbff_network
+    restart: always
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:
