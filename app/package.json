@@ -10,7 +10,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/src/main",
+    "start:prod": "node dist/src/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -18,20 +18,23 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     
-    "typeorm": "typeorm-ts-node-commonjs -d data-source.ts",
+    "typeorm": "typeorm-ts-node-commonjs -d src/data-source.cli.ts",
     "migration:create": "npm run typeorm migration:create src/database/migrations/schema/$npm_config_name",
     "migration:generate": "npm run typeorm migration:generate src/database/migrations/schema/$npm_config_name",
     "migration:run": "npm run typeorm migration:run",
     "migration:revert": "npm run typeorm migration:revert",
     "migration:show": "npm run typeorm migration:show",
-    "migration:validate": "ts-node src/database/utils/migration-validator.ts",
+    "migration:validate": "npm run build --silent && node dist/src/database/utils/migration-validator.js",
+    "migration:validate:compiled": "node dist/src/database/utils/migration-validator.js",
+    "migration:run:compiled": "node dist/scripts/migrate.js",
     
     "db:reset": "npm run db:drop && npm run db:create && npm run migration:run",
     "db:create": "createdb $npm_config_name || echo 'Database exists'",
     "db:drop": "dropdb $npm_config_name || echo 'Database does not exist'",
     
     "seed:run": "ts-node src/database/seeds/$NODE_ENV/index.ts",
-    "seed:dev": "NODE_ENV=development npm run seed:run"
+    "seed:dev": "NODE_ENV=development npm run seed:run",
+    "seed:smoke:compiled": "node dist/scripts/seed-smoke.js"
   },
   "keywords": [
     "nightlife",
