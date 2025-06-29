@@ -150,7 +150,7 @@ const entitiesPath = path.join(
 );
 const migrationsPath = path.join(
   projectRoot,
-  isTest ? "src/database/migrations/*.ts" : "dist/src/database/migrations/*.js", // CORRECTED path for JS
+  isTest ? "../../app/src/database/migrations/*.ts" : "../../app/dist/src/database/migrations/*.js", // Reference backend migrations
 );
 
 // Configuration options for TypeORM

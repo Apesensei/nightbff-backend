@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { AppDataSource } from '../src/data-source';
+import { AppDataSource } from '../src/data-source.cli';
 import { User } from '../src/microservices/auth/entities/user.entity';
 import { Plan } from '../src/microservices/plan/entities/plan.entity';
 import { v4 as uuid } from 'uuid';

@@ -1,5 +1,5 @@
 import { DataSource } from "typeorm";
-import { AppDataSource } from "../src/data-source";
+import { AppDataSource } from "../src/data-source.cli";
 
 (async () => {
   try {
