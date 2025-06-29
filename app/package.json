@@ -26,13 +26,15 @@
     "migration:show": "npm run typeorm migration:show",
     "migration:validate": "npm run build --silent && node dist/src/database/utils/migration-validator.js",
     "migration:validate:compiled": "node dist/src/database/utils/migration-validator.js",
+    "migration:run:compiled": "node dist/src/scripts/migrate.js",
     
     "db:reset": "npm run db:drop && npm run db:create && npm run migration:run",
     "db:create": "createdb $npm_config_name || echo 'Database exists'",
     "db:drop": "dropdb $npm_config_name || echo 'Database does not exist'",
     
     "seed:run": "ts-node src/database/seeds/$NODE_ENV/index.ts",
-    "seed:dev": "NODE_ENV=development npm run seed:run"
+    "seed:dev": "NODE_ENV=development npm run seed:run",
+    "seed:smoke:compiled": "node dist/src/scripts/seed-smoke.js"
   },
   "keywords": [
     "nightlife",
