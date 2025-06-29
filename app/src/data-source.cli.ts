@@ -20,7 +20,7 @@ export const AppDataSource = new DataSource({
   url: process.env.DATABASE_URL,
   synchronize: false,
   logging: !isProduction,
-  entities: [__dirname + '/../**/*.entity.{js,ts}'],
-  migrations: [__dirname + '/../../database/migrations/*{.ts,.js}'],
+  entities: [__dirname + '/src/**/*.entity.js'],
+  migrations: [__dirname + '/src/database/migrations/*.js'],
   migrationsTableName: 'typeorm_migrations',
 } as DataSourceOptions); 
