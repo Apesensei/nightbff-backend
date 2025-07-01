@@ -35,6 +35,7 @@
     "src/**/*", 
     "scripts/**/*", 
     "src/database/migrations/**/*.ts",
+    "src/database/seeds/**/*.ts",
     "test/**/*.ts"
   ],
   "exclude": ["node_modules", "dist"]

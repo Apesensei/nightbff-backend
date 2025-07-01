@@ -1,0 +1,55 @@
+name: CI – Backend Hardening
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci-backend.yml'
+  push:
+    branches: [ main, develop, 'integration/**' ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci-backend.yml'
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: nightbff_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U admin" --health-interval 5s --health-timeout 3s --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://admin:testpass@localhost:5432/nightbff_test
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: 'app/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Validate environment variables
+        working-directory: app
+        run: npm run validate-env
+
+      - name: Run unit & integration tests
+        working-directory: app
+        run: npm test -- --runInBand 

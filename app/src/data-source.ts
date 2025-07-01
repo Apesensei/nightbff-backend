@@ -17,10 +17,17 @@ console.log(`[DATA_SOURCE_DEBUG] NODE_ENV: ${nodeEnv}`); // DEBUG LOG
 
 // Load environment variables relative to the project root
 const projectRoot = process.cwd();
-const envFilePath =
-  nodeEnv === "performance"
-    ? path.resolve(projectRoot, ".env.performance")
-    : path.resolve(projectRoot, ".env");
+
+// Map NODE_ENV to explicit env file names for clarity
+const envFileMap: Record<string, string> = {
+  development: ".env.development",
+  test: ".env.test",
+  performance: ".env.performance",
+  production: ".env.production",
+};
+
+const envFile = envFileMap[nodeEnv] || ".env"; // fallback to generic .env
+const envFilePath = path.resolve(projectRoot, envFile);
 
 console.log(`[DATA_SOURCE_DEBUG] Resolved envFilePath: ${envFilePath}`);
 console.log(`[DATA_SOURCE_DEBUG] process.cwd(): ${process.cwd()}`);
@@ -112,9 +119,18 @@ ${rawFileContent.substring(0, 500)}
 
 // Remove complex final assignment logic for now. The TypeORM connection will likely fail,
 // but we are focused on what dotenv is parsing.
-const dbHost = envConfig.parsed?.DB_HOST || process.env.DB_HOST;
+const dbHost =
+  envConfig.parsed?.POSTGRES_HOST ||
+  envConfig.parsed?.DB_HOST ||
+  process.env.POSTGRES_HOST ||
+  process.env.DB_HOST;
+
 const dbPort = parseInt(
-  envConfig.parsed?.DB_PORT || process.env.DB_PORT || "5432",
+  envConfig.parsed?.POSTGRES_PORT ||
+    envConfig.parsed?.DB_PORT ||
+    process.env.POSTGRES_PORT ||
+    process.env.DB_PORT ||
+    "5432",
   10,
 );
 
@@ -148,9 +164,12 @@ const entitiesPath = path.join(
   projectRoot,
   isTest ? "src/**/*.entity.ts" : "dist/**/*.entity.js", // Use TS files for tests
 );
+// Unified migration glob
 const migrationsPath = path.join(
   projectRoot,
-  isTest ? "src/database/migrations/*.ts" : "dist/src/database/migrations/*.js", // CORRECTED path for JS
+  isTest
+    ? "src/database/migrations/**/*.ts"
+    : "dist/src/database/migrations/**/*.js", // CORRECTED PATH
 );
 
 // Configuration options for TypeORM
