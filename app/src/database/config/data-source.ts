@@ -20,13 +20,18 @@ const environment = process.env.NODE_ENV || "development";
 export const createDataSource = (env: string = environment): DataSource => {
   const isTest = env === "test";
 
+  // Resolve paths from the project root to avoid "dist/dist" duplication after compilation.
+  // After the TypeScript build, `process.cwd()` inside the container is `/usr/src/app` and
+  // all compiled JS lives under `/usr/src/app/dist`.
+  const projectRoot = process.cwd();
+
   const entitiesPath = isTest
-    ? path.join(__dirname, "../../**/*.entity.ts")
-    : path.join(__dirname, "../../../dist/**/*.entity.js");
+    ? path.join(projectRoot, "src/**/*.entity.ts")
+    : path.join(projectRoot, "dist/**/*.entity.js");
 
   const migrationsPath = isTest
-    ? path.join(__dirname, "../migrations/**/*.ts")
-    : path.join(__dirname, "../migrations/**/*.js");
+    ? path.join(projectRoot, "src/database/migrations/**/*.ts")
+    : path.join(projectRoot, "dist/database/migrations/**/*.js");
 
   if (env === "test") {
     return new DataSource({
