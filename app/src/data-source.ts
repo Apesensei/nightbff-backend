@@ -167,9 +167,7 @@ const entitiesPath = path.join(
 // Unified migration glob
 const migrationsPath = path.join(
   projectRoot,
-  isTest
-    ? "src/database/migrations/**/*.ts"
-    : "dist/src/database/migrations/**/*.js", // CORRECTED PATH
+  isTest ? "src/database/migrations/**/*.ts" : "dist/src/database/migrations/**/*.js",
 );
 
 // Configuration options for TypeORM
