@@ -7,6 +7,7 @@ import * as path from "path"; // Import path module
 import * as fs from "fs"; // Added fs import
 // Remove ES Module specific imports
 // import { fileURLToPath } from 'url';
+import { validateEnv } from "./config/env.schema";
 
 // Dynamically determine the environment and load the appropriate .env file
 const nodeEnv = process.env.NODE_ENV || "development"; // Default to development
@@ -121,6 +122,9 @@ ${rawFileContent.substring(0, 500)}
   }
   console.log("--- END PARSED .ENV VALUES (dotenv) ---");
 }
+
+// Validate environment before anything else
+validateEnv();
 
 // Remove complex final assignment logic for now. The TypeORM connection will likely fail,
 // but we are focused on what dotenv is parsing.

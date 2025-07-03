@@ -65,9 +65,5 @@ USER appuser
 # Expose port
 EXPOSE 3000
 
-# Set default values for DB host and port
-ENV DB_HOST=postgres_perf
-ENV DB_PORT=5432
-
-# Wait for the database to be ready, then start the application using the ENV variables
-CMD sh -c "echo \"Waiting for \${DB_HOST}:\${DB_PORT}...\" && while ! nc -z \${DB_HOST} \${DB_PORT}; do sleep 1; done && echo 'PostgreSQL started. Starting app...' && node dist/src/main.js" 
+# Replace legacy wait with canonical vars
+CMD sh -c "echo \"Waiting for ${POSTGRES_HOST:-postgres_perf}:${POSTGRES_PORT:-5432}...\" && while ! nc -z ${POSTGRES_HOST:-postgres_perf} ${POSTGRES_PORT:-5432}; do sleep 1; done && echo 'PostgreSQL started. Starting app...' && node dist/src/main.js" 

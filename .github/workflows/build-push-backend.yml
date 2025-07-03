@@ -37,6 +37,19 @@ jobs:
             # Create a tag for the integration branch based on the short commit SHA
             type=sha,prefix=int-,format=short
 
+      - name: Environment validation
+        working-directory: app
+        run: npm run env:lint
+
+      - name: Block deprecated DB_* variables
+        run: |
+          echo "🔍 Checking for legacy DB_* variables…"
+          if grep -R --line-number -e '^DB_' config/env app/.env.* 2>/dev/null; then
+            echo "❌ Deprecated DB_* variables found. Remove them before pushing image." && exit 1;
+          else
+            echo "✅ No legacy DB_* variables detected.";
+          fi
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
