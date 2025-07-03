@@ -2,6 +2,9 @@ global:
   scrape_interval: 15s # Default scrape interval
   evaluation_interval: 15s # Default evaluation interval
 
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
 scrape_configs:
   - job_name: 'prometheus' # Scrapes Prometheus itself
     static_configs:
@@ -9,7 +12,12 @@ scrape_configs:
 
   - job_name: 'cadvisor'
     static_configs:
-      - targets: ['cadvisor:8080'] # Points to cAdvisor service name and internal port
+      - targets: [
+          'cadvisor_db:8080',
+          'cadvisor_app:8080',
+          'cadvisor_workers:8080'
+          # Add more cAdvisor targets as needed for each Docker host
+        ]
 
   - job_name: 'node-exporter'
     static_configs:
@@ -55,6 +63,10 @@ scrape_configs:
   - job_name: 'venue_service'
     static_configs:
       - targets: ['venue:3000']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres_exporter:9187']
 
   # If your mock server exposes metrics, add a job for it too:
   # - job_name: 'mock_google_maps'

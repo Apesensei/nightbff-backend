@@ -24,7 +24,7 @@ export async function generateTestJwt(
     imports: [
       ConfigModule.forRoot({
         // Load .env.test specifically, unless in CI where env vars are expected directly
-        envFilePath: isCI ? undefined : ".env.test",
+        envFilePath: isCI ? undefined : "config/env/test.env",
         // If in CI, ignore .env file absence; otherwise, it might warn/error
         ignoreEnvFile: isCI,
         // Allow environment variables to override .env file values

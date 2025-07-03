@@ -19,7 +19,7 @@ services:
     volumes:
       - postgres_perf_data:/var/lib/postgresql/data
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     networks:
       - perf_network
     ports:
@@ -38,9 +38,9 @@ services:
     container_name: nightbff_migrator_perf
     platform: linux/arm64/v8
     volumes:
-      - ../config/.env.performance:/usr/src/app/.env.performance:ro
+      - ../../config/env/performance.env:/usr/src/app/.env.performance:ro
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     networks:
       - perf_network
     depends_on:
@@ -94,7 +94,7 @@ services:
       dockerfile: Dockerfile
     container_name: nightbff_auth_perf
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     environment: # ADD THIS BLOCK or MODIFY
       - NODE_ENV=performance
       - SERVICE_NAME=auth
@@ -118,7 +118,7 @@ services:
       dockerfile: Dockerfile
     container_name: nightbff_chat_perf
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     environment: # ADD THIS BLOCK or MODIFY
       - NODE_ENV=performance
       - SERVICE_NAME=chat
@@ -142,7 +142,7 @@ services:
       dockerfile: Dockerfile
     container_name: nightbff_event_perf
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     environment: # ADD THIS BLOCK or MODIFY
       - NODE_ENV=performance
       - SERVICE_NAME=event
@@ -168,7 +168,7 @@ services:
       dockerfile: Dockerfile
     container_name: nightbff_interest_perf
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     environment: # ADD THIS BLOCK or MODIFY
       - NODE_ENV=performance
       - SERVICE_NAME=interest
@@ -190,7 +190,7 @@ services:
       dockerfile: Dockerfile
     container_name: nightbff_notification_perf
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     environment: # ADD THIS BLOCK or MODIFY
       - NODE_ENV=performance
       - SERVICE_NAME=notification
@@ -214,7 +214,7 @@ services:
       dockerfile: Dockerfile
     container_name: nightbff_plan_perf
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     environment: # ADD THIS BLOCK or MODIFY
       - NODE_ENV=performance
       - SERVICE_NAME=plan
@@ -240,7 +240,7 @@ services:
       dockerfile: Dockerfile
     container_name: nightbff_user_perf
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     environment: # ADD THIS BLOCK or MODIFY
       - NODE_ENV=performance
       - SERVICE_NAME=user
@@ -266,7 +266,7 @@ services:
       dockerfile: Dockerfile
     container_name: nightbff_venue_perf
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     environment: # ADD THIS BLOCK or MODIFY
       - NODE_ENV=performance
       - SERVICE_NAME=venue
@@ -358,7 +358,7 @@ services:
     networks:
       - perf_network
     env_file:
-      - ../config/.env.performance
+      - ../../config/env/performance.env
     environment:
       DATA_SOURCE_NAME: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_perf:${POSTGRES_PORT:-5432}/${POSTGRES_DB}?sslmode=disable"
     depends_on:

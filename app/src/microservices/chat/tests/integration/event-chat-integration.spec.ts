@@ -31,7 +31,7 @@ describe("Event-Chat Integration (Integration Tests)", () => {
         EventEmitterModule.forRoot(),
         ConfigModule.forRoot({
           isGlobal: true,
-          envFilePath: `.env.test`,
+          envFilePath: `config/env/test.env`,
         }),
       ],
       providers: [

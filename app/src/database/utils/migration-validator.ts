@@ -27,16 +27,10 @@ interface MigrationFile {
 }
 
 export class MigrationValidator {
+  // Canonical migration directory only – prevents duplicate scanning and keeps
+  // validator output focused. Backup/legacy folders are ignored.
   private readonly migrationPaths = [
     path.join(process.cwd(), "src/database/migrations"),
-    path.join(
-      process.cwd(),
-      "../nightbff-integration/app/app/src/database/migrations",
-    ),
-    path.join(
-      process.cwd(),
-      "../nightbff-integration/app/src/database/migrations",
-    ),
   ];
 
   private readonly maxFileSize = 50000; // 50KB threshold

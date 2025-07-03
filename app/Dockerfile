@@ -1,21 +1,23 @@
 # app/Dockerfile
 
 # ---- Base Stage ----
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 WORKDIR /usr/src/app
 
 # ---- Dependencies Stage ----
 FROM base AS dependencies
 # Copy package.json and package-lock.json from the build context (app/)
-COPY package*.json ./
-RUN npm ci --only=production --legacy-peer-deps
+COPY package.json ./
+COPY package-lock.json ./
+RUN npm install --omit=dev --legacy-peer-deps --ignore-scripts
 
 # ---- Build Stage ----
 FROM base AS build
 WORKDIR /usr/src/app
 
-COPY package*.json ./
-RUN npm install --legacy-peer-deps # Installs all deps, including dev
+COPY package.json ./
+COPY package-lock.json ./
+RUN npm install --legacy-peer-deps --ignore-scripts # Installs all deps, including dev
 
 COPY . .
 
@@ -30,8 +32,8 @@ RUN npm prune --production
 # ---- Production Stage ----
 FROM base AS production
 
-# Install netcat for the wait script
-RUN apk add --no-cache netcat-openbsd
+# Install utilities for wait script
+RUN apk add --no-cache netcat-openbsd postgresql-client
 
 WORKDIR /usr/src/app
 
@@ -43,6 +45,9 @@ COPY --from=dependencies --chown=appuser:appgroup /usr/src/app/node_modules ./no
 
 # Copy compiled application code AND compiled scripts
 COPY --from=build --chown=appuser:appgroup /usr/src/app/dist ./dist
+
+# Copy the source code needed for ts-node scripts
+COPY --from=build --chown=appuser:appgroup /usr/src/app/src ./src
 
 # Copy package.json for potential runtime use (e.g., reading version)
 COPY --chown=appuser:appgroup package.json ./

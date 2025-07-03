@@ -36,7 +36,7 @@ describe("ProfileRepository (Integration)", () => {
 
     moduleRef = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({ isGlobal: true, envFilePath: ".env.test" }),
+        ConfigModule.forRoot({ isGlobal: true, envFilePath: "config/env/test.env" }),
         TypeOrmModule.forRoot(typeOrmOptions),
         // Import only the entities needed for injection
         TypeOrmModule.forFeature([UserProfile, User]),

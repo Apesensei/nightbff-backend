@@ -15,8 +15,8 @@ const MAX_AGE = 45;
 const PASSWORD_PLACEHOLDER = "password123"; // Placeholder password
 const SALT_ROUNDS = 10; // For bcrypt hashing
 
-// Load .env.performance for performance testing
-const envPath = path.resolve(process.cwd(), "../performance-testing/config/.env.performance");
+// Load canonical performance env overrides
+const envPath = path.resolve(__dirname, "../../config/env/performance.env");
 const envLoadResult = dotenv.config({ path: envPath });
 
 if (envLoadResult.error) {

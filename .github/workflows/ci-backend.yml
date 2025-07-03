@@ -48,7 +48,13 @@ jobs:
 
       - name: Validate environment variables
         working-directory: app
-        run: npm run validate-env
+
+      - name: Run dotenv-linter
+        run: |
+          npx dotenv-linter config/env/*.env
+
+      - name: Env Sprawl Guard
+        run: bash scripts/ci/env-sprawl-guard.sh
 
       - name: Run unit & integration tests
         working-directory: app

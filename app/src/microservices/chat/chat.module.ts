@@ -22,10 +22,12 @@ import { ParseSocketJwtPipe } from "./pipes/parse-socket-jwt.pipe";
 import { EventsModule } from "../event/events.module";
 import { AuthModule } from "../auth/auth.module";
 import { DatabaseModule } from "../../common/database/database.module";
+import { DbStatsModule } from "../../common/database/db-stats.module";
 
 @Module({
   imports: [
     DatabaseModule,
+    DbStatsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

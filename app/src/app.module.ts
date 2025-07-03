@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import * as path from "path";
 import { TypeOrmModule, TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { AppDataSource } from "./database/config/data-source";
@@ -60,16 +61,20 @@ if (serviceName && serviceName in serviceModules) {
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: [
-        process.env.NODE_ENV === "production"
-          ? ".env.production"
-          : process.env.NODE_ENV === "performance"
-            ? ".env.performance"
-            : ".env.development",
-      ],
-    }),
+    (() => {
+      // Resolve monorepo root regardless of cwd (works in ts-node & compiled)
+      const rootDir = path.resolve(__dirname, "../../../");
+      return ConfigModule.forRoot({
+        isGlobal: true,
+        envFilePath: [
+          path.join(rootDir, "config/env/base.env"),
+          path.join(
+            rootDir,
+            `config/env/${process.env.NODE_ENV || "development"}.env`,
+          ),
+        ],
+      });
+    })(),
     DatabaseModule,
     FeatureFlagsModule,
     TypeOrmModule.forRoot({
