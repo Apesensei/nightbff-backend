@@ -48,6 +48,16 @@ jobs:
 
       - name: Validate environment variables
         working-directory: app
+        run: npm run env:lint
+
+      - name: Block deprecated DB_* variables
+        run: |
+          echo "🔍 Checking for legacy DB_* variables…"
+          if grep -R --line-number -e '^DB_' config/env app/.env.* 2>/dev/null; then
+            echo "❌ Deprecated DB_* variables found. Remove them before merging." && exit 1;
+          else
+            echo "✅ No legacy DB_* variables detected.";
+          fi
 
       - name: Run dotenv-linter
         run: |
@@ -55,6 +65,9 @@ jobs:
 
       - name: Env Sprawl Guard
         run: bash scripts/ci/env-sprawl-guard.sh
+
+      - name: Choose free Postgres port
+        run: bash scripts/ci/choose-pg-port.sh
 
       - name: Run unit & integration tests
         working-directory: app

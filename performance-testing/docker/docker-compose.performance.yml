@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   perf_network:
     driver: bridge
@@ -23,7 +21,7 @@ services:
     networks:
       - perf_network
     ports:
-      - "5434:5432" # Map for potential external access/debugging
+      - "${HOST_POSTGRES_PORT}:5432" # Host port resolved by choose-pg-port.sh
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -50,8 +48,11 @@ services:
       - /bin/sh
       - -c
       - |
+        set -euo pipefail; \
         echo "🕒 Waiting for Postgres..." && \
         until pg_isready -h ${POSTGRES_HOST:-postgres_perf} -p ${POSTGRES_PORT:-5432} -U ${POSTGRES_USER:-admin}; do sleep 2; done && \
+        echo "🔍 Validating environment..." && \
+        npm run env:lint && \
         echo "🏗  Running migrations..." && \
         node dist/scripts/migrate.js && \
         echo "🌱  Seeding database..." && \

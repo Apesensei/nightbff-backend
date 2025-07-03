@@ -1,8 +1,12 @@
 import 'reflect-metadata';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import * as dotenv from 'dotenv';
+import { validateEnv } from './config/env.schema';
 
 dotenv.config(); // Load from root .env file
+
+// Validate environment early to fail fast
+validateEnv();
 
 // This file is exclusively for TypeORM CLI operations.
 // It uses a simple, direct configuration that relies ONLY on environment variables.
