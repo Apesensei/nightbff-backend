@@ -15,8 +15,8 @@ const MAX_AGE = 45;
 const PASSWORD_PLACEHOLDER = "password123"; // Placeholder password
 const SALT_ROUNDS = 10; // For bcrypt hashing
 
-// Load .env.development
-const envPath = path.resolve(process.cwd(), ".env.development");
+// Load canonical development env overrides
+const envPath = path.resolve(__dirname, "../../config/env/development.env");
 const envLoadResult = dotenv.config({ path: envPath });
 
 if (envLoadResult.error) {

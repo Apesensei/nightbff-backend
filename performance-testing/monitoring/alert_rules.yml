@@ -1,0 +1,20 @@
+groups:
+  - name: nightbff-db-alerts
+    rules:
+      - alert: DbConnectionsHigh
+        expr: pg_stat_activity_count > 140
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Postgres connections high (value={{ $value }})"
+          description: "Total Postgres connections has exceeded 140 for more than 2 minutes. Investigate connection pooling or leaks."
+
+      - alert: NoMigrationsApplied
+        expr: pg_stat_user_tables == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No migrations applied (schema empty)"
+          description: "pg_stat_user_tables reports zero tables; migrations might not have run or were dropped. Check migrator logs." 
