@@ -55,7 +55,7 @@ services:
         echo "🏗  Running migrations..." && \
         node dist/scripts/migrate.js && \
         echo "🌱  Seeding database..." && \
-        node dist/scripts/run-seeder.js && \
+        npm run db:seed && \
         echo "✅  Migrations & seeding finished."
     restart: 'no'
 
