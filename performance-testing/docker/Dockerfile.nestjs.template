@@ -3,7 +3,11 @@
 # ---- Base Stage ----
 # Use a specific Node.js version. Alpine is smaller.
 # Make sure this Node version is compatible with your NestJS version and dependencies.
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
+
+# Install essential tools, including postgresql-client for pg_isready
+RUN apk add --no-cache postgresql-client
+
 WORKDIR /usr/src/app
 
 # Install global dependencies if any (e.g., Nest CLI, if needed for runtime, though usually not)
@@ -12,22 +16,24 @@ WORKDIR /usr/src/app
 # ---- Dependencies Stage ----
 FROM base AS dependencies
 # Copy package.json and package-lock.json (or yarn.lock)
-COPY package*.json ./
+COPY package.json ./
+COPY package-lock.json ./
 # COPY yarn.lock ./ # Uncomment if using Yarn
 
 # Install production dependencies
-RUN npm ci --only=production
+RUN npm install --omit=dev --ignore-scripts
 # RUN yarn install --production --frozen-lockfile # Uncomment if using Yarn
 
 # ---- Build Stage ----
 # This stage builds the TypeScript application
 FROM base AS build
 # Copy package.json and package-lock.json (or yarn.lock) again for build-time devDependencies
-COPY package*.json ./
+COPY package.json ./
+COPY package-lock.json ./
 # COPY yarn.lock ./ # Uncomment if using Yarn
 
 # Install all dependencies (including devDependencies for building)
-RUN npm install
+RUN npm install --ignore-scripts
 # RUN yarn install --frozen-lockfile # Uncomment if using Yarn
 
 # Copy application source code
@@ -82,4 +88,4 @@ EXPOSE 3000
 # and the Dockerfile is in `app/src/microservices/plan/` and `COPY --from=build /usr/src/app/dist ./dist` was used,
 # then the CMD might be ["node", "dist/src/microservices/plan/main.js"] -> check your dist structure.
 # For a simpler structure where dist/main.js is directly in the service's build output copied to ./dist:
-CMD ["node", "dist/main.js"] 
+CMD ["node", "dist/src/main.js"] 

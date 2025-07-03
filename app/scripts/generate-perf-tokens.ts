@@ -32,7 +32,7 @@ async function generatePerfTokens() {
   // --- Environment Variable Loading ---
   // Primary: Use process.env if vars are directly passed (e.g., DATABASE_URL, JWT_SECRET)
   // Fallback: Try to load from performance-testing/config/.env.performance
-  const perfEnvPath = path.resolve(__dirname, '..', '..', 'performance-testing', 'config', '.env.performance');
+  const perfEnvPath = path.resolve(__dirname, '..', '..', 'config', 'env', 'performance.env');
   let jwtSecret = process.env.JWT_SECRET;
   let databaseUrl = process.env.DATABASE_URL;
 

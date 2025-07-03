@@ -13,12 +13,14 @@ import { InterestRepository } from "./repositories/interest.repository";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import KeyvRedis from "@keyv/redis";
 import Keyv from "keyv";
+import { DbStatsModule } from "../../common/database/db-stats.module";
 
 @Module({
   imports: [
     DatabaseModule,
     ConfigModule,
     AuthModule,
+    DbStatsModule,
     // ScheduleModule.forRoot(),
     // BullModule.registerQueue({ name: 'interest-queue' }),
   ],

@@ -44,6 +44,7 @@ import KeyvRedis from "@keyv/redis";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { caching } from "cache-manager";
 import Keyv from "keyv";
+import { DbStatsModule } from "../../common/database/db-stats.module";
 
 @Module({
   imports: [
@@ -124,6 +125,7 @@ import Keyv from "keyv";
         inject: [ConfigService],
       },
     ]),
+    DbStatsModule,
   ],
   controllers: [VenueController, VenueImageController, VenueAdminController],
   providers: [

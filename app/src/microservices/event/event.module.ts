@@ -16,6 +16,7 @@ import { UserModule } from "../user/user.module";
 import { CACHE_MANAGER } from "@nestjs/cache-manager"; // Added
 import { caching } from "cache-manager"; // Added
 import Keyv from "keyv"; // Added
+import { DbStatsModule } from "../../common/database/db-stats.module";
 // DatabaseModule is implicitly imported due to @Global(), no explicit import needed here
 
 @Module({
@@ -26,6 +27,7 @@ import Keyv from "keyv"; // Added
     EventEmitterModule.forRoot(),
     InterestModule,
     UserModule,
+    DbStatsModule,
   ],
   controllers: [EventController],
   providers: [

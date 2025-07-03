@@ -86,7 +86,7 @@ describe("Chat API (e2e)", () => {
     console.log("Compiling module...");
     const compiledModule: TestingModule = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({ isGlobal: true, envFilePath: ".env.test" }),
+        ConfigModule.forRoot({ isGlobal: true, envFilePath: "config/env/test.env" }),
         // --- Use the dynamic TypeORM options --- //
         TypeOrmModule.forRoot(typeOrmOptions),
         EventEmitterModule.forRoot(),

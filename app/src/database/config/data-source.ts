@@ -6,14 +6,21 @@ import * as path from "path";
 // Load environment-specific .env similar to application bootstrap
 const nodeEnv = process.env.NODE_ENV || "development";
 const envFileMap: Record<string, string> = {
-  development: ".env.development",
-  test: ".env.test",
-  performance: ".env.performance",
-  production: ".env.production",
+  development: path.join("config", "env", "development.env"),
+  test: path.join("config", "env", "test.env"),
+  performance: path.join("config", "env", "performance.env"),
+  integration: path.join("config", "env", "integration.env"),
+  production: path.join("config", "env", "production.env"),
 };
 
-const envFile = envFileMap[nodeEnv] || ".env";
-config({ path: path.resolve(process.cwd(), envFile) });
+const envFile = envFileMap[nodeEnv] || path.join("config", "env", "development.env");
+
+// Resolve path relative to repo root. `__dirname` = app/src/database/config
+// so four levels up reaches repo root.
+const rootDir = path.resolve(__dirname, "../../../../");
+const envPathResolved = path.join(rootDir, envFile);
+console.log('[DEBUG] loading env file', envPathResolved);
+config({ path: envPathResolved });
 
 const environment = process.env.NODE_ENV || "development";
 
@@ -67,6 +74,7 @@ export const createDataSource = (env: string = environment): DataSource => {
   }
 
   // Fallback legacy DB_* variables (will be deprecated)
+  console.log('[DEBUG] Using POSTGRES_HOST', process.env.POSTGRES_HOST, 'PORT', process.env.POSTGRES_PORT);
   return new DataSource({
     type: "postgres",
     host: process.env.POSTGRES_HOST || process.env.DB_HOST || "localhost",
