@@ -30,6 +30,12 @@ jobs:
     env:
       DATABASE_URL: postgresql://admin:testpass@localhost:5432/nightbff_test
       NODE_ENV: test
+      # Required POSTGRES_* variables for validation
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: nightbff_test
 
     steps:
       - name: Checkout repository
