@@ -2,9 +2,9 @@ const fs = require('fs');
 const path = require('path');
 
 // Migration paths to scan
+// NOTE: Backend repo is single source of truth per ADR-018
 const migrationPaths = [
-  './src/database/migrations',
-  '../nightbff-integration/app/app/src/database/migrations'
+  './src/database/migrations'
 ];
 
 console.log('🚨 MIGRATION SYSTEM CRITICAL ASSESSMENT');
@@ -28,7 +28,7 @@ function scanMigrations() {
             file: f,
             path: filePath,
             size: stats.size,
-            pathType: migrationPath.includes('nightbff-integration') ? 'integration' : 'backend'
+            pathType: 'backend'
           };
         });
       
