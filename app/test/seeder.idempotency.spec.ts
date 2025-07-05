@@ -6,9 +6,6 @@ import { Repository } from "typeorm";
 import { User } from "../src/microservices/auth/entities/user.entity";
 import { getRepositoryToken } from "@nestjs/typeorm";
 
-// Ensure we use the in-memory sqlite setup inside createDataSource
-process.env.NODE_ENV = "test";
-
 describe("SeederService idempotency", () => {
   let seederService: SeederService;
   let userRepository: Repository<User>;

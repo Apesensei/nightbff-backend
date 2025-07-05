@@ -6,9 +6,6 @@ import { ConfigModule } from '@nestjs/config';
 import { createDataSource } from '../../database/config/data-source';
 import { AgeVerification } from '../../microservices/auth/entities/age-verification.entity';
 
-// Create a temporary options object to avoid side-effects
-const dataSourceOptions = createDataSource(process.env.NODE_ENV).options;
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -18,10 +15,15 @@ const dataSourceOptions = createDataSource(process.env.NODE_ENV).options;
           ? 'config/env/test.env'
           : 'config/env/performance.env',
     }),
-    // Explicitly provide the entities array to ensure they are loaded
-    TypeOrmModule.forRoot({
-      ...dataSourceOptions,
-      entities: [User, AgeVerification],
+    // Create data source dynamically to respect NODE_ENV set at runtime
+    TypeOrmModule.forRootAsync({
+      useFactory: () => {
+        const dataSourceOptions = createDataSource(process.env.NODE_ENV).options;
+        return {
+          ...dataSourceOptions,
+          entities: [User, AgeVerification],
+        };
+      },
     }),
     TypeOrmModule.forFeature([User, AgeVerification]),
   ],
