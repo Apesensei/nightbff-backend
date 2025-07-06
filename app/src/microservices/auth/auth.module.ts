@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { PassportModule } from "@nestjs/passport";
+import { DbStatsModule } from "../../common/database/db-stats.module";
 
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
@@ -29,6 +30,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
         },
       }),
     }),
+    DbStatsModule,
   ],
   controllers: [AuthController, AgeVerificationController],
   providers: [

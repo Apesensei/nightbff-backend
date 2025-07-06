@@ -10,34 +10,38 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/src/main",
+    "start:prod": "node dist/src/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "validate-env": "node scripts/validate-env.js",
+    "env:lint": "node scripts/validate-env.js",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "dev:db": "docker compose -f ../docker-compose.local.yml down --remove-orphans && docker compose -f ../docker-compose.local.yml up -d",
     
-    "typeorm:prod": "node -r ts-node/register ./node_modules/typeorm/cli.js -d dist/src/data-source.js",
-    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts",
-    "migration:create": "npm run typeorm -- migration:create src/database/migrations/schema/$npm_config_name",
+    "typeorm": "typeorm-ts-node-commonjs -d src/data-source.cli.ts",
+    "migration:create": "npm run typeorm migration:create src/database/migrations/schema/$npm_config_name",
     "migration:generate": "npm run typeorm migration:generate src/database/migrations/schema/$npm_config_name",
     "migration:run": "npm run typeorm migration:run",
     "migration:revert": "npm run typeorm migration:revert",
     "migration:show": "npm run typeorm migration:show",
     "migration:validate": "npm run build --silent && node dist/src/database/utils/migration-validator.js",
     "migration:validate:compiled": "node dist/src/database/utils/migration-validator.js",
+    "migration:run:compiled": "node dist/scripts/migrate.js",
     
     "db:reset": "npm run db:drop && npm run db:create && npm run migration:run",
     "db:create": "createdb $npm_config_name || echo 'Database exists'",
     "db:drop": "dropdb $npm_config_name || echo 'Database does not exist'",
     
     "seed:run": "ts-node src/database/seeds/$NODE_ENV/index.ts",
-    "seed:dev": "ts-node -r tsconfig-paths/register src/database/seeds/seeder.ts",
-    "seed:prod": "node dist/database/seeds/seeder.js",
-    "postinstall": "npm run validate-env"
+    "seed:dev": "NODE_ENV=development npm run seed:run",
+    "seed:smoke:compiled": "node dist/scripts/seed-smoke.js",
+    "postinstall": "npm run validate-env && bash scripts/setup-hooks.sh",
+    "db:migrate": "node dist/scripts/migrate.js",
+    "db:seed": "node dist/scripts/run-seeder.js",
+    "ci:guard:seeds": "bash scripts/ci/no-rogue-seeds.sh"
   },
   "keywords": [
     "nightlife",
@@ -126,7 +130,8 @@
     "ts-node": "^10.9.1",
     "typeorm": "^0.3.21",
     "typeorm-ts-node-commonjs": "^0.3.20",
-    "typescript": "^5.1.3"
+    "typescript": "^5.1.3",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -153,5 +158,12 @@
     "testcontainers": "^10.24.2",
     "ts-jest": "^29.1.0",
     "ts-loader": "^9.4.3"
+  },
+  "optionalDependencies": {
+    "@pact-foundation/pact-core-linux-x64-glibc": "^16.0.0",
+    "@pact-foundation/pact-core-linux-arm64-glibc": "^16.0.0",
+    "@pact-foundation/pact-core-darwin-arm64": "^16.0.0",
+    "@pact-foundation/pact-core-darwin-x64": "^16.0.0",
+    "@pact-foundation/pact-core-windows-x64": "^16.0.0"
   }
 }

@@ -30,10 +30,30 @@ jobs:
     env:
       DATABASE_URL: postgresql://admin:testpass@localhost:5432/nightbff_test
       NODE_ENV: test
+      # Required POSTGRES_* variables for validation
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: nightbff_test
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Ensure no nested submodules
+        run: |
+          set -euo pipefail
+          if git submodule--helper list | grep -q "nightbff-integration"; then
+            echo "::error::Integration repo must not appear as submodule inside backend"
+            exit 1
+          fi
+          # also fail on any submodule lacking a url
+          git submodule status --recursive | while read _path; do
+            name=$(echo $_path | awk '{print $2}')
+            url=$(git config -f .gitmodules --get submodule.$name.url || true)
+            [ -z "$url" ] && { echo "::error::Submodule '$name' missing url"; exit 1; }
+          done
 
       - name: Use Node.js 18
         uses: actions/setup-node@v4
@@ -48,7 +68,26 @@ jobs:
 
       - name: Validate environment variables
         working-directory: app
-        run: npm run validate-env
+        run: npm run env:lint
+
+      - name: Block deprecated DB_* variables
+        run: |
+          echo "🔍 Checking for legacy DB_* variables…"
+          if grep -R --line-number -e '^DB_' config/env app/.env.* 2>/dev/null; then
+            echo "❌ Deprecated DB_* variables found. Remove them before merging." && exit 1;
+          else
+            echo "✅ No legacy DB_* variables detected.";
+          fi
+
+      - name: Run dotenv-linter
+        run: |
+          npx dotenv-linter config/env/*.env
+
+      - name: Env Sprawl Guard
+        run: bash scripts/ci/env-sprawl-guard.sh
+
+      - name: Choose free Postgres port
+        run: bash scripts/ci/choose-pg-port.sh
 
       - name: Run unit & integration tests
         working-directory: app

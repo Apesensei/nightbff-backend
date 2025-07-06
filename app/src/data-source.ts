@@ -7,6 +7,7 @@ import * as path from "path"; // Import path module
 import * as fs from "fs"; // Added fs import
 // Remove ES Module specific imports
 // import { fileURLToPath } from 'url';
+import { validateEnv } from "./config/env.schema";
 
 // Dynamically determine the environment and load the appropriate .env file
 const nodeEnv = process.env.NODE_ENV || "development"; // Default to development
@@ -20,13 +21,18 @@ const projectRoot = process.cwd();
 
 // Map NODE_ENV to explicit env file names for clarity
 const envFileMap: Record<string, string> = {
-  development: ".env.development",
-  test: ".env.test",
-  performance: ".env.performance",
-  production: ".env.production",
+  development: path.join("config", "env", "development.env"),
+  test: path.join("config", "env", "test.env"),
+  performance: path.join("config", "env", "performance.env"),
+  integration: path.join("config", "env", "integration.env"),
+  production: path.join("config", "env", "production.env"),
 };
 
-const envFile = envFileMap[nodeEnv] || ".env"; // fallback to generic .env
+const envFile = envFileMap[nodeEnv] || path.join("config", "env", "development.env");
+
+// first load base layer then env-specific override
+dotenv.config({ path: path.resolve(projectRoot, "config/env/base.env") });
+
 const envFilePath = path.resolve(projectRoot, envFile);
 
 console.log(`[DATA_SOURCE_DEBUG] Resolved envFilePath: ${envFilePath}`);
@@ -117,6 +123,9 @@ ${rawFileContent.substring(0, 500)}
   console.log("--- END PARSED .ENV VALUES (dotenv) ---");
 }
 
+// Validate environment before anything else
+validateEnv();
+
 // Remove complex final assignment logic for now. The TypeORM connection will likely fail,
 // but we are focused on what dotenv is parsing.
 const dbHost =
@@ -167,9 +176,7 @@ const entitiesPath = path.join(
 // Unified migration glob
 const migrationsPath = path.join(
   projectRoot,
-  isTest
-    ? "src/database/migrations/**/*.ts"
-    : "dist/src/database/migrations/**/*.js", // CORRECTED PATH
+  isTest ? "src/database/migrations/**/*.ts" : "dist/database/migrations/**/*.js",
 );
 
 // Configuration options for TypeORM
@@ -294,3 +301,24 @@ export const dataSourceOptions: DataSourceOptions = options;
 
 // Export a DataSource instance for the CLI and application use
 export const AppDataSource = new DataSource(dataSourceOptions);
+
+// -----------------------------------------------------------------------------
+//  ENV-SANITY GUARD – prevents ambiguous DB vars in non-dev environments
+// -----------------------------------------------------------------------------
+(() => {
+  const hasUrl = !!process.env.DATABASE_URL;
+  const hasPieces =
+    !!process.env.POSTGRES_USER ||
+    !!process.env.DB_USERNAME ||
+    !!process.env.POSTGRES_HOST;
+
+  if (hasUrl && hasPieces && process.env.NODE_ENV !== "development") {
+    throw new Error(
+      "Ambiguous DB configuration: Both DATABASE_URL and POSTGRES_* individual variables are set. Remove one source to avoid drift.",
+    );
+  } else if (hasUrl && hasPieces) {
+    console.warn(
+      "[DEV] Ambiguous DB config detected (DATABASE_URL + pieces). Service will start, but please clean up your .env before committing.",
+    );
+  }
+})();

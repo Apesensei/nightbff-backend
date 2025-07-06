@@ -3,7 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { UserController, UserLocationController } from "./user.controller";
 import { UserService } from "./user.service";
 import { UserRepository } from "./repositories/user.repository";
-// import { User } from "../auth/entities/user.entity"; // Removed unused import
+import { User } from '../auth/entities/user.entity';
 import { UserPreference } from "./entities/user-preference.entity";
 import { ProfileRepository } from "./repositories/profile.repository";
 import { UserPreferenceRepository } from "./repositories/user-preference.repository";
@@ -28,6 +28,8 @@ import { UserProfile } from "./entities/user-profile.entity";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ClientsModule, Transport } from "@nestjs/microservices";
 import { VenueModule } from "../venue/venue.module";
+import { AdminController } from './admin.controller';
+import { DbStatsModule } from "../../common/database/db-stats.module";
 
 @Module({
   imports: [
@@ -37,6 +39,7 @@ import { VenueModule } from "../venue/venue.module";
       UserRelationship,
       ProfileView,
       Follow,
+      User,
     ]),
     MulterModule.register({
       dest: "./uploads/user",
@@ -45,6 +48,7 @@ import { VenueModule } from "../venue/venue.module";
     AuthModule,
     forwardRef(() => VenueModule),
     ConfigModule,
+    DbStatsModule,
     ClientsModule.registerAsync([
       {
         name: "PLAN_SERVICE_RPC",
@@ -76,6 +80,7 @@ import { VenueModule } from "../venue/venue.module";
     UserLocationController,
     UserDiscoveryController,
     UserImageController,
+    AdminController,
   ],
   providers: [
     UserService,

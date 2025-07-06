@@ -1,0 +1,51 @@
+PORT	3000	app/.env.development
+NODE_ENV	development	app/.env.development
+CORS_ORIGIN	http://localhost:3001	app/.env.development
+SUPABASE_URL	https://vlyvdscuvfurkmfehlvl.supabase.co	app/.env.development
+SUPABASE_KEY	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZseXZkc2N1dmZ1cmttZmVobHZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1NDc3MjksImV4cCI6MjA1OTEyMzcyOX0.aezRbzCytXoxix6YoaLBvzOTRBWVOvFq6pBgaNfA-4Y	app/.env.development
+JWT_SECRET	F8xJoJmpizxnFYx+VtVz9a4KMv6F+eCeBwoFI4A6JQkKMAMh0+40y04U6/vDPJLQw/f9LqnmKjInodT+st3G9A==	app/.env.development
+DATABASE_URL	"postgresql://admin:uFR44yr69C4mZa72g3JQ37GX@127.0.0.1:5434/defaultdb"	app/.env.development
+REDIS_HOST	localhost	app/.env.development
+REDIS_PORT	6379	app/.env.development
+ONFIDO_API_KEY	your_onfido_api_key	app/.env.development
+GOOGLE_MAPS_API_KEY	your_google_maps_api_key	app/.env.development
+FOURSQUARE_API_KEY	your_foursquare_api_key	app/.env.development
+GEOHASH_PRECISION	7	app/.env.development
+VENUE_SCAN_RADIUS_METERS	5000 # Set to 5km as requested - monitor API usage/cost	app/.env.development
+VENUE_SCAN_STALENESS_THRESHOLD_HOURS	720 # Set to 1 month as requested	app/.env.development
+VENUE_SCAN_WORKER_CONCURRENCY	3	app/.env.development
+VENUE_STALENESS_REFRESH_CRON	'0 0 * * 0'	app/.env.development
+POSTGRES_HOST	localhost	app/.env.example
+POSTGRES_PORT	5432	app/.env.example
+POSTGRES_USER	your_postgres_username	app/.env.example
+POSTGRES_PASSWORD	your_postgres_password	app/.env.example
+POSTGRES_DB	nightbff_dev	app/.env.example
+DB_POOL_SIZE	15	app/.env.example
+DB_TIMEOUT	30000	app/.env.example
+REDIS_HOST	localhost	app/.env.example
+REDIS_PORT	6379	app/.env.example
+REDIS_PASSWORD		app/.env.example
+REDIS_DB	0	app/.env.example
+JWT_SECRET	your-super-secure-jwt-secret-key-here-minimum-32-characters	app/.env.example
+JWT_EXPIRES_IN	7d	app/.env.example
+JWT_REFRESH_SECRET	your-refresh-token-secret	app/.env.example
+JWT_REFRESH_EXPIRES_IN	30d	app/.env.example
+GOOGLE_MAPS_API_KEY	your_google_maps_api_key	app/.env.example
+UPLOAD_PATH	./uploads	app/.env.example
+MAX_FILE_SIZE	10485760	app/.env.example
+ALLOWED_FILE_TYPES	image/jpeg,image/png,image/webp	app/.env.example
+PORT	3000	app/.env.example
+NODE_ENV	development	app/.env.example
+FRONTEND_URL	http://localhost:3000	app/.env.example
+ALLOWED_ORIGINS	http://localhost:3000,http://localhost:3001	app/.env.example
+SMTP_HOST		app/.env.example
+SMTP_PORT	587	app/.env.example
+SMTP_USER		app/.env.example
+SMTP_PASSWORD		app/.env.example
+FROM_EMAIL	noreply@nightbff.com	app/.env.example
+LOG_LEVEL	debug	app/.env.example
+ENABLE_LOGGING	true	app/.env.example
+CACHE_TTL	3600	app/.env.example
+CACHE_MAX	100	app/.env.example
+RATE_LIMIT_WINDOW_MS	900000	app/.env.example
+RATE_LIMIT_MAX_REQUESTS	100	app/.env.example
