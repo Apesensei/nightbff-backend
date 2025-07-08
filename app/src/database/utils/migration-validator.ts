@@ -371,9 +371,7 @@ export class MigrationValidator {
   }
 
   private getRepositoryPath(filePath: string): string {
-    if (filePath.includes("nightbff-integration")) {
-      return "nightbff-integration";
-    }
+    // Backend repo is single source of truth per ADR-018
     return "backend";
   }
 

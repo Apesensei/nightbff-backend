@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bull";
-import { Queue } from "bull";
+import type { Queue } from "bull";
 import { ConfigService } from "@nestjs/config";
 import sharp from "sharp";
 import * as path from "path";

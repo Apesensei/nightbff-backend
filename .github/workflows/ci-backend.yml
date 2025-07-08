@@ -41,6 +41,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Ensure no nested submodules
+        run: |
+          set -euo pipefail
+          if git submodule--helper list | grep -q "nightbff-integration"; then
+            echo "::error::Integration repo must not appear as submodule inside backend"
+            exit 1
+          fi
+          # also fail on any submodule lacking a url
+          git submodule status --recursive | while read _path; do
+            name=$(echo $_path | awk '{print $2}')
+            url=$(git config -f .gitmodules --get submodule.$name.url || true)
+            [ -z "$url" ] && { echo "::error::Submodule '$name' missing url"; exit 1; }
+          done
+
       - name: Use Node.js 18
         uses: actions/setup-node@v4
         with:

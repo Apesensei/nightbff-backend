@@ -8,7 +8,8 @@
 ---
 
 ## 1. Executive Summary
-NightBFF adopts a **Hybrid Integration Strategy** combining **(a) short-lived integration branches in each canonical repo** with **(b) a dedicated `nightbff-integration` test repository**.
+NightBFF adopts a **Hybrid Integration Strategy** combining **(a) short-lived integration branches in each canonical repo** with **(b) a dedicated `
+nightbff-integration` test repository**.
 
 This maximises team autonomy (separate release cadences) while providing an isolated, disposable sandbox for cross-team QA, performance benchmarking and end-to-end (E2E) automation.
 
@@ -62,6 +63,11 @@ nightbff-backend   (this repo)              nightbff-ios-frontend
                                             (Docker-compose sandbox)
 ```
 *Each integration branch mirrors its counterpart across repos and is referenced by the dedicated test repo as a Git sub-module.*
+
+> **🚨 CRITICAL TOPOLOGY INVARIANT**  
+> **ONLY** the `nightbff-integration` repository may reference backend/frontend as submodules.  
+> Backend and frontend repositories **MUST NEVER** contain submodule references to the integration repository.  
+> This prevents cyclic submodule failures that break CI. See [ADR-018](docs/adr/ADR-018-submodule-topology-hygiene.md) for enforcement mechanisms.
 
 ---
 
