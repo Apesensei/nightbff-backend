@@ -29,7 +29,7 @@ import {
   CacheTTL,
   CACHE_MANAGER,
 } from "@nestjs/cache-manager"; // Import cache decorators and CACHE_MANAGER
-import { Cache } from "cache-manager"; // Import Cache type for manager injection
+import type { Cache } from "cache-manager"; // Import Cache type for manager injection
 
 // This controller might not have HTTP routes,
 // but is needed for NestJS to register the @MessagePattern handlers in CityService.

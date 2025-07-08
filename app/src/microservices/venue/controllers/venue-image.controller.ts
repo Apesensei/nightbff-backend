@@ -18,7 +18,8 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../../auth/decorators/current-user.decorator";
-import { VenueImageService, DeviceType } from "../services/venue-image.service";
+import { VenueImageService } from "../services/venue-image.service";
+import type { DeviceType } from "../services/venue-image.service";
 import {
   ApiTags,
   ApiOperation,
@@ -30,7 +31,7 @@ import {
   ApiQuery,
   ApiHeader,
 } from "@nestjs/swagger";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 class PhotoCaptionDto {
   caption?: string;

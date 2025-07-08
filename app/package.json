@@ -2,7 +2,7 @@
   "name": "nightbff-backend",
   "version": "0.1.0",
   "description": "Backend services for NightBFF nightlife social platform",
-  "main": "dist/main.js",
+  "main": "dist/src/main.js",
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
@@ -20,7 +20,6 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "dev:db": "docker compose -f ../docker-compose.local.yml down --remove-orphans && docker compose -f ../docker-compose.local.yml up -d",
-    
     "typeorm": "typeorm-ts-node-commonjs -d src/data-source.cli.ts",
     "migration:create": "npm run typeorm migration:create src/database/migrations/schema/$npm_config_name",
     "migration:generate": "npm run typeorm migration:generate src/database/migrations/schema/$npm_config_name",
@@ -30,11 +29,9 @@
     "migration:validate": "npm run build --silent && node dist/src/database/utils/migration-validator.js",
     "migration:validate:compiled": "node dist/src/database/utils/migration-validator.js",
     "migration:run:compiled": "node dist/scripts/migrate.js",
-    
     "db:reset": "npm run db:drop && npm run db:create && npm run migration:run",
     "db:create": "createdb $npm_config_name || echo 'Database exists'",
     "db:drop": "dropdb $npm_config_name || echo 'Database does not exist'",
-    
     "seed:run": "ts-node src/database/seeds/$NODE_ENV/index.ts",
     "seed:dev": "NODE_ENV=development npm run seed:run",
     "seed:smoke:compiled": "node dist/scripts/seed-smoke.js",
@@ -152,6 +149,7 @@
     "eslint": "^9.24.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
+    "glob": "^11.0.3",
     "jest": "^29.5.0",
     "prettier": "^3.5.3",
     "rimraf": "^5.0.10",
@@ -160,10 +158,10 @@
     "ts-loader": "^9.4.3"
   },
   "optionalDependencies": {
-    "@pact-foundation/pact-core-linux-x64-glibc": "^16.0.0",
-    "@pact-foundation/pact-core-linux-arm64-glibc": "^16.0.0",
     "@pact-foundation/pact-core-darwin-arm64": "^16.0.0",
     "@pact-foundation/pact-core-darwin-x64": "^16.0.0",
+    "@pact-foundation/pact-core-linux-arm64-glibc": "^16.0.0",
+    "@pact-foundation/pact-core-linux-x64-glibc": "^16.0.0",
     "@pact-foundation/pact-core-windows-x64": "^16.0.0"
   }
 }
