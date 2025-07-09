@@ -1,0 +1,105 @@
+name: Nightly Migration Integrity Test
+
+on:
+  schedule:
+    # Run at 2 AM UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+concurrency:
+  group: nightly-migration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-migration-cycle:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: nightbff_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U admin" --health-interval 5s --health-timeout 3s --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Backend Environment
+        uses: ./.github/actions/setup-backend
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          echo "Waiting for PostgreSQL to be fully ready..."
+          sleep 10
+          pg_isready -h localhost -p 5432 -U admin
+
+      - name: Run initial migration to populate database
+        working-directory: app
+        env:
+          NODE_ENV: test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: nightbff_migration_test
+        run: |
+          echo "Running initial migrations..."
+          npm run migration:run
+
+      - name: Test migration revert and re-run cycle
+        working-directory: app
+        env:
+          NODE_ENV: test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: nightbff_migration_test
+        run: |
+          echo "Testing migration revert and re-run cycle..."
+          
+          echo "Step 1: Reverting last migration..."
+          npm run migration:revert || {
+            echo "❌ Migration revert failed!"
+            exit 1
+          }
+          
+          echo "Step 2: Re-running migrations..."
+          npm run migration:run || {
+            echo "❌ Migration re-run failed!"
+            exit 1
+          }
+          
+          echo "✅ Migration cycle completed successfully!"
+
+      - name: Validate database state after cycle
+        working-directory: app
+        env:
+          NODE_ENV: test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: nightbff_migration_test
+        run: |
+          echo "Validating final database state..."
+          npm run migration:show
+          
+          echo "Running SeederService idempotency test as final validation..."
+          npm test -- --testNamePattern="SeederService idempotency" --runInBand
+
+      - name: Report results
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Nightly migration integrity test PASSED"
+          else
+            echo "❌ Nightly migration integrity test FAILED"
+            echo "This indicates potential issues with migration reversibility"
+          fi 
