@@ -8,22 +8,19 @@ on:
       - 'config/env/**'
       - '.github/workflows/ci-seeder-guard.yml'
 
+concurrency:
+  group: seeder-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test-seeder:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Use Node.js 20
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
-
-      - name: Install deps
-        run: |
-          cd app
-          npm ci
+      - name: Setup Backend Environment
+        uses: ./.github/actions/setup-backend
 
       - name: Guard against rogue seed scripts
         run: |

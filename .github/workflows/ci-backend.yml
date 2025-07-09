@@ -11,9 +11,16 @@ on:
       - 'app/**'
       - '.github/workflows/ci-backend.yml'
 
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test-backend:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
 
     services:
       postgres:
@@ -27,68 +34,39 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U admin" --health-interval 5s --health-timeout 3s --health-retries 5
 
-    env:
-      DATABASE_URL: postgresql://admin:testpass@localhost:5432/nightbff_test
-      NODE_ENV: test
-      # Required POSTGRES_* variables for validation
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: testpass
-      POSTGRES_DB: nightbff_test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Backend Environment
+        uses: ./.github/actions/setup-backend
+
+      - name: Choose free Postgres port
+        run: bash scripts/ci/choose-pg-port.sh
+
+      - name: Run SeederService idempotency test (required check)
+        working-directory: app
+        run: npm test -- --testNamePattern="SeederService idempotency" --runInBand
+
+      - name: Run unit & integration tests
+        working-directory: app
+        run: npm test -- --runInBand
+
+  lint-cross-platform:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Ensure no nested submodules
-        run: |
-          set -euo pipefail
-          if git submodule--helper list | grep -q "nightbff-integration"; then
-            echo "::error::Integration repo must not appear as submodule inside backend"
-            exit 1
-          fi
-          # also fail on any submodule lacking a url
-          git submodule status --recursive | while read _path; do
-            name=$(echo $_path | awk '{print $2}')
-            url=$(git config -f .gitmodules --get submodule.$name.url || true)
-            [ -z "$url" ] && { echo "::error::Submodule '$name' missing url"; exit 1; }
-          done
-
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4
+      - name: Setup Backend Environment
+        uses: ./.github/actions/setup-backend
         with:
-          node-version: 18
-          cache: 'npm'
-          cache-dependency-path: 'app/package-lock.json'
+          install-deps: 'true'
 
-      - name: Install dependencies
+      - name: Run lint checks only
         working-directory: app
-        run: npm ci
-
-      - name: Validate environment variables
-        working-directory: app
-        run: npm run env:lint
-
-      - name: Block deprecated DB_* variables
-        run: |
-          echo "🔍 Checking for legacy DB_* variables…"
-          if grep -R --line-number -e '^DB_' config/env app/.env.* 2>/dev/null; then
-            echo "❌ Deprecated DB_* variables found. Remove them before merging." && exit 1;
-          else
-            echo "✅ No legacy DB_* variables detected.";
-          fi
-
-      - name: Run dotenv-linter
-        run: |
-          npx dotenv-linter config/env/*.env
-
-      - name: Env Sprawl Guard
-        run: bash scripts/ci/env-sprawl-guard.sh
-
-      - name: Choose free Postgres port
-        run: bash scripts/ci/choose-pg-port.sh
-
-      - name: Run unit & integration tests
-        working-directory: app
-        run: npm test -- --runInBand 
+        run: npm run lint 

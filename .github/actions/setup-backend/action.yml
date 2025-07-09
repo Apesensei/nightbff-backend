@@ -1,0 +1,70 @@
+name: Setup Backend Environment
+description: Common setup steps for NightBFF backend workflows
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '20'
+  install-deps:
+    description: 'Whether to run npm ci'
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Load CI env stub
+      shell: bash
+      run: cat ci/.env.stub >> "$GITHUB_ENV"
+
+    - name: Ensure no nested submodules
+      shell: bash
+      run: |
+        set -euo pipefail
+        if git submodule--helper list | grep -q "nightbff-integration"; then
+          echo "::error::Integration repo must not appear as submodule inside backend"
+          exit 1
+        fi
+        # also fail on any submodule lacking a url
+        git submodule status --recursive | while read _path; do
+          name=$(echo $_path | awk '{print $2}')
+          url=$(git config -f .gitmodules --get submodule.$name.url || true)
+          [ -z "$url" ] && { echo "::error::Submodule '$name' missing url"; exit 1; }
+        done
+
+    - name: Use Node.js ${{ inputs.node-version }}
+      if: inputs.install-deps == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+        cache-dependency-path: 'app/package-lock.json'
+
+    - name: Install dependencies
+      if: inputs.install-deps == 'true'
+      shell: bash
+      working-directory: app
+      run: npm ci --retry 3
+
+    - name: Validate environment variables
+      shell: bash
+      working-directory: app
+      run: npm run env:lint
+
+    - name: Block deprecated DB_* variables
+      shell: bash
+      run: |
+        echo "🔍 Checking for legacy DB_* variables…"
+        if grep -R --line-number -e '^DB_' config/env app/.env.* 2>/dev/null; then
+          echo "❌ Deprecated DB_* variables found. Remove them before merging." && exit 1;
+        else
+          echo "✅ No legacy DB_* variables detected.";
+        fi
+
+    - name: Run dotenv-linter
+      shell: bash
+      run: npx dotenv-linter config/env/*.env
+
+    - name: Env Sprawl Guard
+      shell: bash
+      run: bash scripts/ci/env-sprawl-guard.sh 

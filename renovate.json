@@ -1,0 +1,91 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate configuration for NightBFF Backend Repository",
+  "extends": ["config:base", "schedule:weekly"],
+  "timezone": "America/Los_Angeles", 
+  "schedule": ["every saturday"],
+  "assignees": ["@saeidrafiei"],
+  "reviewers": ["@saeidrafiei"],
+  "labels": ["dependencies", "automated"],
+  "commitMessagePrefix": "chore(deps):",
+  "semanticCommits": "enabled",
+  "gitAuthor": "Renovate Bot <bot@renovateapp.com>",
+  "platformAutomerge": false,
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "🤖 Dependency Updates Dashboard",
+  "dependencyDashboardHeader": "This dashboard tracks all dependency updates managed by Renovate. Review and merge PRs when CI passes.",
+  "packageRules": [
+    {
+      "description": "Auto-merge patch and minor updates for well-tested packages",
+      "matchUpdateTypes": ["patch", "minor"],
+      "matchPackagePatterns": ["^@types/", "eslint", "prettier", "typescript"],
+      "automerge": true,
+      "requiredStatusChecks": [
+        "test-backend",
+        "seeder-guard-check"
+      ]
+    },
+    {
+      "description": "Hold major updates for manual review",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["major-update", "review-required"],
+      "reviewers": ["@saeidrafiei"]
+    },
+    {
+      "description": "Group NestJS updates together",
+      "matchPackagePatterns": ["@nestjs", "nest"],
+      "groupName": "NestJS ecosystem",
+      "automerge": false,
+      "labels": ["nestjs", "backend"]
+    },
+    {
+      "description": "Security updates - high priority",
+      "matchDatasources": ["npm"],
+      "matchDepTypes": ["dependencies", "devDependencies"],
+      "vulnerabilityAlerts": {
+        "enabled": true,
+        "automerge": true
+      },
+      "labels": ["security", "urgent"],
+      "reviewers": ["@saeidrafiei"],
+      "schedule": ["at any time"]
+    },
+    {
+      "description": "Pin Docker base images to specific versions",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["node"],
+      "versioning": "docker",
+      "automerge": false,
+      "labels": ["docker", "infrastructure"],
+      "reviewers": ["@saeidrafiei"]
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on saturday"]
+  },
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"]
+  },
+  "assigneesSampleSize": 1,
+  "reviewersSampleSize": 1,
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 3,
+  "branchConcurrentLimit": 5,
+  "prCreation": "not-pending",
+  "rebaseWhen": "conflicted",
+  "includeForks": false,
+  "forkProcessing": "disabled",
+  "ignoreTests": false,
+  "ignoreUnstable": true,
+  "respectLatest": true,
+  "followTag": "latest",
+  "rangeStrategy": "bump",
+  "bumpVersion": "patch",
+  "separateMinorPatch": true,
+  "separateMajorMinor": true,
+  "separateMultipleMajor": true
+} 

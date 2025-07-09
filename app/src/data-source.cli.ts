@@ -52,9 +52,8 @@ export const AppDataSource = new DataSource({
   url: process.env.DATABASE_URL,
   synchronize: false,
   logging: !isProduction,
-  // Corrected paths for the compiled JS output in the dist folder.
-  // The script runs from dist/src/data-source.cli.js, so __dirname is /usr/src/app/dist/src
+  // Locked migration patterns - always use compiled JS files from dist/
   entities: [__dirname + '/microservices/**/*.entity.js'],
-  migrations: [__dirname + '/database/migrations/*.js'],
+  migrations: ['dist/database/migrations/*.js'],
   migrationsTableName: 'typeorm_migrations',
 } as DataSourceOptions); 

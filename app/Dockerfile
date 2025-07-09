@@ -1,5 +1,8 @@
 # app/Dockerfile
 
+# Build argument for future microservice support
+ARG SERVICE=monolith
+
 # ---- Base Stage ----
 FROM node:20-alpine AS base
 WORKDIR /usr/src/app
