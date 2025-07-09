@@ -12,7 +12,7 @@
     "dev:backend": "npm run start:dev --workspace=app",
     "dev:frontend": "npm run start --workspace=nightbff-frontend",
     "dev:both": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "install:all": "npm install --workspaces",
+    "install:all": "npm install && npm install --workspaces",
     "clean": "npm run clean --workspaces",
     "build": "npm run build --workspace=app",
     "build:all": "npm run build --workspaces --if-present",
@@ -23,7 +23,7 @@
     "lint:backend": "npm run lint --workspace=app",
     "lint:frontend": "npm run lint --workspace=nightbff-frontend",
     "cy:run": "cypress run",
-    "postinstall": "if [ \"$CI\" != \"true\" ]; then npm run install:all; fi"
+    "postinstall": "npm run install:all"
   },
   "keywords": [
     "cypress",
