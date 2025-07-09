@@ -7,7 +7,18 @@ set -euo pipefail
 HOOKS_DIR=".git/hooks"
 PRE_COMMIT_HOOK="$HOOKS_DIR/pre-commit"
 
-echo "�� Setting up Git hooks for NightBFF Backend..."
+# Detect if we are inside a Git submodule where `.git` is **not** a directory but
+# rather a file pointing to the real gitdir. In that scenario, attempting to
+# create the hooks directory results in an ENOTDIR error that breaks `npm
+# install` (and therefore CI). Since the top-level repository already installs
+# the required hooks, we can safely skip hook installation for submodules.
+
+if [[ -f ".git" && ! -d ".git" ]]; then
+  echo "⚠️  Detected Git submodule (.git is a file). Skipping hook installation to avoid ENOTDIR."
+  exit 0
+fi
+
+echo " Setting up Git hooks for NightBFF Backend..."
 
 # Ensure hooks directory exists
 mkdir -p "$HOOKS_DIR"
