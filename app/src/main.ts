@@ -4,7 +4,7 @@ import { AppModule } from "./app.module";
 import { MicroserviceOptions, Transport } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { NestExpressApplication } from "@nestjs/platform-express";
-import { Response } from "express";
+import { Response, Request } from "express";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import compression from "compression";
 
@@ -13,7 +13,29 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
+  // Get Express instance for custom routes
+  const expressApp = app.getHttpAdapter().getInstance();
+
+  // Add root health endpoint before global prefix
+  expressApp.get('/health', (req: Request, res: Response) => {
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'nightbff-backend'
+    });
+  });
+
   app.setGlobalPrefix("api");
+
+  // Add API root endpoint after global prefix
+  expressApp.get('/api', (req: Request, res: Response) => {
+    res.json({
+      message: 'NightBFF API',
+      version: '1.0.0',
+      status: 'operational',
+      timestamp: new Date().toISOString()
+    });
+  });
 
   // 🔥 SWAGGER DOCUMENTATION SETUP - COMPREHENSIVE API DOCS
   const config = new DocumentBuilder()
