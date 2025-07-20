@@ -308,17 +308,23 @@ export class AuthController {
   async frontendSignIn(
     @Body() signInDto: SignInDto,
   ): Promise<FrontendAuthResponseDto> {
-    const authResult = await this.authService.signIn(signInDto);
+    try {
+      const authResult = await this.authService.signIn(signInDto);
 
-    // Transform backend response to frontend-compatible format
-    return {
-      token: authResult.data?.session?.accessToken || "",
-      user: {
-        id: authResult.data?.user?.id || "",
-        name: authResult.data?.user?.displayName || "",
-        email: authResult.data?.user?.email || "",
-      },
-    };
+      // Transform backend response to frontend-compatible format
+      return {
+        token: authResult.data?.session?.accessToken || "",
+        user: {
+          id: authResult.data?.user?.id || "",
+          name: authResult.data?.user?.displayName || "",
+          email: authResult.data?.user?.email || "",
+        },
+      };
+    } catch (error) {
+      // Re-throw the error to maintain proper HTTP status codes
+      // UnauthorizedException will return 401, BadRequestException will return 400, etc.
+      throw error;
+    }
   }
 
   @Post("frontend/signup")

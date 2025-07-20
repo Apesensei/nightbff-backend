@@ -30,7 +30,7 @@ RUN npm run build
 # Ensure compiled scripts exist (Optional: Check if build includes them, else copy manually)
 # RUN cp -R src/scripts dist/scripts # Uncomment if 'npm run build' doesn't handle scripts
 
-RUN npm prune --production
+RUN npm prune --omit=dev --legacy-peer-deps
 
 # ---- Production Stage ----
 FROM base AS production
