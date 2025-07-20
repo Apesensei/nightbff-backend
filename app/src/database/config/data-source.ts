@@ -38,7 +38,7 @@ export const createDataSource = (env: string = environment): DataSource => {
 
   const migrationsPath = isTest
     ? path.join(projectRoot, "src/database/migrations/**/*.ts")
-    : path.join(projectRoot, "dist/database/migrations/**/*.js");
+    : path.join(projectRoot, "dist/src/database/migrations/**/*.js");
 
   if (env === "test") {
     return new DataSource({
