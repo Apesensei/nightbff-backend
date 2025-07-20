@@ -15,6 +15,7 @@ export class SeederService {
   async seed() {
     this.logger.log('🌱 Starting seeding process...');
     await this.seedAdminUser();
+    await this.seedTestUser();
     this.logger.log('✅ Seeding complete.');
   }
 
@@ -54,5 +55,41 @@ export class SeederService {
         this.logger.error(e.message)
     }
 
+  }
+
+  private async seedTestUser() {
+    const testEmail = 'test@example.com';
+    let existingTestUser = null;
+    try {
+        existingTestUser = await this.userRepository.findOne({ where: { email: testEmail } });
+    } catch (e) {
+        this.logger.error('Error finding test user. This may be expected if migrations just ran.');
+        this.logger.error(e.message);
+    }
+
+    if (existingTestUser) {
+      this.logger.log('Test user already exists. Skipping creation.');
+      return;
+    }
+
+    this.logger.log('Creating test user for Cypress E2E tests...');
+    const testUser = this.userRepository.create({
+      email: testEmail,
+      username: 'testuser',
+      displayName: 'Test User',
+      passwordHash: 'password123', // In a real app, this would be a proper hash. Entity listener handles it.
+      roles: [UserRole.USER],
+      isVerified: true,
+      isAgeVerified: true,
+      status: UserStatus.ACTIVE
+    });
+
+    try {
+        await this.userRepository.save(testUser);
+        this.logger.log('Test user created successfully.');
+    } catch (e) {
+        this.logger.error('Could not save test user');
+        this.logger.error(e.message)
+    }
   }
 } 
