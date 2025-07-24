@@ -6,6 +6,9 @@ export class CentralEntityRegistrationRefactor1744678494513
   name = "CentralEntityRegistrationRefactor1744678494513";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Ensure PostGIS extension is available for geometry columns
+    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "postgis"`);
+
     // Ensure user_devices table exists with minimal schema
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "user_devices" (
