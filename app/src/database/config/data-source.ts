@@ -78,7 +78,7 @@ export const createDataSource = (env: string = environment): DataSource => {
   return new DataSource({
     type: "postgres",
     host: process.env.POSTGRES_HOST || process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || "5432"),
+    port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '57599'),
     username: process.env.POSTGRES_USER || process.env.DB_USERNAME || "admin",
     password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || "testpass",
     database: process.env.POSTGRES_DB || process.env.DB_DATABASE || "nightbff_dev",

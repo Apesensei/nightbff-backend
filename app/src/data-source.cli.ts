@@ -1,9 +1,26 @@
 import 'reflect-metadata';
 import { DataSource, DataSourceOptions } from 'typeorm';
-import * as dotenv from 'dotenv';
-import { validateEnv } from './config/env.schema';
+import path from 'path';
+import fs from 'fs';
 
-dotenv.config(); // Load from root .env file
+// Dynamic path resolution for load-env.js that works in both test and production contexts
+const loadEnvPath = path.resolve(__dirname, '../scripts/load-env.js');
+const loadEnvPathAlt = path.resolve(__dirname, '../../dist/scripts/load-env.js');
+
+if (fs.existsSync(loadEnvPath)) {
+  require(loadEnvPath);
+  console.log('[DEBUG] Loaded env from:', loadEnvPath);
+} else if (fs.existsSync(loadEnvPathAlt)) {
+  require(loadEnvPathAlt);
+  console.log('[DEBUG] Loaded env from:', loadEnvPathAlt);
+} else {
+  console.warn('[WARN] load-env.js not found, skipping env loading');
+}
+
+console.log('[DEBUG] FULL ENV:', process.env);
+console.log('[DEBUG] POSTGRES_USER:', process.env.POSTGRES_USER);
+console.log('[DEBUG] DATABASE_URL:', process.env.DATABASE_URL);
+import { validateEnv } from './config/env.schema';
 
 // Validate environment early to fail fast
 validateEnv();
@@ -34,7 +51,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Fallback: construct DATABASE_URL from POSTGRES_* variables for containerised environments
 if (!process.env.DATABASE_URL) {
-  const { POSTGRES_HOST, POSTGRES_PORT = '5432', POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB } =
+  const { POSTGRES_HOST, POSTGRES_PORT = '57599', POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB } =
     process.env as Record<string, string | undefined>;
 
   if (POSTGRES_HOST && POSTGRES_USER && POSTGRES_PASSWORD && POSTGRES_DB) {
@@ -54,6 +71,7 @@ export const AppDataSource = new DataSource({
   logging: !isProduction,
   // Locked migration patterns - always use compiled JS files from dist/
   entities: [__dirname + '/microservices/**/*.entity.js'],
-  migrations: ['dist/database/migrations/*.js'],
+  migrations: ['dist/src/database/migrations/*.js'],
   migrationsTableName: 'typeorm_migrations',
+  migrationsTransactionMode: 'each',
 } as DataSourceOptions); 

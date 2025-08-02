@@ -23,7 +23,9 @@
     "lint:backend": "npm run lint --workspace=app",
     "lint:frontend": "npm run lint --workspace=nightbff-frontend",
     "cy:run": "cypress run",
-    "postinstall": "npm run install:all"
+    "db:migrate": "node dist/scripts/migrate.js",
+    "db:seed": "node dist/scripts/run-seeder.js",
+    "ci:guard:seeds": "bash scripts/ci/no-rogue-seeds.sh"
   },
   "keywords": [
     "cypress",
