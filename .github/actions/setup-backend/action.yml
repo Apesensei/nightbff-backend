@@ -46,6 +46,11 @@ runs:
       working-directory: app
       run: npm ci --retry 3
 
+    - name: Build application
+      shell: bash
+      working-directory: app
+      run: npm run build
+
     - name: Validate environment variables
       shell: bash
       working-directory: app
