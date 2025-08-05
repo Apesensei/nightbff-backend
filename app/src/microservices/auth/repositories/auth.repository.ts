@@ -69,6 +69,15 @@ export class AuthRepository {
         `AuthRepository Error in getUserByEmail for ${email}:`,
         error,
       );
+      // Only throw InternalServerErrorException for actual database errors
+      // Not for "user not found" scenarios which should return null
+      if (error.code === '23505' || error.code === '23503') {
+        // Unique constraint violation or foreign key violation
+        throw new InternalServerErrorException(
+          `Database constraint error: ${error.message}`,
+        );
+      }
+      // For other database errors, still throw InternalServerErrorException
       throw new InternalServerErrorException(
         `Failed to fetch user by email: ${error.message}`,
       );
