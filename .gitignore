@@ -32,4 +32,4 @@ Thumbs.db
 *.sublime-workspace
 
 # Optional eslint cache
-.eslintcache 
+.eslintcache integration
