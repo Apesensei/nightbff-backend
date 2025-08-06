@@ -1,4 +1,0 @@
-[submodule "nightbff-frontend"]
-	path = nightbff-frontend
-	url = https://github.com/Apesensei/nightbff-frontend.git
-	branch = integration/250619-ios-sync
