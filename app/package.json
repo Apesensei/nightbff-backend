@@ -36,7 +36,7 @@
     "seed:run": "ts-node src/database/seeds/$NODE_ENV/index.ts",
     "seed:dev": "NODE_ENV=development npm run seed:run",
     "seed:smoke:compiled": "node --require ./dist/scripts/load-env.js dist/scripts/seed-smoke.js",
-    "postinstall": "npm run validate-env && bash scripts/setup-hooks.sh",
+    "postinstall": "bash scripts/setup-hooks.sh",
     "db:migrate": "node --require ./dist/scripts/load-env.js dist/scripts/migrate.js",
     "db:seed": "node --require ./dist/scripts/load-env.js dist/scripts/run-seeder.js",
     "ci:guard:seeds": "bash scripts/ci/no-rogue-seeds.sh"
