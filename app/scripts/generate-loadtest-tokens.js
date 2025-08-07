@@ -9,8 +9,14 @@ const tokensFilePath = path.join(__dirname, 'loadtest_tokens.json');
 // Main async function to handle dynamic import
 async function generateTokens() {
   try {
-    // Dynamically import the ES Module helper using require.resolve to get the path
-    const helperPath = require.resolve('../test/utils/jwt-test.utils.ts'); // Get path to TS file
+    // Import the compiled JavaScript helper from the dist directory
+    const helperPath = path.join(__dirname, '../dist/test/utils/jwt-test.utils.js');
+    
+    // Check if the compiled file exists
+    if (!fs.existsSync(helperPath)) {
+      throw new Error(`Compiled helper file not found at ${helperPath}. Make sure to run 'npm run build' first.`);
+    }
+
     // Convert the file path to a file URL for dynamic import
     const helperUrl = 'file://' + path.resolve(helperPath);
 
