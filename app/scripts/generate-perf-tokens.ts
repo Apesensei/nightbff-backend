@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
 import { DataSource, DataSourceOptions } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
+import * as jwt from 'jsonwebtoken';
 import { User } from '../src/microservices/auth/entities/user.entity'; // Adjust if your User entity is elsewhere
 
 // Function to manually parse a simple .env file content if needed as a fallback
@@ -30,23 +30,22 @@ async function generatePerfTokens() {
   console.log('Starting token generation for performance testing...');
 
   // --- Environment Variable Loading ---
-  // Primary: Use process.env if vars are directly passed (e.g., DATABASE_URL, JWT_SECRET)
-  // Fallback: Try to load from performance-testing/config/.env.performance
-  const perfEnvPath = path.resolve(__dirname, '..', '..', 'config', 'env', 'performance.env');
+  // FIXED: Use development environment JWT_SECRET to match running backend
+  const devEnvPath = path.resolve(__dirname, '..', '..', 'config', 'env', 'development.env');
   let jwtSecret = process.env.JWT_SECRET;
   let databaseUrl = process.env.DATABASE_URL;
 
-  if (fs.existsSync(perfEnvPath)) {
-    console.log(`Loading environment variables from: ${perfEnvPath}`);
-    const perfEnvContent = fs.readFileSync(perfEnvPath, 'utf-8');
-    const parsedPerfEnv = parseEnv(perfEnvContent);
-    if (!jwtSecret && parsedPerfEnv.JWT_SECRET) {
-      jwtSecret = parsedPerfEnv.JWT_SECRET;
-      console.log('Loaded JWT_SECRET from .env.performance');
+  if (fs.existsSync(devEnvPath)) {
+    console.log(`Loading environment variables from: ${devEnvPath}`);
+    const devEnvContent = fs.readFileSync(devEnvPath, 'utf-8');
+    const parsedDevEnv = parseEnv(devEnvContent);
+    if (!jwtSecret && parsedDevEnv.JWT_SECRET) {
+      jwtSecret = parsedDevEnv.JWT_SECRET;
+      console.log('Loaded JWT_SECRET from .env.development');
     }
     // DATABASE_URL is expected to be set directly in the environment for this script.
   } else {
-    console.warn(`Warning: ${perfEnvPath} not found. Relying solely on process.env for JWT_SECRET.`);
+    console.warn(`Warning: ${devEnvPath} not found. Relying solely on process.env for JWT_SECRET.`);
   }
 
   if (!databaseUrl) {
@@ -82,14 +81,52 @@ async function generatePerfTokens() {
     console.log('Database connection initialized.');
 
     const userRepository = dataSource.getRepository(User);
-    users = await userRepository.find({ select: ['id'] }); // Fetch only user IDs
+    users = await userRepository.find({ select: ['id', 'email', 'username'] }); // FIXED: Fetch full user data
 
     if (users.length === 0) {
-      console.warn('No users found in the database. Ensure seeding was successful.');
-      await dataSource.destroy();
-      process.exit(0); // Exit cleanly if no users
+      console.log('No users found in the database. Creating test users for load testing...');
+      
+      // Create test users for load testing
+      const testUsers = [
+        {
+          email: 'loadtest1@test.com',
+          username: 'loadtest1',
+          displayName: 'Load Test User 1',
+          password: 'SecurePass123!'
+        },
+        {
+          email: 'loadtest2@test.com',
+          username: 'loadtest2',
+          displayName: 'Load Test User 2',
+          password: 'SecurePass123!'
+        }
+      ];
+
+      for (const testUser of testUsers) {
+        try {
+          const newUser = userRepository.create({
+            id: require('crypto').randomUUID(),
+            email: testUser.email,
+            username: testUser.username,
+            displayName: testUser.displayName,
+            isVerified: true,
+            isPremium: false,
+            // Note: In a real app, password would be hashed
+            // For testing purposes, we're creating users directly
+          });
+          await userRepository.save(newUser);
+          console.log(`Created test user: ${testUser.username} with ID: ${newUser.id}`);
+        } catch (error) {
+          console.warn(`Failed to create test user ${testUser.username}:`, error.message);
+        }
+      }
+
+      // Fetch users again after creation
+      users = await userRepository.find({ select: ['id'] });
+      console.log(`Now have ${users.length} users in the database.`);
+    } else {
+      console.log(`Found ${users.length} users in the database.`);
     }
-    console.log(`Found ${users.length} users in the database.`);
 
   } catch (error) {
     console.error('Error during database operations:', error);
@@ -98,21 +135,23 @@ async function generatePerfTokens() {
   }
 
   // --- Token Generation ---
-  const jwtService = new JwtService({
-    secret: jwtSecret,
-    // Add signOptions if your app uses them (e.g., expiresIn)
-    // signOptions: { expiresIn: '1h' },
-  });
+  
 
   console.log('Generating JWTs...');
   const tokens: string[] = [];
   const userIds: string[] = [];
 
   for (const user of users) {
-    const payload = { userId: user.id, sub: user.id }; // Standard payload
+    // FIXED: Include email and username fields like the working token
+    const payload = { 
+      userId: user.id, 
+      sub: user.id,
+      email: user.email,
+      username: user.username
+    }; 
     // Add other claims if your application expects them (e.g., roles)
     // payload.roles = user.roles; 
-    const token = jwtService.sign(payload);
+            const token = jwt.sign(payload, jwtSecret, { expiresIn: '1h' });
     tokens.push(token);
     userIds.push(user.id);
   }
