@@ -22,6 +22,14 @@ lerna-debug.log*
 .DS_Store
 Thumbs.db
 
+# Local-only folders and artifacts
+logs 2/
+*.dump
+coverage/
+
+# For local-only scratch integration directories, prefer naming them integration-local/
+integration-local/
+
 # Optional editor directories
 .idea
 .vscode/*
@@ -32,4 +40,4 @@ Thumbs.db
 *.sublime-workspace
 
 # Optional eslint cache
-.eslintcache integration
+.eslintcache

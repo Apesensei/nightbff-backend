@@ -1,3 +1,6 @@
+## NOTE: Legacy development compose
+## Prefer using `docker-compose.local.yml` for Local Dev (fixed Postgres 5434, Redis 6379).
+## Do not run this concurrently with the Integration stack.
 version: '3.8'
 
 services:
