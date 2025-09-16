@@ -10,9 +10,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly configService: ConfigService,
     private readonly authRepository: AuthRepository,
   ) {
-    const secret = configService.get<string>("JWT_SECRET") || "";
-    if (!secret) {
-      console.warn("Warning: JWT_SECRET environment variable is not set.");
+    const secret = configService.get<string>("JWT_SECRET");
+    if (!secret || secret.length < 32) {
+      throw new Error("JWT_SECRET must be set and at least 32 characters long");
     }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

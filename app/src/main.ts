@@ -13,6 +13,13 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
+  // Validate JWT_SECRET at application startup
+  const jwtSecret = configService.get<string>("JWT_SECRET");
+  if (!jwtSecret || jwtSecret.length < 32) {
+    console.error("❌ JWT_SECRET validation failed: Must be set and at least 32 characters");
+    process.exit(1);
+  }
+
   // Get Express instance for custom routes
   const expressApp = app.getHttpAdapter().getInstance();
 

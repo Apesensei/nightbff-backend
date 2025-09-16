@@ -22,11 +22,17 @@ This repository hosts the NightBFF backend and local integration harness. Use th
 - Integration backend: `GET http://localhost:3000/health`
 - Local backend: `GET http://localhost:3001/health`
 
+## Security
+- **Security Audit**: Real-time vulnerability scanning in CI pipeline
+- **Vulnerability Status**: 5 low-severity vulnerabilities (production ready)
+- **Security Documentation**: `docs/SECURITY_AUDIT_IMPLEMENTATION.md`
+
 ## References
 - `HYBRID_INTEGRATION_DEV_PLAN.md`
 - `EVERGREEN_CI_PIPELINE_STATUS_CHECKER.md`
 - ADRs under `docs/adr/`
 - Frontend integration guides under `app/`
+- Security documentation under `docs/`
 
 # NightBFF Backend – Local & Integration Guide
 
