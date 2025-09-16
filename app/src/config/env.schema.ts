@@ -27,7 +27,7 @@ export const envSchema = z
     REDIS_PORT: z.string().optional(),
 
     // JWT / auth
-    JWT_SECRET: z.string().optional(),
+    JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
 
     // Misc (allow extra)
   })

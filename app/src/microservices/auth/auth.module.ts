@@ -23,12 +23,18 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get("JWT_SECRET"),
-        signOptions: {
-          expiresIn: configService.get("JWT_EXPIRES_IN", "7d"),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>("JWT_SECRET");
+        if (!secret || secret.length < 32) {
+          throw new Error("JWT_SECRET must be set and at least 32 characters long");
+        }
+        return {
+          secret,
+          signOptions: {
+            expiresIn: configService.get("JWT_EXPIRES_IN", "7d"),
+          },
+        };
+      },
     }),
     DbStatsModule,
   ],
