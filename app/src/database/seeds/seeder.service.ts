@@ -40,7 +40,7 @@ export class SeederService {
       email: adminEmail,
       username: 'admin_loadtest',
       displayName: 'Admin Load Test User',
-      passwordHash: 'password123', // In a real app, this would be a proper hash. Entity listener handles it.
+      passwordHash: 'password123', // Will be automatically hashed by User entity @BeforeInsert decorator
       roles: [UserRole.ADMIN, UserRole.USER],
       isVerified: true,
       isAgeVerified: true,
@@ -77,7 +77,7 @@ export class SeederService {
       email: testEmail,
       username: 'testuser',
       displayName: 'Test User',
-      passwordHash: 'password123', // In a real app, this would be a proper hash. Entity listener handles it.
+      passwordHash: 'password123', // Will be automatically hashed by User entity @BeforeInsert decorator
       roles: [UserRole.USER],
       isVerified: true,
       isAgeVerified: true,

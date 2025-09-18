@@ -25,8 +25,11 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  BeforeInsert,
+  BeforeUpdate,
 } from "typeorm";
 import { AgeVerification } from "./age-verification.entity";
+import * as bcrypt from 'bcrypt';
 
 export enum UserStatus {
   ACTIVE = "active",
@@ -135,5 +138,29 @@ export class User {
       this.locationLatitude = undefined;
       this.locationLongitude = undefined;
     }
+  }
+
+  /**
+   * Hash password before inserting or updating user
+   * Only hash if password is not already hashed (doesn't start with $2b$)
+   */
+  @BeforeInsert()
+  @BeforeUpdate()
+  async hashPassword() {
+    if (this.passwordHash && !this.passwordHash.startsWith('$2b$')) {
+      this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
+    }
+  }
+
+  /**
+   * Validate password against stored hash
+   * @param password - Plain text password to validate
+   * @returns Promise<boolean> - True if password matches
+   */
+  async validatePassword(password: string): Promise<boolean> {
+    if (!this.passwordHash) {
+      return false;
+    }
+    return bcrypt.compare(password, this.passwordHash);
   }
 }

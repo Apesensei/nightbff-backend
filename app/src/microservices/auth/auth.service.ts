@@ -125,13 +125,9 @@ export class AuthService {
           throw new UnauthorizedException("Invalid credentials");
         }
 
-        // In performance mode, we accept a standard password for all test users
-        // In a real implementation, you'd hash and compare passwords properly
-        const performancePassword = this.configService.get<string>(
-          "PERFORMANCE_AUTH_PASSWORD",
-          "password123",
-        );
-        if (signInDto.password !== performancePassword) {
+        // Validate password using bcrypt hash comparison
+        const isPasswordValid = await localUser.validatePassword(signInDto.password);
+        if (!isPasswordValid) {
           throw new UnauthorizedException("Invalid credentials");
         }
 
