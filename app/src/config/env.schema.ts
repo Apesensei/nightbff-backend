@@ -29,6 +29,10 @@ export const envSchema = z
     // JWT / auth
     JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
 
+    // HTTPS / TLS (optional for development)
+    HTTPS_KEY_PATH: z.string().optional(),
+    HTTPS_CERT_PATH: z.string().optional(),
+
     // Misc (allow extra)
   })
   .passthrough() // allow unknown vars so we don't block non-db config

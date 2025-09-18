@@ -7,6 +7,9 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import { Response, Request } from "express";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import compression from "compression";
+import helmet from "helmet";
+import * as fs from "fs";
+import * as https from "https";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -19,6 +22,23 @@ async function bootstrap() {
     console.error("❌ JWT_SECRET validation failed: Must be set and at least 32 characters");
     process.exit(1);
   }
+
+  // Configure security headers with helmet
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true
+    }
+  }));
 
   // Get Express instance for custom routes
   const expressApp = app.getHttpAdapter().getInstance();
@@ -224,13 +244,27 @@ Happy coding! 🎯
   await app.startAllMicroservices();
 
   const port = configService.get<number>("PORT") || 3000;
-  await app.listen(port);
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(
-    `📚 API Documentation available at: http://localhost:${port}/api/docs`,
-  );
-  console.log(`📁 Static files served from: /uploads/`);
-  console.log(`⚡ Compression and caching enabled for optimal performance`);
+  
+  // Configure HTTPS for development
+  const httpsKeyPath = configService.get<string>("HTTPS_KEY_PATH") || './certs/localhost-key.pem';
+  const httpsCertPath = configService.get<string>("HTTPS_CERT_PATH") || './certs/localhost.pem';
+  
+  const httpsOptions = {
+    key: fs.readFileSync(httpsKeyPath),
+    cert: fs.readFileSync(httpsCertPath),
+  };
+
+  // Start HTTPS server
+  const server = https.createServer(httpsOptions, app.getHttpAdapter().getInstance());
+  server.listen(port, () => {
+    console.log(`🚀 Application is running on: https://localhost:${port}`);
+    console.log(
+      `📚 API Documentation available at: https://localhost:${port}/api/docs`,
+    );
+    console.log(`📁 Static files served from: /uploads/`);
+    console.log(`⚡ Compression and caching enabled for optimal performance`);
+    console.log(`🔒 HTTPS enabled with self-signed certificate`);
+  });
 }
 
 bootstrap();
