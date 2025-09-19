@@ -10,7 +10,8 @@ import { z } from "zod";
 export const envSchema = z
   .object({
     NODE_ENV: z
-      .enum(["development", "test", "performance", "integration", "production"]).optional(),
+      .enum(["development", "test", "performance", "integration", "production"])
+      .optional(),
 
     // Database (canonical Postgres split vars)
     POSTGRES_HOST: z.string(),
@@ -32,6 +33,12 @@ export const envSchema = z
     // HTTPS / TLS (optional for development)
     HTTPS_KEY_PATH: z.string().optional(),
     HTTPS_CERT_PATH: z.string().optional(),
+
+    // Rate Limiting Configuration
+    RATE_LIMIT_WINDOW_MS: z.string().optional(),
+    RATE_LIMIT_MAX_REQUESTS: z.string().optional(),
+    AUTH_RATE_LIMIT_MAX: z.string().optional(),
+    UPLOAD_RATE_LIMIT_MAX: z.string().optional(),
 
     // Misc (allow extra)
   })
@@ -67,4 +74,4 @@ export function validateEnv() {
     process.exit(1);
   }
   return result.data;
-} 
+}

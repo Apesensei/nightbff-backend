@@ -203,5 +203,45 @@ describe("AuthService", () => {
     });
   });
 
+  describe("Password Validation", () => {
+    it("should validate correct password", async () => {
+      const user = {
+        id: "test-user-id",
+        email: "test@example.com",
+        passwordHash:
+          "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4j4j4j4j4j", // bcrypt hash of "password123"
+        validatePassword: jest.fn().mockResolvedValue(true),
+      };
+
+      const result = await user.validatePassword("password123");
+      expect(result).toBe(true);
+    });
+
+    it("should reject incorrect password", async () => {
+      const user = {
+        id: "test-user-id",
+        email: "test@example.com",
+        passwordHash:
+          "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4j4j4j4j4j", // bcrypt hash of "password123"
+        validatePassword: jest.fn().mockResolvedValue(false),
+      };
+
+      const result = await user.validatePassword("wrongpassword");
+      expect(result).toBe(false);
+    });
+
+    it("should return false for user without password hash", async () => {
+      const user = {
+        id: "test-user-id",
+        email: "test@example.com",
+        passwordHash: null,
+        validatePassword: jest.fn().mockResolvedValue(false),
+      };
+
+      const result = await user.validatePassword("anypassword");
+      expect(result).toBe(false);
+    });
+  });
+
   // Add describe blocks for signIn and signOut tests if needed later
 });

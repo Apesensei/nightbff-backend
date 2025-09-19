@@ -28,7 +28,8 @@ const envFileMap: Record<string, string> = {
   production: path.join("config", "env", "production.env"),
 };
 
-const envFile = envFileMap[nodeEnv] || path.join("config", "env", "development.env");
+const envFile =
+  envFileMap[nodeEnv] || path.join("config", "env", "development.env");
 
 // first load base layer then env-specific override
 dotenv.config({ path: path.resolve(projectRoot, "config/env/base.env") });
@@ -176,7 +177,9 @@ const entitiesPath = path.join(
 // Unified migration glob
 const migrationsPath = path.join(
   projectRoot,
-  isTest ? "src/database/migrations/**/*.ts" : "dist/database/migrations/**/*.js",
+  isTest
+    ? "src/database/migrations/**/*.ts"
+    : "dist/database/migrations/**/*.js",
 );
 
 // Configuration options for TypeORM

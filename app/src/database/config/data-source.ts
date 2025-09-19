@@ -13,13 +13,14 @@ const envFileMap: Record<string, string> = {
   production: path.join("config", "env", "production.env"),
 };
 
-const envFile = envFileMap[nodeEnv] || path.join("config", "env", "development.env");
+const envFile =
+  envFileMap[nodeEnv] || path.join("config", "env", "development.env");
 
 // Resolve path relative to repo root. `__dirname` = app/src/database/config
 // so four levels up reaches repo root.
 const rootDir = path.resolve(__dirname, "../../../../");
 const envPathResolved = path.join(rootDir, envFile);
-console.log('[DEBUG] loading env file', envPathResolved);
+console.log("[DEBUG] loading env file", envPathResolved);
 config({ path: envPathResolved });
 
 const environment = process.env.NODE_ENV || "development";
@@ -74,14 +75,21 @@ export const createDataSource = (env: string = environment): DataSource => {
   }
 
   // Fallback legacy DB_* variables (will be deprecated)
-  console.log('[DEBUG] Using POSTGRES_HOST', process.env.POSTGRES_HOST, 'PORT', process.env.POSTGRES_PORT);
+  console.log(
+    "[DEBUG] Using POSTGRES_HOST",
+    process.env.POSTGRES_HOST,
+    "PORT",
+    process.env.POSTGRES_PORT,
+  );
   return new DataSource({
     type: "postgres",
     host: process.env.POSTGRES_HOST || process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || '57599'),
+    port: parseInt(process.env.POSTGRES_PORT || process.env.DB_PORT || "57599"),
     username: process.env.POSTGRES_USER || process.env.DB_USERNAME || "admin",
-    password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || "testpass",
-    database: process.env.POSTGRES_DB || process.env.DB_DATABASE || "nightbff_dev",
+    password:
+      process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || "testpass",
+    database:
+      process.env.POSTGRES_DB || process.env.DB_DATABASE || "nightbff_dev",
     entities: [entitiesPath],
     migrations: [migrationsPath],
     synchronize: false,

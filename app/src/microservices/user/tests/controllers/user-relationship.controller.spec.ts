@@ -47,6 +47,8 @@ describe("UserRelationshipController", () => {
     locationLatitude: undefined,
     locationLongitude: undefined,
     status: UserStatus.ACTIVE,
+    hashPassword: jest.fn(),
+    validatePassword: jest.fn().mockResolvedValue(true),
     roles: [UserRole.USER],
     createdAt: new Date(),
     updatedAt: new Date(),

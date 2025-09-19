@@ -1,8 +1,8 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { DataSource } from 'typeorm';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '../auth/entities/user.entity';
+import { Controller, Get, UseGuards } from "@nestjs/common";
+import { DataSource } from "typeorm";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { UserRole } from "../auth/entities/user.entity";
 
 interface DbStatRow {
   state: string;
@@ -17,12 +17,12 @@ interface DbStats {
   [key: string]: number;
 }
 
-@Controller('admin')
+@Controller("admin")
 @UseGuards(RolesGuard)
 export class AdminController {
   constructor(private readonly dataSource: DataSource) {}
 
-  @Get('db-stats')
+  @Get("db-stats")
   @Roles(UserRole.ADMIN)
   async getDbStats(): Promise<DbStats> {
     const queryRunner = this.dataSource.createQueryRunner();
@@ -33,7 +33,7 @@ export class AdminController {
 
       const stats = results.reduce(
         (acc: DbStats, row: DbStatRow) => {
-          const stateKey = row.state.replace(/ /g, '_');
+          const stateKey = row.state.replace(/ /g, "_");
           acc[stateKey] = row.count;
           acc.total += row.count;
           return acc;
@@ -46,4 +46,4 @@ export class AdminController {
       await queryRunner.release();
     }
   }
-} 
+}

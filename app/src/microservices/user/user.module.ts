@@ -3,7 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { UserController, UserLocationController } from "./user.controller";
 import { UserService } from "./user.service";
 import { UserRepository } from "./repositories/user.repository";
-import { User } from '../auth/entities/user.entity';
+import { User } from "../auth/entities/user.entity";
 import { UserPreference } from "./entities/user-preference.entity";
 import { ProfileRepository } from "./repositories/profile.repository";
 import { UserPreferenceRepository } from "./repositories/user-preference.repository";
@@ -28,7 +28,7 @@ import { UserProfile } from "./entities/user-profile.entity";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ClientsModule, Transport } from "@nestjs/microservices";
 import { VenueModule } from "../venue/venue.module";
-import { AdminController } from './admin.controller';
+import { AdminController } from "./admin.controller";
 import { DbStatsModule } from "../../common/database/db-stats.module";
 
 @Module({
