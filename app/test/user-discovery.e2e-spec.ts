@@ -98,7 +98,10 @@ describe("UserDiscoveryController (e2e)", () => {
     // 2. Compile NestJS Module
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({ isGlobal: true, envFilePath: "config/env/test.env" }),
+        ConfigModule.forRoot({
+          isGlobal: true,
+          envFilePath: "config/env/test.env",
+        }),
         TypeOrmModule.forRoot(typeOrmOptions),
         AuthModule,
         UserModule,

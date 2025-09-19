@@ -16,4 +16,4 @@ export class DbStatsController {
   async getStats(): Promise<{ total: number; active: number; idle: number }> {
     return this.statsService.getStats();
   }
-} 
+}

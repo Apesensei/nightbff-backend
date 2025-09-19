@@ -29,7 +29,7 @@ import {
   BeforeUpdate,
 } from "typeorm";
 import { AgeVerification } from "./age-verification.entity";
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from "bcrypt";
 
 export enum UserStatus {
   ACTIVE = "active",
@@ -147,7 +147,7 @@ export class User {
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword() {
-    if (this.passwordHash && !this.passwordHash.startsWith('$2b$')) {
+    if (this.passwordHash && !this.passwordHash.startsWith("$2b$")) {
       this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
     }
   }

@@ -29,13 +29,17 @@ describe("SeederService idempotency", () => {
 
   it("creates admin user on first run", async () => {
     await seederService.seed();
-    const count = await userRepository.count({ where: { email: "admin-loadtest@nightbff.dev" } });
+    const count = await userRepository.count({
+      where: { email: "admin-loadtest@nightbff.dev" },
+    });
     expect(count).toBe(1);
   });
 
   it("is idempotent on subsequent runs", async () => {
     await seederService.seed();
-    const count = await userRepository.count({ where: { email: "admin-loadtest@nightbff.dev" } });
+    const count = await userRepository.count({
+      where: { email: "admin-loadtest@nightbff.dev" },
+    });
     expect(count).toBe(1);
   });
-}); 
+});

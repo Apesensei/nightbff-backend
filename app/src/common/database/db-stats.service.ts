@@ -28,4 +28,4 @@ export class DbStatsService {
       idle: Number(row.idle ?? 0),
     };
   }
-} 
+}

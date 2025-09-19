@@ -10,7 +10,11 @@ import compression from "compression";
 import helmet from "helmet";
 import * as fs from "fs";
 import * as https from "https";
-import { createGeneralRateLimit, createAuthRateLimit, createUploadRateLimit } from "./common/middleware/rate-limiting.config";
+import {
+  createGeneralRateLimit,
+  createAuthRateLimit,
+  createUploadRateLimit,
+} from "./common/middleware/rate-limiting.config";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -20,26 +24,30 @@ async function bootstrap() {
   // Validate JWT_SECRET at application startup
   const jwtSecret = configService.get<string>("JWT_SECRET");
   if (!jwtSecret || jwtSecret.length < 32) {
-    console.error("❌ JWT_SECRET validation failed: Must be set and at least 32 characters");
+    console.error(
+      "❌ JWT_SECRET validation failed: Must be set and at least 32 characters",
+    );
     process.exit(1);
   }
 
   // Configure security headers with helmet
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", "data:", "https:"],
+        },
       },
-    },
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true
-    }
-  }));
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+    }),
+  );
 
   // Configure rate limiting
   const generalLimiter = createGeneralRateLimit(configService);
@@ -47,35 +55,35 @@ async function bootstrap() {
   const uploadLimiter = createUploadRateLimit(configService);
 
   // Apply general rate limiting to all API routes
-  app.use('/api', generalLimiter);
+  app.use("/api", generalLimiter);
 
   // Apply auth-specific rate limiting
-  app.use('/api/auth', authLimiter);
+  app.use("/api/auth", authLimiter);
 
   // Apply upload rate limiting (if upload endpoints exist)
-  app.use('/api/upload', uploadLimiter);
+  app.use("/api/upload", uploadLimiter);
 
   // Get Express instance for custom routes
   const expressApp = app.getHttpAdapter().getInstance();
 
   // Add root health endpoint before global prefix
-  expressApp.get('/health', (req: Request, res: Response) => {
+  expressApp.get("/health", (req: Request, res: Response) => {
     res.json({
-      status: 'healthy',
+      status: "healthy",
       timestamp: new Date().toISOString(),
-      service: 'nightbff-backend'
+      service: "nightbff-backend",
     });
   });
 
   app.setGlobalPrefix("api");
 
   // Add API root endpoint after global prefix
-  expressApp.get('/api', (req: Request, res: Response) => {
+  expressApp.get("/api", (req: Request, res: Response) => {
     res.json({
-      message: 'NightBFF API',
-      version: '1.0.0',
-      status: 'operational',
-      timestamp: new Date().toISOString()
+      message: "NightBFF API",
+      version: "1.0.0",
+      status: "operational",
+      timestamp: new Date().toISOString(),
     });
   });
 
@@ -259,18 +267,23 @@ Happy coding! 🎯
   await app.startAllMicroservices();
 
   const port = configService.get<number>("PORT") || 3000;
-  
+
   // Configure HTTPS for development
-  const httpsKeyPath = configService.get<string>("HTTPS_KEY_PATH") || './certs/localhost-key.pem';
-  const httpsCertPath = configService.get<string>("HTTPS_CERT_PATH") || './certs/localhost.pem';
-  
+  const httpsKeyPath =
+    configService.get<string>("HTTPS_KEY_PATH") || "./certs/localhost-key.pem";
+  const httpsCertPath =
+    configService.get<string>("HTTPS_CERT_PATH") || "./certs/localhost.pem";
+
   const httpsOptions = {
     key: fs.readFileSync(httpsKeyPath),
     cert: fs.readFileSync(httpsCertPath),
   };
 
   // Start HTTPS server
-  const server = https.createServer(httpsOptions, app.getHttpAdapter().getInstance());
+  const server = https.createServer(
+    httpsOptions,
+    app.getHttpAdapter().getInstance(),
+  );
   server.listen(port, () => {
     console.log(`🚀 Application is running on: https://localhost:${port}`);
     console.log(

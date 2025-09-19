@@ -71,7 +71,7 @@ export class AuthRepository {
       );
       // Only throw InternalServerErrorException for actual database errors
       // Not for "user not found" scenarios which should return null
-      if (error.code === '23505' || error.code === '23503') {
+      if (error.code === "23505" || error.code === "23503") {
         // Unique constraint violation or foreign key violation
         throw new InternalServerErrorException(
           `Database constraint error: ${error.message}`,

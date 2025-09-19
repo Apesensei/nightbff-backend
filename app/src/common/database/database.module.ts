@@ -1,5 +1,6 @@
 import { Module, Global } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { ConfigModule } from "@nestjs/config";
 import { SupabaseProvider } from "./supabase.provider";
 
 // Import User entity
@@ -30,6 +31,7 @@ import { Message } from "../../microservices/chat/entities/message.entity";
 @Global()
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forFeature([
       // Add User entity here
       User,

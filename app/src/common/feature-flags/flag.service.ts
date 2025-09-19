@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
 /**
  * A stub service for feature flagging.
@@ -12,14 +12,14 @@ export class FeatureFlagService {
   private isSdkAvailable: boolean;
 
   constructor(private configService: ConfigService) {
-    const sdkKey = this.configService.get<string>('LD_SDK_KEY');
-    if (sdkKey && sdkKey.startsWith('sdk-')) {
+    const sdkKey = this.configService.get<string>("LD_SDK_KEY");
+    if (sdkKey && sdkKey.startsWith("sdk-")) {
       this.isSdkAvailable = true;
-      this.logger.log('LaunchDarkly SDK key found, feature flags are LIVE.');
+      this.logger.log("LaunchDarkly SDK key found, feature flags are LIVE.");
     } else {
       this.isSdkAvailable = false;
       this.logger.warn(
-        'LaunchDarkly SDK key not found or is a stub. Feature flags will return default values.',
+        "LaunchDarkly SDK key not found or is a stub. Feature flags will return default values.",
       );
     }
   }
@@ -37,7 +37,9 @@ export class FeatureFlagService {
 
     // In a real implementation, you would use the LaunchDarkly client here.
     // For example: return this.ldClient.variation(key, defaultValue);
-    this.logger.log(`(Stub) Checking flag '${key}', returning default: ${defaultValue}`);
+    this.logger.log(
+      `(Stub) Checking flag '${key}', returning default: ${defaultValue}`,
+    );
     return defaultValue;
   }
-} 
+}

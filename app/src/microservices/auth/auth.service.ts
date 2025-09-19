@@ -126,7 +126,9 @@ export class AuthService {
         }
 
         // Validate password using bcrypt hash comparison
-        const isPasswordValid = await localUser.validatePassword(signInDto.password);
+        const isPasswordValid = await localUser.validatePassword(
+          signInDto.password,
+        );
         if (!isPasswordValid) {
           throw new UnauthorizedException("Invalid credentials");
         }

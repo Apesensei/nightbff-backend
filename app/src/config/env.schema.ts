@@ -10,7 +10,8 @@ import { z } from "zod";
 export const envSchema = z
   .object({
     NODE_ENV: z
-      .enum(["development", "test", "performance", "integration", "production"]).optional(),
+      .enum(["development", "test", "performance", "integration", "production"])
+      .optional(),
 
     // Database (canonical Postgres split vars)
     POSTGRES_HOST: z.string(),
@@ -73,4 +74,4 @@ export function validateEnv() {
     process.exit(1);
   }
   return result.data;
-} 
+}

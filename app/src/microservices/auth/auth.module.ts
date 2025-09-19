@@ -26,7 +26,9 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
       useFactory: (configService: ConfigService) => {
         const secret = configService.get<string>("JWT_SECRET");
         if (!secret || secret.length < 32) {
-          throw new Error("JWT_SECRET must be set and at least 32 characters long");
+          throw new Error(
+            "JWT_SECRET must be set and at least 32 characters long",
+          );
         }
         return {
           secret,

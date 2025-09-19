@@ -208,7 +208,8 @@ describe("AuthService", () => {
       const user = {
         id: "test-user-id",
         email: "test@example.com",
-        passwordHash: "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4j4j4j4j4j", // bcrypt hash of "password123"
+        passwordHash:
+          "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4j4j4j4j4j", // bcrypt hash of "password123"
         validatePassword: jest.fn().mockResolvedValue(true),
       };
 
@@ -220,7 +221,8 @@ describe("AuthService", () => {
       const user = {
         id: "test-user-id",
         email: "test@example.com",
-        passwordHash: "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4j4j4j4j4j", // bcrypt hash of "password123"
+        passwordHash:
+          "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4j4j4j4j4j", // bcrypt hash of "password123"
         validatePassword: jest.fn().mockResolvedValue(false),
       };
 
