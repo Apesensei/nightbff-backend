@@ -33,6 +33,12 @@ export const envSchema = z
     HTTPS_KEY_PATH: z.string().optional(),
     HTTPS_CERT_PATH: z.string().optional(),
 
+    // Rate Limiting Configuration
+    RATE_LIMIT_WINDOW_MS: z.string().optional(),
+    RATE_LIMIT_MAX_REQUESTS: z.string().optional(),
+    AUTH_RATE_LIMIT_MAX: z.string().optional(),
+    UPLOAD_RATE_LIMIT_MAX: z.string().optional(),
+
     // Misc (allow extra)
   })
   .passthrough() // allow unknown vars so we don't block non-db config

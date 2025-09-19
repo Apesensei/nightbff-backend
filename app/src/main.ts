@@ -10,6 +10,7 @@ import compression from "compression";
 import helmet from "helmet";
 import * as fs from "fs";
 import * as https from "https";
+import { createGeneralRateLimit, createAuthRateLimit, createUploadRateLimit } from "./common/middleware/rate-limiting.config";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -39,6 +40,20 @@ async function bootstrap() {
       preload: true
     }
   }));
+
+  // Configure rate limiting
+  const generalLimiter = createGeneralRateLimit(configService);
+  const authLimiter = createAuthRateLimit(configService);
+  const uploadLimiter = createUploadRateLimit(configService);
+
+  // Apply general rate limiting to all API routes
+  app.use('/api', generalLimiter);
+
+  // Apply auth-specific rate limiting
+  app.use('/api/auth', authLimiter);
+
+  // Apply upload rate limiting (if upload endpoints exist)
+  app.use('/api/upload', uploadLimiter);
 
   // Get Express instance for custom routes
   const expressApp = app.getHttpAdapter().getInstance();
