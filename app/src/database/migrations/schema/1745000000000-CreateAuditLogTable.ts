@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table, Index } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table } from 'typeorm';
 
 export class CreateAuditLogTable1745000000000 implements MigrationInterface {
   name = 'CreateAuditLogTable1745000000000';
@@ -89,30 +89,30 @@ export class CreateAuditLogTable1745000000000 implements MigrationInterface {
     );
 
     // Create indexes for better query performance
-    await queryRunner.createIndex(
-      'audit_logs',
-      new Index('IDX_audit_logs_table_operation', ['table_name', 'operation']),
-    );
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_audit_logs_table_operation"
+      ON "audit_logs" ("table_name", "operation")
+    `);
 
-    await queryRunner.createIndex(
-      'audit_logs',
-      new Index('IDX_audit_logs_user_created', ['user_id', 'created_at']),
-    );
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_audit_logs_user_created"
+      ON "audit_logs" ("user_id", "created_at")
+    `);
 
-    await queryRunner.createIndex(
-      'audit_logs',
-      new Index('IDX_audit_logs_created_at', ['created_at']),
-    );
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_audit_logs_created_at"
+      ON "audit_logs" ("created_at")
+    `);
 
-    await queryRunner.createIndex(
-      'audit_logs',
-      new Index('IDX_audit_logs_record_id', ['record_id']),
-    );
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_audit_logs_record_id"
+      ON "audit_logs" ("record_id")
+    `);
 
-    await queryRunner.createIndex(
-      'audit_logs',
-      new Index('IDX_audit_logs_ip_address', ['ip_address']),
-    );
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_audit_logs_ip_address"
+      ON "audit_logs" ("ip_address")
+    `);
 
     // Create a partial index for sensitive data logs
     await queryRunner.query(`

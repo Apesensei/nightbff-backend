@@ -294,13 +294,13 @@ describe('AuditService', () => {
     it('should return audit statistics', async () => {
       const mockLogs = [
         { 
-          operation: 'INSERT', 
+          operation: 'INSERT' as const, 
           tableName: 'users', 
           userId: 'user-1',
           hasSensitiveData: () => false,
         },
         { 
-          operation: 'UPDATE', 
+          operation: 'UPDATE' as const, 
           tableName: 'users', 
           userId: 'user-1',
           hasSensitiveData: () => false,
@@ -312,7 +312,7 @@ describe('AuditService', () => {
           hasSensitiveData: () => false,
         },
         { 
-          operation: 'INSERT', 
+          operation: 'INSERT' as const, 
           tableName: 'events', 
           userId: 'user-2',
           hasSensitiveData: () => false,
@@ -371,8 +371,24 @@ describe('AuditService', () => {
   describe('exportAuditLogs', () => {
     it('should export audit logs in JSON format', async () => {
       const mockLogs = [
-        { id: '1', tableName: 'users', operation: 'INSERT' },
-        { id: '2', tableName: 'users', operation: 'UPDATE' },
+        { 
+          id: '1', 
+          tableName: 'users', 
+          operation: 'INSERT' as const,
+          createdAt: new Date('2024-01-01T10:00:00Z'),
+          getSummary: () => 'INSERT on users by system',
+          hasSensitiveData: () => false,
+          getSanitizedValues: () => ({ oldValues: undefined, newValues: undefined })
+        },
+        { 
+          id: '2', 
+          tableName: 'users', 
+          operation: 'UPDATE' as const,
+          createdAt: new Date('2024-01-01T11:00:00Z'),
+          getSummary: () => 'UPDATE on users by system',
+          hasSensitiveData: () => false,
+          getSanitizedValues: () => ({ oldValues: undefined, newValues: undefined })
+        },
       ];
 
       // Mock the getAuditLogsInRange method directly
@@ -393,13 +409,15 @@ describe('AuditService', () => {
         { 
           id: '1', 
           tableName: 'users', 
-          operation: 'INSERT',
+          operation: 'INSERT' as const,
           recordId: 'user-123',
           userId: 'user-456',
           ipAddress: '192.168.1.1',
           userAgent: 'Mozilla/5.0',
           createdAt: new Date('2024-01-01T10:00:00Z'),
           getSummary: () => 'INSERT on users (ID: user-123) by user-456',
+          hasSensitiveData: () => false,
+          getSanitizedValues: () => ({ oldValues: undefined, newValues: undefined })
         },
       ];
 

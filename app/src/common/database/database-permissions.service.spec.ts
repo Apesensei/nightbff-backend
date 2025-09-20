@@ -334,9 +334,9 @@ describe('DatabasePermissionsService', () => {
   describe('getSecuritySummary', () => {
     it('should return security summary', async () => {
       const mockUsers = [
-        { isSuperuser: true, canCreateDB: true, canCreateRoles: true, validUntil: null },
-        { isSuperuser: false, canCreateDB: false, canCreateRoles: false, validUntil: null },
-        { isSuperuser: false, canCreateDB: false, canCreateRoles: false, validUntil: '2024-12-31' },
+        { username: 'admin', isSuperuser: true, canCreateDB: true, canCreateRoles: true, canLogin: true, validUntil: null },
+        { username: 'user1', isSuperuser: false, canCreateDB: false, canCreateRoles: false, canLogin: true, validUntil: null },
+        { username: 'user2', isSuperuser: false, canCreateDB: false, canCreateRoles: false, canLogin: true, validUntil: '2024-12-31' },
       ];
 
       jest.spyOn(service, 'getDatabaseUsers').mockResolvedValue(mockUsers);

@@ -130,7 +130,7 @@ export class DatabasePermissionsController {
       properties: {
         username: { type: 'string' },
         password: { type: 'string' },
-        databaseName: { type: 'string', required: false },
+        databaseName: { type: 'string' },
       },
       required: ['username', 'password'],
     },
@@ -177,7 +177,7 @@ export class DatabasePermissionsController {
       properties: {
         username: { type: 'string' },
         password: { type: 'string' },
-        databaseName: { type: 'string', required: false },
+        databaseName: { type: 'string' },
       },
       required: ['username', 'password'],
     },
@@ -217,7 +217,7 @@ export class DatabasePermissionsController {
       properties: {
         username: { type: 'string' },
         password: { type: 'string' },
-        databaseName: { type: 'string', required: false },
+        databaseName: { type: 'string' },
       },
       required: ['username', 'password'],
     },
@@ -293,7 +293,7 @@ export class DatabasePermissionsController {
           type: 'array',
           items: { type: 'string' },
         },
-        tableName: { type: 'string', required: false },
+        tableName: { type: 'string' },
       },
       required: ['permissions'],
     },
@@ -336,7 +336,7 @@ export class DatabasePermissionsController {
           type: 'array',
           items: { type: 'string' },
         },
-        tableName: { type: 'string', required: false },
+        tableName: { type: 'string' },
       },
       required: ['permissions'],
     },
@@ -376,7 +376,7 @@ export class DatabasePermissionsController {
       type: 'object',
       properties: {
         password: { type: 'string' },
-        databaseName: { type: 'string', required: false },
+        databaseName: { type: 'string' },
       },
       required: ['password'],
     },
