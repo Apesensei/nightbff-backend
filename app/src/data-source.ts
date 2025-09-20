@@ -9,6 +9,47 @@ import * as fs from "fs"; // Added fs import
 // import { fileURLToPath } from 'url';
 import { validateEnv } from "./config/env.schema";
 
+/**
+ * Get enhanced SSL configuration for database connections
+ */
+function getEnhancedSSLConfig(isProduction: boolean) {
+  const sslEnabled = process.env.POSTGRES_SSL === 'true';
+  
+  if (!isProduction && !sslEnabled) {
+    return false;
+  }
+
+  if (isProduction || sslEnabled) {
+    const sslMode = process.env.POSTGRES_SSLMODE || 'require';
+    const caCert = process.env.POSTGRES_CA_CERT;
+    const clientCert = process.env.POSTGRES_CLIENT_CERT;
+    const clientKey = process.env.POSTGRES_CLIENT_KEY;
+
+    const sslConfig: any = {
+      rejectUnauthorized: true, // Always validate certificates in production
+      sslmode: sslMode,
+    };
+
+    // Add CA certificate if provided
+    if (caCert) {
+      sslConfig.ca = caCert;
+    }
+
+    // Add client certificates if provided
+    if (clientCert) {
+      sslConfig.cert = clientCert;
+    }
+
+    if (clientKey) {
+      sslConfig.key = clientKey;
+    }
+
+    return sslConfig;
+  }
+
+  return false;
+}
+
 // Dynamically determine the environment and load the appropriate .env file
 const nodeEnv = process.env.NODE_ENV || "development"; // Default to development
 const isTest = nodeEnv === "test";
@@ -230,7 +271,7 @@ if (isTest) {
       migrations: [migrationsPath],
       migrationsTableName: "typeorm_migrations",
       migrationsTransactionMode: "none",
-      ssl: isProduction ? { rejectUnauthorized: false } : false,
+      ssl: getEnhancedSSLConfig(isProduction),
       // Connection pool optimization for performance testing
       extra: {
         max: parseInt(process.env.DB_POOL_SIZE || "10", 10), // Max connections in pool
@@ -271,7 +312,7 @@ if (isTest) {
       migrations: [migrationsPath],
       migrationsTableName: "typeorm_migrations",
       migrationsTransactionMode: "none",
-      ssl: isProduction ? { rejectUnauthorized: false } : false,
+      ssl: getEnhancedSSLConfig(isProduction),
       // Connection pool optimization for performance testing
       extra: {
         max: parseInt(process.env.DB_POOL_SIZE || "10", 10), // Max connections in pool
