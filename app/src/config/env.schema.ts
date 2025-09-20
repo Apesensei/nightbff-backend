@@ -34,6 +34,13 @@ export const envSchema = z
     HTTPS_KEY_PATH: z.string().optional(),
     HTTPS_CERT_PATH: z.string().optional(),
 
+    // Database SSL Configuration
+    POSTGRES_SSL: z.string().optional(),
+    POSTGRES_CA_CERT: z.string().optional(),
+    POSTGRES_CLIENT_CERT: z.string().optional(),
+    POSTGRES_CLIENT_KEY: z.string().optional(),
+    POSTGRES_SSLMODE: z.string().optional(),
+
     // Rate Limiting Configuration
     RATE_LIMIT_WINDOW_MS: z.string().optional(),
     RATE_LIMIT_MAX_REQUESTS: z.string().optional(),
