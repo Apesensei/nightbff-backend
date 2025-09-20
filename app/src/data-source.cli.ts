@@ -10,15 +10,17 @@ const loadEnvPathAlt = path.resolve(
   "../../dist/scripts/load-env.js",
 );
 
-if (fs.existsSync(loadEnvPath)) {
-  require(loadEnvPath);
-  console.log("[DEBUG] Loaded env from:", loadEnvPath);
-} else if (fs.existsSync(loadEnvPathAlt)) {
-  require(loadEnvPathAlt);
-  console.log("[DEBUG] Loaded env from:", loadEnvPathAlt);
-} else {
-  console.warn("[WARN] load-env.js not found, skipping env loading");
-}
+(async () => {
+  if (fs.existsSync(loadEnvPath)) {
+    await import(loadEnvPath);
+    console.log("[DEBUG] Loaded env from:", loadEnvPath);
+  } else if (fs.existsSync(loadEnvPathAlt)) {
+    await import(loadEnvPathAlt);
+    console.log("[DEBUG] Loaded env from:", loadEnvPathAlt);
+  } else {
+    console.warn("[WARN] load-env.js not found, skipping env loading");
+  }
+})();
 
 console.log("[DEBUG] FULL ENV:", process.env);
 console.log("[DEBUG] POSTGRES_USER:", process.env.POSTGRES_USER);

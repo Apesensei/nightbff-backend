@@ -3,15 +3,15 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-} from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { Reflector } from '@nestjs/core';
-import { AuditService } from './audit.service';
+} from "@nestjs/common";
+import { Observable } from "rxjs";
+import { tap } from "rxjs/operators";
+import { Reflector } from "@nestjs/core";
+import { AuditService } from "./audit.service";
 
 /**
  * Audit Interceptor
- * 
+ *
  * Automatically logs database changes and security events.
  * Can be applied globally or to specific controllers/methods.
  */
@@ -25,12 +25,15 @@ export class AuditInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
-    
+
     // Get context information
     const contextInfo = this.extractContextInfo(request);
-    
+
     // Check if auditing is disabled for this endpoint
-    const skipAudit = this.reflector.get<boolean>('skipAudit', context.getHandler());
+    const skipAudit = this.reflector.get<boolean>(
+      "skipAudit",
+      context.getHandler(),
+    );
     if (skipAudit) {
       return next.handle();
     }
@@ -41,7 +44,7 @@ export class AuditInterceptor implements NestInterceptor {
           // Log the request/response for audit purposes
           await this.logRequestAudit(request, response, data, contextInfo);
         } catch (error) {
-          console.error('❌ Audit logging failed:', error);
+          console.error("❌ Audit logging failed:", error);
           // Don't throw error to avoid breaking the main request
         }
       }),
@@ -55,8 +58,8 @@ export class AuditInterceptor implements NestInterceptor {
     return {
       userId: request.user?.id || request.user?.userId,
       ipAddress: request.ip || request.connection?.remoteAddress,
-      userAgent: request.get('User-Agent'),
-      requestId: request.id || request.headers['x-request-id'],
+      userAgent: request.get("User-Agent"),
+      requestId: request.id || request.headers["x-request-id"],
       sessionId: request.sessionID,
       method: request.method,
       url: request.url,
@@ -74,9 +77,9 @@ export class AuditInterceptor implements NestInterceptor {
     contextInfo: any,
   ) {
     const { method, url, userId } = contextInfo;
-    
+
     // Skip logging for health checks and static files
-    if (url.includes('/health') || url.includes('/uploads/')) {
+    if (url.includes("/health") || url.includes("/uploads/")) {
       return;
     }
 
@@ -120,14 +123,14 @@ export class AuditInterceptor implements NestInterceptor {
   private extractTableNameFromUrl(url: string): string | null {
     // Map API endpoints to database table names
     const urlToTableMap: Record<string, string> = {
-      '/api/users': 'users',
-      '/api/auth': 'users', // Auth operations affect users table
-      '/api/events': 'events',
-      '/api/venues': 'venues',
-      '/api/chats': 'chats',
-      '/api/messages': 'messages',
-      '/api/interests': 'interests',
-      '/api/plans': 'plans',
+      "/api/users": "users",
+      "/api/auth": "users", // Auth operations affect users table
+      "/api/events": "events",
+      "/api/venues": "venues",
+      "/api/chats": "chats",
+      "/api/messages": "messages",
+      "/api/interests": "interests",
+      "/api/plans": "plans",
     };
 
     for (const [urlPattern, tableName] of Object.entries(urlToTableMap)) {
@@ -142,15 +145,18 @@ export class AuditInterceptor implements NestInterceptor {
   /**
    * Determine operation type from HTTP method and response
    */
-  private determineOperation(method: string, data: any): 'INSERT' | 'UPDATE' | 'DELETE' | null {
+  private determineOperation(
+    method: string,
+    data: any,
+  ): "INSERT" | "UPDATE" | "DELETE" | null {
     switch (method) {
-      case 'POST':
-        return 'INSERT';
-      case 'PUT':
-      case 'PATCH':
-        return 'UPDATE';
-      case 'DELETE':
-        return 'DELETE';
+      case "POST":
+        return "INSERT";
+      case "PUT":
+      case "PATCH":
+        return "UPDATE";
+      case "DELETE":
+        return "DELETE";
       default:
         return null;
     }
@@ -184,7 +190,7 @@ export class AuditInterceptor implements NestInterceptor {
  */
 export const SkipAudit = () => {
   return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
-    Reflect.defineMetadata('skipAudit', true, descriptor.value);
+    Reflect.defineMetadata("skipAudit", true, descriptor.value);
     return descriptor;
   };
 };

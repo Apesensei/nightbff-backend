@@ -13,14 +13,14 @@ import { validateEnv } from "./config/env.schema";
  * Get enhanced SSL configuration for database connections
  */
 function getEnhancedSSLConfig(isProduction: boolean) {
-  const sslEnabled = process.env.POSTGRES_SSL === 'true';
-  
+  const sslEnabled = process.env.POSTGRES_SSL === "true";
+
   if (!isProduction && !sslEnabled) {
     return false;
   }
 
   if (isProduction || sslEnabled) {
-    const sslMode = process.env.POSTGRES_SSLMODE || 'require';
+    const sslMode = process.env.POSTGRES_SSLMODE || "require";
     const caCert = process.env.POSTGRES_CA_CERT;
     const clientCert = process.env.POSTGRES_CLIENT_CERT;
     const clientKey = process.env.POSTGRES_CLIENT_KEY;

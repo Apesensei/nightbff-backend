@@ -6,22 +6,27 @@ import {
   Body,
   Param,
   UseGuards,
-  Query,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
-import { DatabasePermissionsService } from './database-permissions.service';
-import { JwtAuthGuard } from '../../microservices/auth/guards/jwt-auth.guard';
+} from "@nestjs/common";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+} from "@nestjs/swagger";
+import { DatabasePermissionsService } from "./database-permissions.service";
+import { JwtAuthGuard } from "../../microservices/auth/guards/jwt-auth.guard";
 
 /**
  * Database Permissions Controller
- * 
+ *
  * Provides endpoints for managing database user permissions and access controls.
  * Requires authentication and appropriate admin permissions.
  */
-@ApiTags('Database Permissions')
-@Controller('api/database/permissions')
+@ApiTags("Database Permissions")
+@Controller("api/database/permissions")
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth('JWT-auth')
+@ApiBearerAuth("JWT-auth")
 export class DatabasePermissionsController {
   constructor(
     private readonly permissionsService: DatabasePermissionsService,
@@ -30,25 +35,26 @@ export class DatabasePermissionsController {
   /**
    * Get all database users
    */
-  @Get('users')
+  @Get("users")
   @ApiOperation({
-    summary: 'Get all database users',
-    description: 'Retrieves a list of all database users with their permissions and status',
+    summary: "Get all database users",
+    description:
+      "Retrieves a list of all database users with their permissions and status",
   })
   @ApiResponse({
     status: 200,
-    description: 'Database users retrieved successfully',
+    description: "Database users retrieved successfully",
     schema: {
-      type: 'array',
+      type: "array",
       items: {
-        type: 'object',
+        type: "object",
         properties: {
-          username: { type: 'string' },
-          isSuperuser: { type: 'boolean' },
-          canCreateDB: { type: 'boolean' },
-          canCreateRoles: { type: 'boolean' },
-          canLogin: { type: 'boolean' },
-          validUntil: { type: 'string', nullable: true },
+          username: { type: "string" },
+          isSuperuser: { type: "boolean" },
+          canCreateDB: { type: "boolean" },
+          canCreateRoles: { type: "boolean" },
+          canLogin: { type: "boolean" },
+          validUntil: { type: "string", nullable: true },
         },
       },
     },
@@ -60,28 +66,29 @@ export class DatabasePermissionsController {
   /**
    * Get user permissions for a specific table
    */
-  @Get('users/:username/table/:tableName')
+  @Get("users/:username/table/:tableName")
   @ApiOperation({
-    summary: 'Get user table permissions',
-    description: 'Retrieves specific permissions for a user on a particular table',
+    summary: "Get user table permissions",
+    description:
+      "Retrieves specific permissions for a user on a particular table",
   })
   @ApiResponse({
     status: 200,
-    description: 'User table permissions retrieved successfully',
+    description: "User table permissions retrieved successfully",
     schema: {
-      type: 'array',
+      type: "array",
       items: {
-        type: 'object',
+        type: "object",
         properties: {
-          privilege: { type: 'string' },
-          granted: { type: 'boolean' },
+          privilege: { type: "string" },
+          granted: { type: "boolean" },
         },
       },
     },
   })
   async getUserTablePermissions(
-    @Param('username') username: string,
-    @Param('tableName') tableName: string,
+    @Param("username") username: string,
+    @Param("tableName") tableName: string,
   ) {
     return this.permissionsService.getUserTablePermissions(username, tableName);
   }
@@ -89,25 +96,26 @@ export class DatabasePermissionsController {
   /**
    * Get database security summary
    */
-  @Get('security-summary')
+  @Get("security-summary")
   @ApiOperation({
-    summary: 'Get database security summary',
-    description: 'Retrieves a comprehensive security summary including user counts and recommendations',
+    summary: "Get database security summary",
+    description:
+      "Retrieves a comprehensive security summary including user counts and recommendations",
   })
   @ApiResponse({
     status: 200,
-    description: 'Security summary retrieved successfully',
+    description: "Security summary retrieved successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        totalUsers: { type: 'number' },
-        superUsers: { type: 'number' },
-        readOnlyUsers: { type: 'number' },
-        applicationUsers: { type: 'number' },
-        usersWithExpiredPasswords: { type: 'number' },
+        totalUsers: { type: "number" },
+        superUsers: { type: "number" },
+        readOnlyUsers: { type: "number" },
+        applicationUsers: { type: "number" },
+        usersWithExpiredPasswords: { type: "number" },
         recommendations: {
-          type: 'array',
-          items: { type: 'string' },
+          type: "array",
+          items: { type: "string" },
         },
       },
     },
@@ -119,30 +127,30 @@ export class DatabasePermissionsController {
   /**
    * Create read-only user
    */
-  @Post('users/readonly')
+  @Post("users/readonly")
   @ApiOperation({
-    summary: 'Create read-only database user',
-    description: 'Creates a new database user with read-only permissions',
+    summary: "Create read-only database user",
+    description: "Creates a new database user with read-only permissions",
   })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        username: { type: 'string' },
-        password: { type: 'string' },
-        databaseName: { type: 'string' },
+        username: { type: "string" },
+        password: { type: "string" },
+        databaseName: { type: "string" },
       },
-      required: ['username', 'password'],
+      required: ["username", "password"],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Read-only user created successfully',
+    description: "Read-only user created successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
+        success: { type: "boolean" },
+        message: { type: "string" },
       },
     },
   })
@@ -157,7 +165,7 @@ export class DatabasePermissionsController {
 
     return {
       success,
-      message: success 
+      message: success
         ? `Read-only user '${body.username}' created successfully`
         : `Failed to create read-only user '${body.username}'`,
     };
@@ -166,25 +174,26 @@ export class DatabasePermissionsController {
   /**
    * Create application user
    */
-  @Post('users/application')
+  @Post("users/application")
   @ApiOperation({
-    summary: 'Create application database user',
-    description: 'Creates a new database user with application-level permissions (CRUD)',
+    summary: "Create application database user",
+    description:
+      "Creates a new database user with application-level permissions (CRUD)",
   })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        username: { type: 'string' },
-        password: { type: 'string' },
-        databaseName: { type: 'string' },
+        username: { type: "string" },
+        password: { type: "string" },
+        databaseName: { type: "string" },
       },
-      required: ['username', 'password'],
+      required: ["username", "password"],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Application user created successfully',
+    description: "Application user created successfully",
   })
   async createApplicationUser(
     @Body() body: { username: string; password: string; databaseName?: string },
@@ -197,7 +206,7 @@ export class DatabasePermissionsController {
 
     return {
       success,
-      message: success 
+      message: success
         ? `Application user '${body.username}' created successfully`
         : `Failed to create application user '${body.username}'`,
     };
@@ -206,25 +215,26 @@ export class DatabasePermissionsController {
   /**
    * Create migration user
    */
-  @Post('users/migration')
+  @Post("users/migration")
   @ApiOperation({
-    summary: 'Create migration database user',
-    description: 'Creates a new database user with full permissions for running migrations',
+    summary: "Create migration database user",
+    description:
+      "Creates a new database user with full permissions for running migrations",
   })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        username: { type: 'string' },
-        password: { type: 'string' },
-        databaseName: { type: 'string' },
+        username: { type: "string" },
+        password: { type: "string" },
+        databaseName: { type: "string" },
       },
-      required: ['username', 'password'],
+      required: ["username", "password"],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Migration user created successfully',
+    description: "Migration user created successfully",
   })
   async createMigrationUser(
     @Body() body: { username: string; password: string; databaseName?: string },
@@ -237,7 +247,7 @@ export class DatabasePermissionsController {
 
     return {
       success,
-      message: success 
+      message: success
         ? `Migration user '${body.username}' created successfully`
         : `Failed to create migration user '${body.username}'`,
     };
@@ -246,64 +256,65 @@ export class DatabasePermissionsController {
   /**
    * Create production users
    */
-  @Post('users/production')
+  @Post("users/production")
   @ApiOperation({
-    summary: 'Create production database users',
-    description: 'Creates all necessary production database users (readonly, application, migration)',
+    summary: "Create production database users",
+    description:
+      "Creates all necessary production database users (readonly, application, migration)",
   })
   @ApiResponse({
     status: 201,
-    description: 'Production users created successfully',
+    description: "Production users created successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        readonly: { type: 'boolean' },
-        application: { type: 'boolean' },
-        migration: { type: 'boolean' },
-        message: { type: 'string' },
+        readonly: { type: "boolean" },
+        application: { type: "boolean" },
+        migration: { type: "boolean" },
+        message: { type: "string" },
       },
     },
   })
   async createProductionUsers() {
     const results = await this.permissionsService.createProductionUsers();
-    
+
     const allSuccessful = Object.values(results).every(Boolean);
-    
+
     return {
       ...results,
-      message: allSuccessful 
-        ? 'All production users created successfully'
-        : 'Some production users failed to create',
+      message: allSuccessful
+        ? "All production users created successfully"
+        : "Some production users failed to create",
     };
   }
 
   /**
    * Grant permissions to user
    */
-  @Post('users/:username/grant')
+  @Post("users/:username/grant")
   @ApiOperation({
-    summary: 'Grant permissions to user',
-    description: 'Grants specific permissions to a database user',
+    summary: "Grant permissions to user",
+    description: "Grants specific permissions to a database user",
   })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         permissions: {
-          type: 'array',
-          items: { type: 'string' },
+          type: "array",
+          items: { type: "string" },
         },
-        tableName: { type: 'string' },
+        tableName: { type: "string" },
       },
-      required: ['permissions'],
+      required: ["permissions"],
     },
   })
   @ApiResponse({
     status: 200,
-    description: 'Permissions granted successfully',
+    description: "Permissions granted successfully",
   })
   async grantUserPermissions(
-    @Param('username') username: string,
+    @Param("username") username: string,
     @Body() body: { permissions: string[]; tableName?: string },
   ) {
     const success = await this.permissionsService.grantUserPermissions(
@@ -314,7 +325,7 @@ export class DatabasePermissionsController {
 
     return {
       success,
-      message: success 
+      message: success
         ? `Permissions granted to user '${username}'`
         : `Failed to grant permissions to user '${username}'`,
     };
@@ -323,30 +334,30 @@ export class DatabasePermissionsController {
   /**
    * Revoke permissions from user
    */
-  @Post('users/:username/revoke')
+  @Post("users/:username/revoke")
   @ApiOperation({
-    summary: 'Revoke permissions from user',
-    description: 'Revokes specific permissions from a database user',
+    summary: "Revoke permissions from user",
+    description: "Revokes specific permissions from a database user",
   })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         permissions: {
-          type: 'array',
-          items: { type: 'string' },
+          type: "array",
+          items: { type: "string" },
         },
-        tableName: { type: 'string' },
+        tableName: { type: "string" },
       },
-      required: ['permissions'],
+      required: ["permissions"],
     },
   })
   @ApiResponse({
     status: 200,
-    description: 'Permissions revoked successfully',
+    description: "Permissions revoked successfully",
   })
   async revokeUserPermissions(
-    @Param('username') username: string,
+    @Param("username") username: string,
     @Body() body: { permissions: string[]; tableName?: string },
   ) {
     const success = await this.permissionsService.revokeUserPermissions(
@@ -357,7 +368,7 @@ export class DatabasePermissionsController {
 
     return {
       success,
-      message: success 
+      message: success
         ? `Permissions revoked from user '${username}'`
         : `Failed to revoke permissions from user '${username}'`,
     };
@@ -366,27 +377,27 @@ export class DatabasePermissionsController {
   /**
    * Test user connection
    */
-  @Post('users/:username/test-connection')
+  @Post("users/:username/test-connection")
   @ApiOperation({
-    summary: 'Test user connection',
-    description: 'Tests database connection for a specific user',
+    summary: "Test user connection",
+    description: "Tests database connection for a specific user",
   })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        password: { type: 'string' },
-        databaseName: { type: 'string' },
+        password: { type: "string" },
+        databaseName: { type: "string" },
       },
-      required: ['password'],
+      required: ["password"],
     },
   })
   @ApiResponse({
     status: 200,
-    description: 'Connection test completed',
+    description: "Connection test completed",
   })
   async testUserConnection(
-    @Param('username') username: string,
+    @Param("username") username: string,
     @Body() body: { password: string; databaseName?: string },
   ) {
     const success = await this.permissionsService.testUserConnection(
@@ -397,7 +408,7 @@ export class DatabasePermissionsController {
 
     return {
       success,
-      message: success 
+      message: success
         ? `Connection test successful for user '${username}'`
         : `Connection test failed for user '${username}'`,
     };
@@ -406,21 +417,21 @@ export class DatabasePermissionsController {
   /**
    * Drop database user
    */
-  @Delete('users/:username')
+  @Delete("users/:username")
   @ApiOperation({
-    summary: 'Drop database user',
-    description: 'Removes a database user and all associated permissions',
+    summary: "Drop database user",
+    description: "Removes a database user and all associated permissions",
   })
   @ApiResponse({
     status: 200,
-    description: 'User dropped successfully',
+    description: "User dropped successfully",
   })
-  async dropUser(@Param('username') username: string) {
+  async dropUser(@Param("username") username: string) {
     const success = await this.permissionsService.dropUser(username);
 
     return {
       success,
-      message: success 
+      message: success
         ? `User '${username}' dropped successfully`
         : `Failed to drop user '${username}'`,
     };

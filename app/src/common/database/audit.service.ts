@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AuditLog } from './entities/audit-log.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { AuditLog } from "./entities/audit-log.entity";
 
 /**
  * Audit Service
- * 
+ *
  * Handles database audit logging for security and compliance.
  * Logs all database changes with context information.
  */
@@ -21,7 +21,7 @@ export class AuditService {
    */
   async logDatabaseChange(
     tableName: string,
-    operation: 'INSERT' | 'UPDATE' | 'DELETE',
+    operation: "INSERT" | "UPDATE" | "DELETE",
     oldValues: any,
     newValues: any,
     context: {
@@ -39,8 +39,8 @@ export class AuditService {
         tableName,
         operation,
         recordId: context.recordId,
-        oldValues: operation === 'INSERT' ? null : oldValues,
-        newValues: operation === 'DELETE' ? null : newValues,
+        oldValues: operation === "INSERT" ? null : oldValues,
+        newValues: operation === "DELETE" ? null : newValues,
         userId: context.userId,
         ipAddress: context.ipAddress,
         userAgent: context.userAgent,
@@ -50,15 +50,15 @@ export class AuditService {
       });
 
       const savedLog = await this.auditRepository.save(auditLog);
-      
+
       // Log to console for development debugging
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === "development") {
         console.log(`📝 Audit Log: ${savedLog.getSummary()}`);
       }
 
       return savedLog;
     } catch (error) {
-      console.error('❌ Failed to create audit log:', error);
+      console.error("❌ Failed to create audit log:", error);
       throw error;
     }
   }
@@ -67,7 +67,12 @@ export class AuditService {
    * Log user authentication events
    */
   async logAuthEvent(
-    event: 'LOGIN' | 'LOGOUT' | 'LOGIN_FAILED' | 'PASSWORD_CHANGE' | 'ACCOUNT_LOCKED',
+    event:
+      | "LOGIN"
+      | "LOGOUT"
+      | "LOGIN_FAILED"
+      | "PASSWORD_CHANGE"
+      | "ACCOUNT_LOCKED",
     userId: string,
     context: {
       ipAddress?: string;
@@ -78,8 +83,8 @@ export class AuditService {
     } = {},
   ): Promise<AuditLog> {
     return this.logDatabaseChange(
-      'auth_events',
-      'INSERT',
+      "auth_events",
+      "INSERT",
       null,
       {
         event,
@@ -98,7 +103,11 @@ export class AuditService {
    * Log security events
    */
   async logSecurityEvent(
-    event: 'RATE_LIMIT_EXCEEDED' | 'SUSPICIOUS_ACTIVITY' | 'UNAUTHORIZED_ACCESS' | 'DATA_EXPORT',
+    event:
+      | "RATE_LIMIT_EXCEEDED"
+      | "SUSPICIOUS_ACTIVITY"
+      | "UNAUTHORIZED_ACCESS"
+      | "DATA_EXPORT",
     details: any,
     context: {
       userId?: string;
@@ -110,8 +119,8 @@ export class AuditService {
     } = {},
   ): Promise<AuditLog> {
     return this.logDatabaseChange(
-      'security_events',
-      'INSERT',
+      "security_events",
+      "INSERT",
       null,
       {
         event,
@@ -133,7 +142,7 @@ export class AuditService {
   ): Promise<AuditLog[]> {
     return this.auditRepository.find({
       where: { tableName },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
       take: limit,
       skip: offset,
     });
@@ -149,7 +158,7 @@ export class AuditService {
   ): Promise<AuditLog[]> {
     return this.auditRepository.find({
       where: { userId },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
       take: limit,
       skip: offset,
     });
@@ -165,10 +174,10 @@ export class AuditService {
     offset: number = 0,
   ): Promise<AuditLog[]> {
     return this.auditRepository
-      .createQueryBuilder('audit_log')
-      .where('audit_log.createdAt >= :startDate', { startDate })
-      .andWhere('audit_log.createdAt <= :endDate', { endDate })
-      .orderBy('audit_log.createdAt', 'DESC')
+      .createQueryBuilder("audit_log")
+      .where("audit_log.createdAt >= :startDate", { startDate })
+      .andWhere("audit_log.createdAt <= :endDate", { endDate })
+      .orderBy("audit_log.createdAt", "DESC")
       .limit(limit)
       .offset(offset)
       .getMany();
@@ -182,12 +191,12 @@ export class AuditService {
     offset: number = 0,
   ): Promise<AuditLog[]> {
     const logs = await this.auditRepository.find({
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
       take: limit,
       skip: offset,
     });
 
-    return logs.filter(log => log.hasSensitiveData());
+    return logs.filter((log) => log.hasSensitiveData());
   }
 
   /**
@@ -203,34 +212,45 @@ export class AuditService {
     usersByActivity: Record<string, number>;
     sensitiveDataLogs: number;
   }> {
-    const query = this.auditRepository.createQueryBuilder('audit_log');
+    const query = this.auditRepository.createQueryBuilder("audit_log");
 
     if (startDate) {
-      query.andWhere('audit_log.createdAt >= :startDate', { startDate });
+      query.andWhere("audit_log.createdAt >= :startDate", { startDate });
     }
     if (endDate) {
-      query.andWhere('audit_log.createdAt <= :endDate', { endDate });
+      query.andWhere("audit_log.createdAt <= :endDate", { endDate });
     }
 
     const logs = await query.getMany();
 
-    const operationsByType = logs.reduce((acc, log) => {
-      acc[log.operation] = (acc[log.operation] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const operationsByType = logs.reduce(
+      (acc, log) => {
+        acc[log.operation] = (acc[log.operation] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
-    const tablesByActivity = logs.reduce((acc, log) => {
-      acc[log.tableName] = (acc[log.tableName] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const tablesByActivity = logs.reduce(
+      (acc, log) => {
+        acc[log.tableName] = (acc[log.tableName] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
-    const usersByActivity = logs.reduce((acc, log) => {
-      const userId = log.userId || 'system';
-      acc[userId] = (acc[userId] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const usersByActivity = logs.reduce(
+      (acc, log) => {
+        const userId = log.userId || "system";
+        acc[userId] = (acc[userId] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
-    const sensitiveDataLogs = logs.filter(log => log.hasSensitiveData()).length;
+    const sensitiveDataLogs = logs.filter((log) =>
+      log.hasSensitiveData(),
+    ).length;
 
     return {
       totalLogs: logs.length,
@@ -251,7 +271,7 @@ export class AuditService {
     const result = await this.auditRepository
       .createQueryBuilder()
       .delete()
-      .where('createdAt < :cutoffDate', { cutoffDate })
+      .where("createdAt < :cutoffDate", { cutoffDate })
       .execute();
 
     return result.affected || 0;
@@ -263,38 +283,38 @@ export class AuditService {
   async exportAuditLogs(
     startDate: Date,
     endDate: Date,
-    format: 'json' | 'csv' = 'json',
+    format: "json" | "csv" = "json",
   ): Promise<string> {
     const logs = await this.getAuditLogsInRange(startDate, endDate, 10000, 0);
 
-    if (format === 'csv') {
+    if (format === "csv") {
       const csvHeaders = [
-        'ID',
-        'Table Name',
-        'Operation',
-        'Record ID',
-        'User ID',
-        'IP Address',
-        'User Agent',
-        'Created At',
-        'Summary',
+        "ID",
+        "Table Name",
+        "Operation",
+        "Record ID",
+        "User ID",
+        "IP Address",
+        "User Agent",
+        "Created At",
+        "Summary",
       ];
 
-      const csvRows = logs.map(log => [
+      const csvRows = logs.map((log) => [
         log.id,
         log.tableName,
         log.operation,
-        log.recordId || '',
-        log.userId || '',
-        log.ipAddress || '',
-        log.userAgent || '',
+        log.recordId || "",
+        log.userId || "",
+        log.ipAddress || "",
+        log.userAgent || "",
         log.createdAt.toISOString(),
         log.getSummary(),
       ]);
 
       return [csvHeaders, ...csvRows]
-        .map(row => row.map(field => `"${field}"`).join(','))
-        .join('\n');
+        .map((row) => row.map((field) => `"${field}"`).join(","))
+        .join("\n");
     }
 
     return JSON.stringify(logs, null, 2);

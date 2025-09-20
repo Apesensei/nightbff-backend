@@ -1,7 +1,9 @@
 import { Module, Global } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule } from "@nestjs/config";
+import { DataSource } from "typeorm";
 import { SupabaseProvider } from "./supabase.provider";
+import { AppDataSource } from "../../database/config/data-source";
 
 // Import User entity
 import { User } from "../../microservices/auth/entities/user.entity";
@@ -52,7 +54,13 @@ import { AuditLog } from "./entities/audit-log.entity";
       AuditLog,
     ]),
   ],
-  providers: [SupabaseProvider],
-  exports: [SupabaseProvider, TypeOrmModule],
+  providers: [
+    SupabaseProvider,
+    {
+      provide: DataSource,
+      useValue: AppDataSource,
+    },
+  ],
+  exports: [SupabaseProvider, TypeOrmModule, DataSource],
 })
 export class DatabaseModule {}

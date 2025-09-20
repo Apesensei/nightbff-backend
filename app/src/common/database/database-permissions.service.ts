@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from "@nestjs/common";
+import { DataSource } from "typeorm";
+import { ConfigService } from "@nestjs/config";
 
 /**
  * Database Permissions Service
- * 
+ *
  * Manages database user permissions and access controls.
  * Provides functionality to create, manage, and verify database users.
  */
@@ -24,8 +24,9 @@ export class DatabasePermissionsService {
     databaseName?: string,
   ): Promise<boolean> {
     try {
-      const dbName = databaseName || this.configService.get<string>('POSTGRES_DB');
-      
+      const dbName =
+        databaseName || this.configService.get<string>("POSTGRES_DB");
+
       await this.dataSource.query(`
         CREATE USER ${username} WITH PASSWORD '${password}';
       `);
@@ -72,8 +73,9 @@ export class DatabasePermissionsService {
     databaseName?: string,
   ): Promise<boolean> {
     try {
-      const dbName = databaseName || this.configService.get<string>('POSTGRES_DB');
-      
+      const dbName =
+        databaseName || this.configService.get<string>("POSTGRES_DB");
+
       await this.dataSource.query(`
         CREATE USER ${username} WITH PASSWORD '${password}';
       `);
@@ -108,7 +110,10 @@ export class DatabasePermissionsService {
       console.log(`✅ Application user '${username}' created successfully`);
       return true;
     } catch (error) {
-      console.error(`❌ Failed to create application user '${username}':`, error);
+      console.error(
+        `❌ Failed to create application user '${username}':`,
+        error,
+      );
       return false;
     }
   }
@@ -122,8 +127,9 @@ export class DatabasePermissionsService {
     databaseName?: string,
   ): Promise<boolean> {
     try {
-      const dbName = databaseName || this.configService.get<string>('POSTGRES_DB');
-      
+      const dbName =
+        databaseName || this.configService.get<string>("POSTGRES_DB");
+
       await this.dataSource.query(`
         CREATE USER ${username} WITH PASSWORD '${password}';
       `);
@@ -164,14 +170,16 @@ export class DatabasePermissionsService {
   /**
    * Get list of database users
    */
-  async getDatabaseUsers(): Promise<Array<{
-    username: string;
-    isSuperuser: boolean;
-    canCreateDB: boolean;
-    canCreateRoles: boolean;
-    canLogin: boolean;
-    validUntil: string | null;
-  }>> {
+  async getDatabaseUsers(): Promise<
+    Array<{
+      username: string;
+      isSuperuser: boolean;
+      canCreateDB: boolean;
+      canCreateRoles: boolean;
+      canLogin: boolean;
+      validUntil: string | null;
+    }>
+  > {
     try {
       const result = await this.dataSource.query(`
         SELECT 
@@ -194,7 +202,7 @@ export class DatabasePermissionsService {
         validUntil: row.valid_until,
       }));
     } catch (error) {
-      console.error('❌ Failed to get database users:', error);
+      console.error("❌ Failed to get database users:", error);
       return [];
     }
   }
@@ -205,26 +213,34 @@ export class DatabasePermissionsService {
   async getUserTablePermissions(
     username: string,
     tableName: string,
-  ): Promise<Array<{
-    privilege: string;
-    granted: boolean;
-  }>> {
+  ): Promise<
+    Array<{
+      privilege: string;
+      granted: boolean;
+    }>
+  > {
     try {
-      const result = await this.dataSource.query(`
+      const result = await this.dataSource.query(
+        `
         SELECT 
           privilege_type as privilege,
           is_grantable as granted
         FROM information_schema.table_privileges
         WHERE grantee = $1 AND table_name = $2
         ORDER BY privilege_type;
-      `, [username, tableName]);
+      `,
+        [username, tableName],
+      );
 
       return result.map((row: any) => ({
         privilege: row.privilege,
         granted: row.granted,
       }));
     } catch (error) {
-      console.error(`❌ Failed to get table permissions for user '${username}':`, error);
+      console.error(
+        `❌ Failed to get table permissions for user '${username}':`,
+        error,
+      );
       return [];
     }
   }
@@ -238,18 +254,25 @@ export class DatabasePermissionsService {
     tableName?: string,
   ): Promise<boolean> {
     try {
-      const tableClause = tableName ? `ON TABLE ${tableName}` : 'ON ALL TABLES IN SCHEMA public';
-      
+      const tableClause = tableName
+        ? `ON TABLE ${tableName}`
+        : "ON ALL TABLES IN SCHEMA public";
+
       for (const permission of permissions) {
         await this.dataSource.query(`
           REVOKE ${permission} ${tableClause} FROM ${username};
         `);
       }
 
-      console.log(`✅ Revoked permissions [${permissions.join(', ')}] from user '${username}'`);
+      console.log(
+        `✅ Revoked permissions [${permissions.join(", ")}] from user '${username}'`,
+      );
       return true;
     } catch (error) {
-      console.error(`❌ Failed to revoke permissions from user '${username}':`, error);
+      console.error(
+        `❌ Failed to revoke permissions from user '${username}':`,
+        error,
+      );
       return false;
     }
   }
@@ -263,18 +286,25 @@ export class DatabasePermissionsService {
     tableName?: string,
   ): Promise<boolean> {
     try {
-      const tableClause = tableName ? `ON TABLE ${tableName}` : 'ON ALL TABLES IN SCHEMA public';
-      
+      const tableClause = tableName
+        ? `ON TABLE ${tableName}`
+        : "ON ALL TABLES IN SCHEMA public";
+
       for (const permission of permissions) {
         await this.dataSource.query(`
           GRANT ${permission} ${tableClause} TO ${username};
         `);
       }
 
-      console.log(`✅ Granted permissions [${permissions.join(', ')}] to user '${username}'`);
+      console.log(
+        `✅ Granted permissions [${permissions.join(", ")}] to user '${username}'`,
+      );
       return true;
     } catch (error) {
-      console.error(`❌ Failed to grant permissions to user '${username}':`, error);
+      console.error(
+        `❌ Failed to grant permissions to user '${username}':`,
+        error,
+      );
       return false;
     }
   }
@@ -305,9 +335,10 @@ export class DatabasePermissionsService {
     databaseName?: string,
   ): Promise<boolean> {
     try {
-      const dbName = databaseName || this.configService.get<string>('POSTGRES_DB');
-      const host = this.configService.get<string>('POSTGRES_HOST');
-      const port = this.configService.get<string>('POSTGRES_PORT');
+      const dbName =
+        databaseName || this.configService.get<string>("POSTGRES_DB");
+      const host = this.configService.get<string>("POSTGRES_HOST");
+      const port = this.configService.get<string>("POSTGRES_PORT");
 
       // Create a test connection
       const testConnection = await this.dataSource.query(`
@@ -336,34 +367,33 @@ export class DatabasePermissionsService {
     try {
       const users = await this.getDatabaseUsers();
       const totalUsers = users.length;
-      const superUsers = users.filter(u => u.isSuperuser).length;
-      const readOnlyUsers = users.filter(u => 
-        !u.isSuperuser && 
-        !u.canCreateDB && 
-        !u.canCreateRoles
+      const superUsers = users.filter((u) => u.isSuperuser).length;
+      const readOnlyUsers = users.filter(
+        (u) => !u.isSuperuser && !u.canCreateDB && !u.canCreateRoles,
       ).length;
-      const applicationUsers = users.filter(u => 
-        !u.isSuperuser && 
-        u.canLogin
+      const applicationUsers = users.filter(
+        (u) => !u.isSuperuser && u.canLogin,
       ).length;
-      const usersWithExpiredPasswords = users.filter(u => u.validUntil !== null).length;
+      const usersWithExpiredPasswords = users.filter(
+        (u) => u.validUntil !== null,
+      ).length;
 
       const recommendations: string[] = [];
-      
+
       if (superUsers > 1) {
-        recommendations.push('Consider reducing the number of superusers');
+        recommendations.push("Consider reducing the number of superusers");
       }
-      
+
       if (usersWithExpiredPasswords > 0) {
-        recommendations.push('Some users have password expiration dates set');
+        recommendations.push("Some users have password expiration dates set");
       }
-      
+
       if (readOnlyUsers === 0) {
-        recommendations.push('Consider creating read-only users for reporting');
+        recommendations.push("Consider creating read-only users for reporting");
       }
-      
+
       if (applicationUsers === 0) {
-        recommendations.push('Consider creating dedicated application users');
+        recommendations.push("Consider creating dedicated application users");
       }
 
       return {
@@ -375,14 +405,14 @@ export class DatabasePermissionsService {
         recommendations,
       };
     } catch (error) {
-      console.error('❌ Failed to get security summary:', error);
+      console.error("❌ Failed to get security summary:", error);
       return {
         totalUsers: 0,
         superUsers: 0,
         readOnlyUsers: 0,
         applicationUsers: 0,
         usersWithExpiredPasswords: 0,
-        recommendations: ['Failed to analyze database security'],
+        recommendations: ["Failed to analyze database security"],
       };
     }
   }
@@ -403,20 +433,23 @@ export class DatabasePermissionsService {
 
     // Create read-only user
     results.readonly = await this.createReadOnlyUser(
-      'nightbff_readonly',
-      this.configService.get<string>('POSTGRES_READONLY_PASSWORD') || 'secure_readonly_password',
+      "nightbff_readonly",
+      this.configService.get<string>("POSTGRES_READONLY_PASSWORD") ||
+        "secure_readonly_password",
     );
 
     // Create application user
     results.application = await this.createApplicationUser(
-      'nightbff_app',
-      this.configService.get<string>('POSTGRES_APP_PASSWORD') || 'secure_app_password',
+      "nightbff_app",
+      this.configService.get<string>("POSTGRES_APP_PASSWORD") ||
+        "secure_app_password",
     );
 
     // Create migration user
     results.migration = await this.createMigrationUser(
-      'nightbff_migration',
-      this.configService.get<string>('POSTGRES_MIGRATION_PASSWORD') || 'secure_migration_password',
+      "nightbff_migration",
+      this.configService.get<string>("POSTGRES_MIGRATION_PASSWORD") ||
+        "secure_migration_password",
     );
 
     return results;

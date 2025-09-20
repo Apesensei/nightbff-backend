@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from "@nestjs/common";
+import { DataSource } from "typeorm";
+import { ConfigService } from "@nestjs/config";
 
 /**
  * Database Security Service
- * 
+ *
  * Handles database security configuration, SSL verification,
  * and connection security monitoring.
  */
@@ -19,18 +19,21 @@ export class DatabaseSecurityService {
    * Get enhanced SSL configuration for database connections
    */
   getSSLConfig() {
-    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
-    const sslEnabled = this.configService.get<string>('POSTGRES_SSL') === 'true';
-    
+    const isProduction =
+      this.configService.get<string>("NODE_ENV") === "production";
+    const sslEnabled =
+      this.configService.get<string>("POSTGRES_SSL") === "true";
+
     if (!isProduction && !sslEnabled) {
       return false;
     }
 
     if (isProduction || sslEnabled) {
-      const sslMode = this.configService.get<string>('POSTGRES_SSLMODE') || 'require';
-      const caCert = this.configService.get<string>('POSTGRES_CA_CERT');
-      const clientCert = this.configService.get<string>('POSTGRES_CLIENT_CERT');
-      const clientKey = this.configService.get<string>('POSTGRES_CLIENT_KEY');
+      const sslMode =
+        this.configService.get<string>("POSTGRES_SSLMODE") || "require";
+      const caCert = this.configService.get<string>("POSTGRES_CA_CERT");
+      const clientCert = this.configService.get<string>("POSTGRES_CLIENT_CERT");
+      const clientKey = this.configService.get<string>("POSTGRES_CLIENT_KEY");
 
       const sslConfig: any = {
         rejectUnauthorized: true, // Always validate certificates in production
@@ -64,23 +67,23 @@ export class DatabaseSecurityService {
     try {
       // Check if SSL is enabled and working
       const sslStatus = await this.dataSource.query(
-        'SELECT ssl_is_used() as ssl_enabled, ssl_version() as ssl_version, ssl_cipher() as ssl_cipher'
+        "SELECT ssl_is_used() as ssl_enabled, ssl_version() as ssl_version, ssl_cipher() as ssl_cipher",
       );
-      
+
       const isSSLEnabled = sslStatus[0]?.ssl_enabled;
-      
+
       if (!isSSLEnabled) {
-        console.error('❌ Database connection is not encrypted');
+        console.error("❌ Database connection is not encrypted");
         return false;
       }
 
-      console.log('✅ Database connection is encrypted');
-      console.log('📊 SSL Version:', sslStatus[0]?.ssl_version);
-      console.log('🔐 SSL Cipher:', sslStatus[0]?.ssl_cipher);
-      
+      console.log("✅ Database connection is encrypted");
+      console.log("📊 SSL Version:", sslStatus[0]?.ssl_version);
+      console.log("🔐 SSL Cipher:", sslStatus[0]?.ssl_cipher);
+
       return true;
     } catch (error) {
-      console.error('❌ Database encryption verification failed:', error);
+      console.error("❌ Database encryption verification failed:", error);
       return false;
     }
   }
@@ -100,14 +103,14 @@ export class DatabaseSecurityService {
           inet_server_addr() as server_address,
           inet_server_port() as server_port
       `);
-      
+
       return {
         ssl: sslInfo[0],
         timestamp: new Date().toISOString(),
-        environment: this.configService.get<string>('NODE_ENV'),
+        environment: this.configService.get<string>("NODE_ENV"),
       };
     } catch (error) {
-      console.error('❌ Failed to get connection security info:', error);
+      console.error("❌ Failed to get connection security info:", error);
       return null;
     }
   }
@@ -118,20 +121,22 @@ export class DatabaseSecurityService {
   async testSecureConnection(): Promise<boolean> {
     try {
       // Test basic connection
-      await this.dataSource.query('SELECT 1');
-      
+      await this.dataSource.query("SELECT 1");
+
       // Verify SSL encryption
       const isEncrypted = await this.verifyConnectionEncryption();
-      
+
       if (!isEncrypted) {
-        console.error('❌ Database connection security test failed - no encryption');
+        console.error(
+          "❌ Database connection security test failed - no encryption",
+        );
         return false;
       }
 
-      console.log('✅ Database connection security test passed');
+      console.log("✅ Database connection security test passed");
       return true;
     } catch (error) {
-      console.error('❌ Database connection security test failed:', error);
+      console.error("❌ Database connection security test failed:", error);
       return false;
     }
   }
@@ -141,18 +146,24 @@ export class DatabaseSecurityService {
    */
   logSecurityConfiguration() {
     const sslConfig = this.getSSLConfig();
-    const environment = this.configService.get<string>('NODE_ENV');
-    
-    console.log('🔒 Database Security Configuration:');
+    const environment = this.configService.get<string>("NODE_ENV");
+
+    console.log("🔒 Database Security Configuration:");
     console.log(`   Environment: ${environment}`);
     console.log(`   SSL Enabled: ${sslConfig !== false}`);
-    
-    if (sslConfig && typeof sslConfig === 'object') {
-      console.log(`   SSL Mode: ${sslConfig.sslmode || 'default'}`);
+
+    if (sslConfig && typeof sslConfig === "object") {
+      console.log(`   SSL Mode: ${sslConfig.sslmode || "default"}`);
       console.log(`   Reject Unauthorized: ${sslConfig.rejectUnauthorized}`);
-      console.log(`   CA Certificate: ${sslConfig.ca ? 'Provided' : 'Not provided'}`);
-      console.log(`   Client Certificate: ${sslConfig.cert ? 'Provided' : 'Not provided'}`);
-      console.log(`   Client Key: ${sslConfig.key ? 'Provided' : 'Not provided'}`);
+      console.log(
+        `   CA Certificate: ${sslConfig.ca ? "Provided" : "Not provided"}`,
+      );
+      console.log(
+        `   Client Certificate: ${sslConfig.cert ? "Provided" : "Not provided"}`,
+      );
+      console.log(
+        `   Client Key: ${sslConfig.key ? "Provided" : "Not provided"}`,
+      );
     }
   }
 }
