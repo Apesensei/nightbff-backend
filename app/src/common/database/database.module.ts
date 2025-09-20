@@ -19,6 +19,9 @@ import { EventInterest } from "../../microservices/interest/entities/event-inter
 import { Chat } from "../../microservices/chat/entities/chat.entity";
 import { Message } from "../../microservices/chat/entities/message.entity";
 
+// Import Audit entities
+import { AuditLog } from "./entities/audit-log.entity";
+
 /**
  * Global DatabaseModule that centralizes entity registration.
  *
@@ -45,6 +48,8 @@ import { Message } from "../../microservices/chat/entities/message.entity";
       // Chat entities
       Chat,
       Message,
+      // Audit entities
+      AuditLog,
     ]),
   ],
   providers: [SupabaseProvider],
