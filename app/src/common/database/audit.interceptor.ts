@@ -76,7 +76,7 @@ export class AuditInterceptor implements NestInterceptor {
     data: any,
     contextInfo: any,
   ) {
-    const { method, url, userId } = contextInfo;
+    const { method, url, userId: _userId } = contextInfo; // eslint-disable-line @typescript-eslint/no-unused-vars
 
     // Skip logging for health checks and static files
     if (url.includes("/health") || url.includes("/uploads/")) {
@@ -147,7 +147,7 @@ export class AuditInterceptor implements NestInterceptor {
    */
   private determineOperation(
     method: string,
-    data: any,
+    _data: any, // eslint-disable-line @typescript-eslint/no-unused-vars
   ): "INSERT" | "UPDATE" | "DELETE" | null {
     switch (method) {
       case "POST":

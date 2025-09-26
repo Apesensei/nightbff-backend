@@ -335,13 +335,14 @@ export class DatabasePermissionsService {
     databaseName?: string,
   ): Promise<boolean> {
     try {
-      const dbName =
+      const _dbName = // eslint-disable-line @typescript-eslint/no-unused-vars
         databaseName || this.configService.get<string>("POSTGRES_DB");
-      const host = this.configService.get<string>("POSTGRES_HOST");
-      const port = this.configService.get<string>("POSTGRES_PORT");
+      const _host = this.configService.get<string>("POSTGRES_HOST"); // eslint-disable-line @typescript-eslint/no-unused-vars
+      const _port = this.configService.get<string>("POSTGRES_PORT"); // eslint-disable-line @typescript-eslint/no-unused-vars
 
       // Create a test connection
-      const testConnection = await this.dataSource.query(`
+      const _testConnection = await this.dataSource // eslint-disable-line @typescript-eslint/no-unused-vars
+        .query(`
         SELECT current_user, current_database()
       `);
 

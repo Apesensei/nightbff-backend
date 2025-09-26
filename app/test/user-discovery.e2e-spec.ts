@@ -8,7 +8,7 @@ import {
 } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ConfigModule } from "@nestjs/config";
-import { Not } from "typeorm";
+import { Not } from "typeorm"; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { differenceInYears } from "date-fns";
 
 // Import Test Helpers

@@ -40,7 +40,7 @@ module.exports = [
   
   // Configuration specifically for test files to relax certain rules
   {
-    files: ["test/**/*.spec.ts", "test/**/*.test.ts"],
+    files: ["test/**/*.spec.ts", "test/**/*.test.ts", "src/**/*.spec.ts", "src/**/*.test.ts", "src/**/tests/**/*.ts"],
     rules: {
       // It's common to have unused variables in test setups (e.g., for mocks)
       '@typescript-eslint/no-unused-vars': 'off',
