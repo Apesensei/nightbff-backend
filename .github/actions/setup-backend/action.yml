@@ -21,7 +21,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        if git submodule--helper list | grep -q "nightbff-integration" 2>/dev/null; then
+        if git submodule status 2>/dev/null | grep -q "nightbff-integration"; then
           echo "::error::Integration repo must not appear as submodule inside backend"
           exit 1
         fi
@@ -32,19 +32,22 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'npm'
-        cache-dependency-path: 'package-lock.json'
+        cache-dependency-path: 'app/package-lock.json'
 
     - name: Install dependencies
       if: inputs.install-deps == 'true'
       shell: bash
+      working-directory: app
       run: npm ci --retry 3
 
     - name: Build application
       shell: bash
+      working-directory: app
       run: npm run build
 
     - name: Validate environment variables
       shell: bash
+      working-directory: app
       run: npm run env:lint || echo "env:lint script not found, skipping"
 
     - name: Run dotenv-linter
