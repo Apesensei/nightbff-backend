@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
@@ -102,7 +103,7 @@ export class MigrationValidator {
             };
 
             migrations.push(migration);
-          } catch (error) {
+          } catch {
             console.warn(`⚠️ Could not read migration file: ${file}`);
           }
         }
@@ -177,7 +178,7 @@ export class MigrationValidator {
           type: "duplicate",
           file: group[0].file,
           severity: "critical",
-          message: `EXACT DUPLICATE: ${group.length} identical files found`,
+          message: `EXACT DUPLICATE: ${group.length} identical files found at: ${paths}`,
           details: {
             hash,
             files: group.map((m) => m.path),
@@ -340,7 +341,7 @@ export class MigrationValidator {
     });
 
     // Validate each repository's migration chain
-    repoGroups.forEach((repoMigrations, repoPath) => {
+    repoGroups.forEach((repoMigrations) => {
       const timestampedMigrations = repoMigrations
         .filter((m) => m.timestamp)
         .sort((a, b) => a.timestamp!.localeCompare(b.timestamp!));
@@ -370,7 +371,7 @@ export class MigrationValidator {
     return issues;
   }
 
-  private getRepositoryPath(filePath: string): string {
+  private getRepositoryPath(_filePath: string): string {
     // Backend repo is single source of truth per ADR-018
     return "backend";
   }

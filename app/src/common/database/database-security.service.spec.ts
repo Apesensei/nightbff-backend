@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
-import { DataSource } from 'typeorm';
-import { DatabaseSecurityService } from './database-security.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { ConfigService } from "@nestjs/config";
+import { DataSource } from "typeorm";
+import { DatabaseSecurityService } from "./database-security.service";
 
-describe('DatabaseSecurityService', () => {
+describe("DatabaseSecurityService", () => {
   let service: DatabaseSecurityService;
   let dataSource: DataSource;
   let configService: ConfigService;
@@ -40,13 +40,16 @@ describe('DatabaseSecurityService', () => {
     jest.clearAllMocks();
   });
 
-  describe('getSSLConfig', () => {
-    it('should return false for development environment without SSL enabled', () => {
+  describe("getSSLConfig", () => {
+    it("should return false for development environment without SSL enabled", () => {
       mockConfigService.get.mockImplementation((key: string) => {
         switch (key) {
-          case 'NODE_ENV': return 'development';
-          case 'POSTGRES_SSL': return 'false';
-          default: return undefined;
+          case "NODE_ENV":
+            return "development";
+          case "POSTGRES_SSL":
+            return "false";
+          default:
+            return undefined;
         }
       });
 
@@ -54,68 +57,79 @@ describe('DatabaseSecurityService', () => {
       expect(result).toBe(false);
     });
 
-    it('should return SSL config for production environment', () => {
+    it("should return SSL config for production environment", () => {
       mockConfigService.get.mockImplementation((key: string) => {
         switch (key) {
-          case 'NODE_ENV': return 'production';
-          case 'POSTGRES_SSL': return 'true';
-          case 'POSTGRES_SSLMODE': return 'require';
-          case 'POSTGRES_CA_CERT': return 'ca-cert-content';
-          case 'POSTGRES_CLIENT_CERT': return 'client-cert-content';
-          case 'POSTGRES_CLIENT_KEY': return 'client-key-content';
-          default: return undefined;
+          case "NODE_ENV":
+            return "production";
+          case "POSTGRES_SSL":
+            return "true";
+          case "POSTGRES_SSLMODE":
+            return "require";
+          case "POSTGRES_CA_CERT":
+            return "ca-cert-content";
+          case "POSTGRES_CLIENT_CERT":
+            return "client-cert-content";
+          case "POSTGRES_CLIENT_KEY":
+            return "client-key-content";
+          default:
+            return undefined;
         }
       });
 
       const result = service.getSSLConfig();
-      
+
       expect(result).toEqual({
         rejectUnauthorized: true,
-        sslmode: 'require',
-        ca: 'ca-cert-content',
-        cert: 'client-cert-content',
-        key: 'client-key-content',
+        sslmode: "require",
+        ca: "ca-cert-content",
+        cert: "client-cert-content",
+        key: "client-key-content",
       });
     });
 
-    it('should return SSL config when SSL is explicitly enabled', () => {
+    it("should return SSL config when SSL is explicitly enabled", () => {
       mockConfigService.get.mockImplementation((key: string) => {
         switch (key) {
-          case 'NODE_ENV': return 'development';
-          case 'POSTGRES_SSL': return 'true';
-          case 'POSTGRES_SSLMODE': return 'prefer';
-          default: return undefined;
+          case "NODE_ENV":
+            return "development";
+          case "POSTGRES_SSL":
+            return "true";
+          case "POSTGRES_SSLMODE":
+            return "prefer";
+          default:
+            return undefined;
         }
       });
 
       const result = service.getSSLConfig();
-      
+
       expect(result).toEqual({
         rejectUnauthorized: true,
-        sslmode: 'prefer',
+        sslmode: "prefer",
       });
     });
   });
 
-  describe('verifyConnectionEncryption', () => {
-    it('should return true when SSL is enabled', async () => {
+  describe("verifyConnectionEncryption", () => {
+    it("should return true when SSL is enabled", async () => {
       mockDataSource.query.mockResolvedValue([
         {
           ssl_enabled: true,
-          ssl_version: 'TLSv1.3',
-          ssl_cipher: 'TLS_AES_256_GCM_SHA384',
+          ssl_version: "TLSv1.3",
+          ssl_cipher: "TLS_AES_256_GCM_SHA384",
         },
       ]);
 
       const result = await service.verifyConnectionEncryption();
-      
+
       expect(result).toBe(true);
       expect(mockDataSource.query).toHaveBeenCalledWith(
-        'SELECT ssl_is_used() as ssl_enabled, ssl_version() as ssl_version, ssl_cipher() as ssl_cipher'
+        "SELECT ssl_is_used() as ssl_enabled, ssl_version() as ssl_version, ssl_cipher() as ssl_cipher",
       );
     });
 
-    it('should return false when SSL is not enabled', async () => {
+    it("should return false when SSL is not enabled", async () => {
       mockDataSource.query.mockResolvedValue([
         {
           ssl_enabled: false,
@@ -125,129 +139,148 @@ describe('DatabaseSecurityService', () => {
       ]);
 
       const result = await service.verifyConnectionEncryption();
-      
+
       expect(result).toBe(false);
     });
 
-    it('should return false when query fails', async () => {
-      mockDataSource.query.mockRejectedValue(new Error('Database connection failed'));
+    it("should return false when query fails", async () => {
+      mockDataSource.query.mockRejectedValue(
+        new Error("Database connection failed"),
+      );
 
       const result = await service.verifyConnectionEncryption();
-      
+
       expect(result).toBe(false);
     });
   });
 
-  describe('getConnectionSecurityInfo', () => {
-    it('should return comprehensive security information', async () => {
+  describe("getConnectionSecurityInfo", () => {
+    it("should return comprehensive security information", async () => {
       const mockSecurityInfo = {
         ssl_enabled: true,
-        ssl_version: 'TLSv1.3',
-        ssl_cipher: 'TLS_AES_256_GCM_SHA384',
-        database_name: 'nightbff_dev',
-        current_user: 'postgres',
-        server_address: '127.0.0.1',
+        ssl_version: "TLSv1.3",
+        ssl_cipher: "TLS_AES_256_GCM_SHA384",
+        database_name: "nightbff_dev",
+        current_user: "postgres",
+        server_address: "127.0.0.1",
         server_port: 5432,
       };
 
       mockDataSource.query.mockResolvedValue([mockSecurityInfo]);
-      mockConfigService.get.mockReturnValue('development');
+      mockConfigService.get.mockReturnValue("development");
 
       const result = await service.getConnectionSecurityInfo();
-      
+
       expect(result).toEqual({
         ssl: mockSecurityInfo,
         timestamp: expect.any(String),
-        environment: 'development',
+        environment: "development",
       });
     });
 
-    it('should return null when query fails', async () => {
-      mockDataSource.query.mockRejectedValue(new Error('Database query failed'));
+    it("should return null when query fails", async () => {
+      mockDataSource.query.mockRejectedValue(
+        new Error("Database query failed"),
+      );
 
       const result = await service.getConnectionSecurityInfo();
-      
+
       expect(result).toBeNull();
     });
   });
 
-  describe('testSecureConnection', () => {
-    it('should return true when connection and SSL are working', async () => {
+  describe("testSecureConnection", () => {
+    it("should return true when connection and SSL are working", async () => {
       mockDataSource.query
         .mockResolvedValueOnce([{ result: 1 }]) // Basic connection test
         .mockResolvedValueOnce([{ ssl_enabled: true }]); // SSL verification
 
       const result = await service.testSecureConnection();
-      
+
       expect(result).toBe(true);
       expect(mockDataSource.query).toHaveBeenCalledTimes(2);
     });
 
-    it('should return false when basic connection fails', async () => {
-      mockDataSource.query.mockRejectedValue(new Error('Connection failed'));
+    it("should return false when basic connection fails", async () => {
+      mockDataSource.query.mockRejectedValue(new Error("Connection failed"));
 
       const result = await service.testSecureConnection();
-      
+
       expect(result).toBe(false);
     });
 
-    it('should return false when SSL verification fails', async () => {
+    it("should return false when SSL verification fails", async () => {
       mockDataSource.query
         .mockResolvedValueOnce([{ result: 1 }]) // Basic connection test
         .mockResolvedValueOnce([{ ssl_enabled: false }]); // SSL verification
 
       const result = await service.testSecureConnection();
-      
+
       expect(result).toBe(false);
     });
   });
 
-  describe('logSecurityConfiguration', () => {
-    it('should log security configuration for development', () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+  describe("logSecurityConfiguration", () => {
+    it("should log security configuration for development", () => {
+      const consoleSpy = jest.spyOn(console, "log").mockImplementation();
+
       mockConfigService.get.mockImplementation((key: string) => {
         switch (key) {
-          case 'NODE_ENV': return 'development';
-          default: return undefined;
+          case "NODE_ENV":
+            return "development";
+          default:
+            return undefined;
         }
       });
 
       service.logSecurityConfiguration();
-      
-      expect(consoleSpy).toHaveBeenCalledWith('🔒 Database Security Configuration:');
-      expect(consoleSpy).toHaveBeenCalledWith('   Environment: development');
-      expect(consoleSpy).toHaveBeenCalledWith('   SSL Enabled: false');
-      
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "🔒 Database Security Configuration:",
+      );
+      expect(consoleSpy).toHaveBeenCalledWith("   Environment: development");
+      expect(consoleSpy).toHaveBeenCalledWith("   SSL Enabled: false");
+
       consoleSpy.mockRestore();
     });
 
-    it('should log detailed SSL configuration for production', () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+    it("should log detailed SSL configuration for production", () => {
+      const consoleSpy = jest.spyOn(console, "log").mockImplementation();
+
       mockConfigService.get.mockImplementation((key: string) => {
         switch (key) {
-          case 'NODE_ENV': return 'production';
-          case 'POSTGRES_SSL': return 'true';
-          case 'POSTGRES_SSLMODE': return 'require';
-          case 'POSTGRES_CA_CERT': return 'ca-cert';
-          case 'POSTGRES_CLIENT_CERT': return 'client-cert';
-          case 'POSTGRES_CLIENT_KEY': return 'client-key';
-          default: return undefined;
+          case "NODE_ENV":
+            return "production";
+          case "POSTGRES_SSL":
+            return "true";
+          case "POSTGRES_SSLMODE":
+            return "require";
+          case "POSTGRES_CA_CERT":
+            return "ca-cert";
+          case "POSTGRES_CLIENT_CERT":
+            return "client-cert";
+          case "POSTGRES_CLIENT_KEY":
+            return "client-key";
+          default:
+            return undefined;
         }
       });
 
       service.logSecurityConfiguration();
-      
-      expect(consoleSpy).toHaveBeenCalledWith('🔒 Database Security Configuration:');
-      expect(consoleSpy).toHaveBeenCalledWith('   Environment: production');
-      expect(consoleSpy).toHaveBeenCalledWith('   SSL Enabled: true');
-      expect(consoleSpy).toHaveBeenCalledWith('   SSL Mode: require');
-      expect(consoleSpy).toHaveBeenCalledWith('   Reject Unauthorized: true');
-      expect(consoleSpy).toHaveBeenCalledWith('   CA Certificate: Provided');
-      expect(consoleSpy).toHaveBeenCalledWith('   Client Certificate: Provided');
-      expect(consoleSpy).toHaveBeenCalledWith('   Client Key: Provided');
-      
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "🔒 Database Security Configuration:",
+      );
+      expect(consoleSpy).toHaveBeenCalledWith("   Environment: production");
+      expect(consoleSpy).toHaveBeenCalledWith("   SSL Enabled: true");
+      expect(consoleSpy).toHaveBeenCalledWith("   SSL Mode: require");
+      expect(consoleSpy).toHaveBeenCalledWith("   Reject Unauthorized: true");
+      expect(consoleSpy).toHaveBeenCalledWith("   CA Certificate: Provided");
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "   Client Certificate: Provided",
+      );
+      expect(consoleSpy).toHaveBeenCalledWith("   Client Key: Provided");
+
       consoleSpy.mockRestore();
     });
   });

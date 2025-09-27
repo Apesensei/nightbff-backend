@@ -11,6 +11,8 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.(t|j)s'],
   coverageDirectory: './coverage',
   testEnvironment: 'node',
+  forceExit: true,
+  detectOpenHandles: true,
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^test/(.*)$': '<rootDir>/test/$1',

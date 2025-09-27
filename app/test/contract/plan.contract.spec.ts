@@ -6,8 +6,8 @@ import { CreatePlanDto } from "../../src/microservices/plan/dto/create-plan.dto"
 const { like, iso8601Date } = Matchers;
 
 const provider = new Pact({
-  consumer: "NightBFF-Frontend",
-  provider: "NightBFF-Backend",
+  consumer: "nightbff-frontend",
+  provider: "nightbff-backend",
   port: 1235,
   log: path.resolve(process.cwd(), "logs", "pact-plan.log"),
   dir: path.resolve(process.cwd(), "pacts"),

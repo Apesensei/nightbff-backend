@@ -1,6 +1,6 @@
 {
   "consumer": {
-    "name": "NightBFF-Frontend"
+    "name": "nightbff-frontend"
   },
   "interactions": [
     {
@@ -116,6 +116,6 @@
     }
   },
   "provider": {
-    "name": "NightBFF-Backend"
+    "name": "nightbff-backend"
   }
 }
