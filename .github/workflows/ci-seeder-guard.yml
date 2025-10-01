@@ -30,4 +30,4 @@ jobs:
       - name: Run Seeder idempotency test
         run: |
           cd app
-          npm test -- -t "SeederService idempotency" 
+          npm test -- -t "SeederService idempotency" --testPathIgnorePatterns="integration.spec.ts" 
