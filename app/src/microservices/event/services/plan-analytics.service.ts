@@ -1,6 +1,6 @@
 import { Injectable, Inject, Logger } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import type { Cache } from "cache-manager";
+import type { Cache } from "@nestjs/cache-manager";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { EventRepository } from "../repositories/event.repository";
 

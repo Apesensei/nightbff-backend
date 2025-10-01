@@ -1,6 +1,6 @@
 import { Controller, Get, Inject } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import type { Cache } from "cache-manager";
+import type { Cache } from "@nestjs/cache-manager";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { CacheWarmingService } from "../services/cache-warming.service";
 import { ConfigService } from "@nestjs/config";

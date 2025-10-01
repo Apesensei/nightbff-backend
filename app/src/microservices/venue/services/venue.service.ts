@@ -34,7 +34,7 @@ import { VenueResponseDto } from "../dto/venue-response.dto";
 import { PaginatedVenueResponseDto } from "../dto/paginated-venue-response.dto";
 import { TrendingVenuesRequestDto } from "../dto/trending-venues-request.dto";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import type { Cache } from "cache-manager";
+import type { Cache } from "@nestjs/cache-manager";
 import { DiscoverVenuesResponseDto } from "../dto/discover-venues-response.dto";
 import { FollowRepository } from "@/microservices/user/repositories/follow.repository";
 import { EventRepository } from "../../event/repositories/event.repository";

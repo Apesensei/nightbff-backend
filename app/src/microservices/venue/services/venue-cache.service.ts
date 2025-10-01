@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Inject } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 // Use import type for Cache
-import type { Cache } from "cache-manager";
+import type { Cache } from "@nestjs/cache-manager";
 
 @Injectable()
 export class VenueCacheService {

@@ -21,10 +21,10 @@ describe("VenueTrendingService", () => {
     get: jest.Mock;
     set: jest.Mock;
     del: jest.Mock;
-    store: {
+    stores: Array<{
       keys: jest.Mock;
       del: jest.Mock;
-    };
+    }>;
   };
 
   beforeEach(async () => {
@@ -47,10 +47,12 @@ describe("VenueTrendingService", () => {
       get: jest.fn(),
       set: jest.fn(),
       del: jest.fn(),
-      store: {
-        keys: jest.fn(),
-        del: jest.fn(),
-      },
+      stores: [
+        {
+          keys: jest.fn(),
+          del: jest.fn(),
+        },
+      ],
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -180,8 +182,8 @@ describe("VenueTrendingService", () => {
         venueRepository.findById.mockResolvedValue(mockVenue);
       });
 
-      cacheManager.store.keys.mockResolvedValue(["trending_venues:default"]);
-      cacheManager.store.del.mockResolvedValue(undefined);
+      cacheManager.stores[0].keys.mockResolvedValue(["trending_venues:default"]);
+      cacheManager.del.mockResolvedValue(undefined);
 
       // Act
       await service.refreshAllTrendingScores();
@@ -194,8 +196,8 @@ describe("VenueTrendingService", () => {
       venueIds.forEach((id) => {
         expect(service.updateVenueTrendingScore).toHaveBeenCalledWith(id);
       });
-      expect(cacheManager.store.keys).toHaveBeenCalledWith("trending_venues:*");
-      expect(cacheManager.store.del).toHaveBeenCalledWith(
+      expect(cacheManager.stores[0].keys).toHaveBeenCalledWith("trending_venues:*");
+      expect(cacheManager.del).toHaveBeenCalledWith(
         "trending_venues:default",
       );
     });
@@ -228,7 +230,7 @@ describe("VenueTrendingService", () => {
       updateScoreMock.mockResolvedValueOnce(42.5); // First call succeeds
       updateScoreMock.mockResolvedValueOnce(null); // Second call fails (returns null)
 
-      cacheManager.store.keys.mockResolvedValue([]);
+      cacheManager.stores[0].keys.mockResolvedValue([]);
 
       // Act
       await service.refreshAllTrendingScores();

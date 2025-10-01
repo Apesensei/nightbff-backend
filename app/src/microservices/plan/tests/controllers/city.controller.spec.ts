@@ -6,7 +6,7 @@ import { CityRepository } from "../../repositories/city.repository";
 import { CityService } from "../../services/city.service"; // If controller uses service
 import { City } from "../../entities/city.entity";
 import { TrendingCityDto, CityDetailsDto } from "../../dto/city-response.dto";
-import { Cache } from "cache-manager";
+import type { Cache } from "@nestjs/cache-manager";
 
 // Mocks
 const mockCityRepository = {

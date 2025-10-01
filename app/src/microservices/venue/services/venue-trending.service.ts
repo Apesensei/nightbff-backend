@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 // Use import type for Cache
-import type { Cache } from "cache-manager";
+import type { Cache } from "@nestjs/cache-manager";
 import { VenueRepository } from "../repositories/venue.repository";
 import { VenueAnalyticsService } from "./venue-analytics.service";
 // TODO: Import FollowRepository and EventRepository/Client if needed for direct counts
@@ -148,21 +148,19 @@ export class VenueTrendingService {
       // 4. Invalidate general trending results cache (adjust key pattern if needed)
       const cachePattern = "trending_venues:*"; // Example pattern
       try {
-        // Check if store supports keys() for pattern matching
-        if (
-          typeof this.cacheManager.store.keys === "function" &&
-          typeof this.cacheManager.store.del === "function"
-        ) {
-          const keys = await this.cacheManager.store.keys(cachePattern);
+        // In cache-manager v6, access stores[0] for direct store access
+        const store = this.cacheManager.stores[0];
+        if (store && typeof (store as any).keys === "function") {
+          const keys = await (store as any).keys(cachePattern);
           if (keys && keys.length > 0) {
             this.logger.log(
               `Found ${keys.length} cache entries matching pattern: ${cachePattern}. Attempting deletion...`,
             );
-            // Delete keys individually for broader compatibility
+            // Delete keys individually using cache manager's del method
             let deletedCount = 0;
             for (const key of keys) {
               try {
-                await this.cacheManager.store.del(key);
+                await this.cacheManager.del(key);
                 deletedCount++;
               } catch (delError) {
                 this.logger.warn(

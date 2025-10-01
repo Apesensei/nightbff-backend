@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import { caching } from "cache-manager"; // Removed StoreConfig, not used with this approach
+import { createCache } from "cache-manager";
 import { InterestService } from "./services/interest.service";
 import { InterestDisplayService } from "./services/interest-display.service";
 import { InterestAnalyticsService } from "./services/interest-analytics.service";
@@ -91,38 +91,19 @@ import { DbStatsModule } from "../../common/database/db-stats.module";
           `[InterestModule Custom CacheFactory_v4] KeyvRedis instance wrapped with Keyv, TTL set to ${ttlSeconds * 1000}ms.`,
         );
 
-        const keyvStoreFactory = () => keyvInstance;
-
         try {
           console.log(
-            `[InterestModule Custom CacheFactory_v4] Attempting to call caching(keyvStoreFactory)`,
+            `[InterestModule Custom CacheFactory_v4] Creating cache with createCache()`,
           );
-          // Call caching with only the store factory; TTL is now handled by Keyv itself
-          const cache = await caching(keyvStoreFactory as any);
+          // Use createCache with stores array - synchronous in v6
+          const cache = createCache({ stores: [keyvInstance] });
           console.log(
-            "[InterestModule Custom CacheFactory_v4] caching() call successful. Cache object created.",
+            "[InterestModule Custom CacheFactory_v4] createCache() call successful. Cache object created.",
           );
-
-          if (cache && (cache as any).store) {
-            const storeInCache = (cache as any).store;
-            console.log(
-              `[InterestModule Custom CacheFactory_v4]   Inspecting cache.store: constructor.name: ${storeInCache.constructor?.name}`,
-            );
-            console.log(
-              `[InterestModule Custom CacheFactory_v4]   Inspecting cache.store: typeof get: ${typeof (storeInCache as any).get}`,
-            );
-            console.log(
-              `[InterestModule Custom CacheFactory_v4]   Inspecting cache.store: typeof set: ${typeof (storeInCache as any).set}`,
-            );
-          } else {
-            console.warn(
-              "[InterestModule Custom CacheFactory_v4]   Cache object or cache.store is undefined after caching() call.",
-            );
-          }
 
           // Create a wrapper to handle Keyv's data format
           const originalGet = cache.get.bind(cache);
-          cache.get = async <T>(key: string): Promise<T | undefined> => {
+          cache.get = async <T>(key: string): Promise<T | null> => {
             const result = await originalGet(key);
             // Keyv wraps data as {value: actualData, expires: timestamp}
             // We need to unwrap it for cache-manager compatibility
@@ -132,7 +113,7 @@ import { DbStatsModule } from "../../common/database/db-stats.module";
               );
               return (result as any).value as T;
             }
-            return result as T | undefined;
+            return result as T | null;
           };
 
           console.log(
@@ -141,7 +122,7 @@ import { DbStatsModule } from "../../common/database/db-stats.module";
           return cache;
         } catch (error) {
           console.error(
-            "[InterestModule Custom CacheFactory_v4] CRITICAL: Error calling caching() or inspecting its result:",
+            "[InterestModule Custom CacheFactory_v4] CRITICAL: Error calling createCache():",
             error,
           );
           throw error;

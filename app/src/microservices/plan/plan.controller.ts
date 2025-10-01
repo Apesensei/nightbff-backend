@@ -10,7 +10,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import type { Cache } from "cache-manager";
+import type { Cache } from "@nestjs/cache-manager";
 import { PlanService } from "./plan.service";
 import { CreatePlanDto } from "./dto/create-plan.dto";
 import { User } from "../auth/entities/user.entity";

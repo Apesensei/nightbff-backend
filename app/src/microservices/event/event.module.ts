@@ -14,7 +14,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import KeyvRedis from "@keyv/redis";
 import { UserModule } from "../user/user.module";
 import { CACHE_MANAGER } from "@nestjs/cache-manager"; // Added
-import { caching } from "cache-manager"; // Added
+import { createCache } from "cache-manager";
 import Keyv from "keyv"; // Added
 import { DbStatsModule } from "../../common/database/db-stats.module";
 // DatabaseModule is implicitly imported due to @Global(), no explicit import needed here
@@ -79,35 +79,16 @@ import { DbStatsModule } from "../../common/database/db-stats.module";
           `${loggerPrefix} KeyvRedis instance wrapped with Keyv, TTL set to ${ttlSeconds * 1000}ms.`,
         );
 
-        const keyvStoreFactory = () => keyvInstance;
-
-        console.log(
-          `${loggerPrefix} Attempting to call caching(keyvStoreFactory)`,
-        );
+        console.log(`${loggerPrefix} Creating cache with createCache()`);
         try {
-          const cache = await caching(keyvStoreFactory as any);
+          const cache = createCache({ stores: [keyvInstance] });
           console.log(
-            `${loggerPrefix} caching() call successful. Cache object created.`,
+            `${loggerPrefix} createCache() call successful. Cache object created.`,
           );
-          if (cache && (cache as any).store) {
-            console.log(
-              `${loggerPrefix}   Inspecting cache.store: constructor.name: ${(cache as any).store.constructor.name}`,
-            );
-            console.log(
-              `${loggerPrefix}   Inspecting cache.store: typeof get: ${typeof (cache as any).store.get}`,
-            );
-            console.log(
-              `${loggerPrefix}   Inspecting cache.store: typeof set: ${typeof (cache as any).store.set}`,
-            );
-          } else {
-            console.log(
-              `${loggerPrefix}   Cache or cache.store is undefined after caching() call.`,
-            );
-          }
           console.log(`${loggerPrefix} Returning cache INSTANCE from factory.`);
           return cache;
         } catch (error) {
-          console.error(`${loggerPrefix} Error calling caching():`, error);
+          console.error(`${loggerPrefix} Error calling createCache():`, error);
           throw error;
         }
       },
