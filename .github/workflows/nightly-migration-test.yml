@@ -48,6 +48,10 @@ jobs:
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: testpass
           POSTGRES_DB: nightbff_migration_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test-jwt-secret-for-nightly-migration-cycle-minimum-32-characters-required
+          DISABLE_EXTERNAL_APIS: true
         run: |
           echo "Running initial migrations..."
           npm run migration:run
@@ -61,6 +65,10 @@ jobs:
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: testpass
           POSTGRES_DB: nightbff_migration_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test-jwt-secret-for-nightly-migration-cycle-minimum-32-characters-required
+          DISABLE_EXTERNAL_APIS: true
         run: |
           echo "Testing migration revert and re-run cycle..."
           
@@ -87,6 +95,10 @@ jobs:
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: testpass
           POSTGRES_DB: nightbff_migration_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test-jwt-secret-for-nightly-migration-cycle-minimum-32-characters-required
+          DISABLE_EXTERNAL_APIS: true
         run: |
           echo "Validating final database state..."
           npm run migration:show
