@@ -182,7 +182,9 @@ describe("VenueTrendingService", () => {
         venueRepository.findById.mockResolvedValue(mockVenue);
       });
 
-      cacheManager.stores[0].keys.mockResolvedValue(["trending_venues:default"]);
+      cacheManager.stores[0].keys.mockResolvedValue([
+        "trending_venues:default",
+      ]);
       cacheManager.del.mockResolvedValue(undefined);
 
       // Act
@@ -196,10 +198,10 @@ describe("VenueTrendingService", () => {
       venueIds.forEach((id) => {
         expect(service.updateVenueTrendingScore).toHaveBeenCalledWith(id);
       });
-      expect(cacheManager.stores[0].keys).toHaveBeenCalledWith("trending_venues:*");
-      expect(cacheManager.del).toHaveBeenCalledWith(
-        "trending_venues:default",
+      expect(cacheManager.stores[0].keys).toHaveBeenCalledWith(
+        "trending_venues:*",
       );
+      expect(cacheManager.del).toHaveBeenCalledWith("trending_venues:default");
     });
 
     it("should handle empty venue list", async () => {
