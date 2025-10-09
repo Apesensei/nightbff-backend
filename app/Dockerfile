@@ -7,12 +7,18 @@ ARG SERVICE=monolith
 FROM node:20-alpine AS base
 WORKDIR /usr/src/app
 
+# Install build dependencies for native modules (bcrypt, etc.) and bash for postinstall scripts
+RUN apk add --no-cache python3 make g++ bash
+
 # ---- Dependencies Stage ----
 FROM base AS dependencies
 # Copy package.json and package-lock.json from the build context (app/)
 COPY package.json ./
 COPY package-lock.json ./
-RUN npm install --omit=dev --legacy-peer-deps --ignore-scripts
+# Copy scripts directory for postinstall hook
+COPY scripts ./scripts
+# Remove --ignore-scripts to allow native modules (bcrypt) to build
+RUN npm install --omit=dev --legacy-peer-deps
 
 # ---- Build Stage ----
 FROM base AS build
@@ -20,7 +26,10 @@ WORKDIR /usr/src/app
 
 COPY package.json ./
 COPY package-lock.json ./
-RUN npm install --legacy-peer-deps --ignore-scripts # Installs all deps, including dev
+# Copy scripts directory for postinstall hook
+COPY scripts ./scripts
+# Remove --ignore-scripts to allow native modules (bcrypt) to build
+RUN npm install --legacy-peer-deps # Installs all deps, including dev
 
 COPY . .
 
