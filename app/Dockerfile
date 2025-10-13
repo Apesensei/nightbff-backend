@@ -12,11 +12,11 @@ RUN apk add --no-cache python3 make g++ bash
 
 # ---- Dependencies Stage ----
 FROM base AS dependencies
-# Copy package.json and package-lock.json from the build context (app/)
-COPY package.json ./
-COPY package-lock.json ./
+# Copy package.json and package-lock.json from the build context (backend/)
+COPY app/package.json ./
+COPY app/package-lock.json ./
 # Copy scripts directory for postinstall hook
-COPY scripts ./scripts
+COPY app/scripts ./scripts
 # Remove --ignore-scripts to allow native modules (bcrypt) to build
 RUN npm install --omit=dev --legacy-peer-deps
 
@@ -24,14 +24,14 @@ RUN npm install --omit=dev --legacy-peer-deps
 FROM base AS build
 WORKDIR /usr/src/app
 
-COPY package.json ./
-COPY package-lock.json ./
+COPY app/package.json ./
+COPY app/package-lock.json ./
 # Copy scripts directory for postinstall hook
-COPY scripts ./scripts
+COPY app/scripts ./scripts
 # Remove --ignore-scripts to allow native modules (bcrypt) to build
 RUN npm install --legacy-peer-deps # Installs all deps, including dev
 
-COPY . .
+COPY app/ .
 
 # Build the application AND scripts. Output goes to ./dist
 RUN npm run build
@@ -62,10 +62,14 @@ COPY --from=build --chown=appuser:appgroup /usr/src/app/dist ./dist
 COPY --from=build --chown=appuser:appgroup /usr/src/app/src ./src
 
 # Copy package.json for potential runtime use (e.g., reading version)
-COPY --chown=appuser:appgroup package.json ./
+COPY --chown=appuser:appgroup app/package.json ./
 
 # Copy utility scripts
 COPY --from=build --chown=appuser:appgroup /usr/src/app/scripts ./scripts
+
+# Copy config directory for environment files (required by app.module.ts and data-source.ts)
+# Note: This copies from the build context (backend/config/) not from the build stage
+COPY --chown=appuser:appgroup config ./config
 
 # Create uploads directory and set ownership
 RUN mkdir -p /usr/src/app/uploads && chown -R appuser:appgroup /usr/src/app/uploads
