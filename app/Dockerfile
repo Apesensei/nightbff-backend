@@ -68,8 +68,11 @@ COPY --chown=appuser:appgroup app/package.json ./
 COPY --from=build --chown=appuser:appgroup /usr/src/app/scripts ./scripts
 
 # Copy config directory for environment files (required by app.module.ts and data-source.ts)
-# Note: This copies from the build context (backend/config/) not from the build stage
-COPY --chown=appuser:appgroup config ./config
+# app.module.ts expects: /usr/src/config/env/*.env (resolved from dist/src: ../../../)
+# data-source.ts expects: /usr/src/app/config/env/*.env (resolved from dist/src/database/config: ../../../../)
+# Solution: Copy to /usr/src/config AND create symlink at /usr/src/app/config
+COPY --chown=appuser:appgroup config /usr/src/config
+RUN ln -s /usr/src/config /usr/src/app/config
 
 # Create uploads directory and set ownership
 RUN mkdir -p /usr/src/app/uploads && chown -R appuser:appgroup /usr/src/app/uploads
