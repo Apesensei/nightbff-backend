@@ -16,7 +16,7 @@ RUN apt-get update \
 # Copy package.json and package-lock.json from the build context (app/)
 COPY package.json ./
 COPY package-lock.json ./
-RUN npm install --omit=dev --legacy-peer-deps --ignore-scripts \
+RUN npm install --omit=dev --legacy-peer-deps \
   && npm rebuild bcrypt --build-from-source \
   && node -e "require('bcrypt'); console.log('bcrypt ok')"
 
@@ -31,7 +31,7 @@ RUN apt-get update \
 
 COPY package.json ./
 COPY package-lock.json ./
-RUN npm install --legacy-peer-deps --ignore-scripts # Installs all deps, including dev
+RUN npm install --legacy-peer-deps # Installs all deps, including dev
 
 # Copy backend source into container
 COPY . .
