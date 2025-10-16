@@ -269,30 +269,47 @@ Happy coding! 🎯
   const port = configService.get<number>("PORT") || 3000;
 
   // Configure HTTPS for development
-  const httpsKeyPath =
-    configService.get<string>("HTTPS_KEY_PATH") || "./certs/localhost-key.pem";
-  const httpsCertPath =
-    configService.get<string>("HTTPS_CERT_PATH") || "./certs/localhost.pem";
+  const httpsKeyPath = configService.get<string>("HTTPS_KEY_PATH");
+  const httpsCertPath = configService.get<string>("HTTPS_CERT_PATH");
+  const httpsKeyExists = httpsKeyPath ? fs.existsSync(httpsKeyPath) : false;
+  const httpsCertExists = httpsCertPath ? fs.existsSync(httpsCertPath) : false;
 
-  const httpsOptions = {
-    key: fs.readFileSync(httpsKeyPath),
-    cert: fs.readFileSync(httpsCertPath),
-  };
+  if (httpsKeyPath && httpsCertPath && httpsKeyExists && httpsCertExists) {
+    const httpsOptions = {
+      key: fs.readFileSync(httpsKeyPath),
+      cert: fs.readFileSync(httpsCertPath),
+    };
 
-  // Start HTTPS server
-  const server = https.createServer(
-    httpsOptions,
-    app.getHttpAdapter().getInstance(),
-  );
-  server.listen(port, () => {
-    console.log(`🚀 Application is running on: https://localhost:${port}`);
+    // Start HTTPS server
+    const server = https.createServer(
+      httpsOptions,
+      app.getHttpAdapter().getInstance(),
+    );
+    server.listen(port, () => {
+      console.log(`🚀 Application is running on: https://localhost:${port}`);
+      console.log(
+        `📚 API Documentation available at: https://localhost:${port}/api/docs`,
+      );
+      console.log(`📁 Static files served from: /uploads/`);
+      console.log(`⚡ Compression and caching enabled for optimal performance`);
+      console.log(`🔒 HTTPS enabled with configured certificate`);
+    });
+  } else {
+    if (!httpsKeyExists || !httpsCertExists) {
+      console.warn(
+        "⚠️ HTTPS certificates not found. Falling back to HTTP listener.",
+      );
+    }
+
+    await app.listen(port);
+
+    console.log(`🚀 Application is running on: http://localhost:${port}`);
     console.log(
-      `📚 API Documentation available at: https://localhost:${port}/api/docs`,
+      `📚 API Documentation available at: http://localhost:${port}/api/docs`,
     );
     console.log(`📁 Static files served from: /uploads/`);
     console.log(`⚡ Compression and caching enabled for optimal performance`);
-    console.log(`🔒 HTTPS enabled with self-signed certificate`);
-  });
+  }
 }
 
 bootstrap();

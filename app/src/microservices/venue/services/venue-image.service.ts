@@ -11,7 +11,16 @@ import * as fs from "fs";
 import * as crypto from "crypto";
 import { promisify } from "util";
 import { v4 as uuidv4 } from "uuid";
-import sharp from "sharp";
+type SharpModule = typeof import("sharp");
+let sharpModule: SharpModule | null = null;
+
+async function loadSharp(): Promise<SharpModule> {
+  if (!sharpModule) {
+    const imported = await import("sharp");
+    sharpModule = (imported.default ?? imported) as SharpModule;
+  }
+  return sharpModule;
+}
 import { VenuePhotoRepository } from "../repositories/venue-photo.repository";
 import { VenueRepository } from "../repositories/venue.repository";
 import { UserRole } from "../../auth/entities/user.entity";
@@ -224,7 +233,8 @@ export class VenueImageService {
         "thumbnail",
         `${baseFileName}${fileExt}`,
       );
-      await sharp(buffer)
+      const sharpLib = await loadSharp();
+      await sharpLib(buffer)
         .resize(
           this.imageSizeConfigs.thumbnail.width,
           this.imageSizeConfigs.thumbnail.height,
@@ -242,7 +252,7 @@ export class VenueImageService {
         "medium",
         `${baseFileName}${fileExt}`,
       );
-      await sharp(buffer)
+      await sharpLib(buffer)
         .resize(
           this.imageSizeConfigs.medium.width,
           this.imageSizeConfigs.medium.height,
@@ -260,7 +270,7 @@ export class VenueImageService {
         "large",
         `${baseFileName}${fileExt}`,
       );
-      await sharp(buffer)
+      await sharpLib(buffer)
         .resize(
           this.imageSizeConfigs.large.width,
           this.imageSizeConfigs.large.height,

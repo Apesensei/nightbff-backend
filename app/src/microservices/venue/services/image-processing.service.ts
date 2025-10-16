@@ -2,10 +2,20 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bull";
 import type { Queue } from "bull";
 import { ConfigService } from "@nestjs/config";
-import sharp from "sharp";
 import * as path from "path";
 import * as fs from "fs";
 import { promisify } from "util";
+
+type SharpModule = typeof import("sharp");
+let sharpModule: SharpModule | null = null;
+
+async function loadSharp(): Promise<SharpModule> {
+  if (!sharpModule) {
+    const imported = await import("sharp");
+    sharpModule = (imported.default ?? imported) as SharpModule;
+  }
+  return sharpModule;
+}
 
 const writeFile = promisify(fs.writeFile);
 const mkdir = promisify(fs.mkdir);
@@ -167,7 +177,8 @@ export class ImageProcessingService {
     config: { width: number; height: number },
     quality: number,
   ): Promise<void> {
-    const sharpInstance = sharp(buffer).resize(config.width, config.height, {
+    const sharpLib = await loadSharp();
+    const sharpInstance = sharpLib(buffer).resize(config.width, config.height, {
       fit: config.width === config.height ? "cover" : "inside",
       position: "centre",
       withoutEnlargement: true,
