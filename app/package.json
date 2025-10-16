@@ -37,7 +37,7 @@
     "seed:dev": "NODE_ENV=development npm run seed:run",
     "seed:smoke:compiled": "node --require ./dist/scripts/load-env.js dist/scripts/seed-smoke.js",
     "seed:test-users": "DATABASE_URL=\"postgresql://admin:uFR44yr69C4mZa72g3JQ37GX@127.0.0.1:5434/defaultdb\" node dist/scripts/seed-test-users.js",
-    "postinstall": "bash scripts/setup-hooks.sh",
+    "postinstall": "bash -c 'if [ -d .git ] && [ -f scripts/setup-hooks.sh ]; then bash scripts/setup-hooks.sh; else echo \"Skipping git hooks install\"; fi'",
     "db:migrate": "node --require ./dist/scripts/load-env.js dist/scripts/migrate.js",
     "db:seed": "node --require ./dist/scripts/load-env.js dist/scripts/run-seeder.js",
     "ci:guard:seeds": "bash scripts/ci/no-rogue-seeds.sh"
