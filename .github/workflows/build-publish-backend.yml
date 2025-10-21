@@ -2,7 +2,7 @@ name: Build & Publish Backend to GHCR
 
 on:
   push:
-    branches: ["main", "develop", "integration/**"]
+    branches: ["main", "develop", "integration/**", "docs/env-contracts-and-freeze"] 
   workflow_call:
     outputs:
       image:
