@@ -42,7 +42,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ toLower(github.repository_owner) }}/nightbff-backend
+          images: ghcr.io/apesensei/nightbff-backend
           tags: |
             type=sha,format=short,prefix=int-
 
@@ -70,7 +70,7 @@ jobs:
         run: cosign sign --yes "${TAGS}@${DIGEST}"
 
       - name: Pull image to local daemon (by digest)
-        run: docker pull ghcr.io/${{ toLower(github.repository_owner) }}/nightbff-backend@${{ steps.build.outputs.digest }}
+        run: docker pull ghcr.io/apesensei/nightbff-backend@${{ steps.build.outputs.digest }}
 
       - name: Generate SBOM (authenticated, by digest)
         env:
@@ -82,7 +82,7 @@ jobs:
             -e SYFT_REGISTRY_AUTH_PASSWORD \
             -v /var/run/docker.sock:/var/run/docker.sock \
             anchore/syft:latest \
-            docker:ghcr.io/${{ toLower(github.repository_owner) }}/nightbff-backend@${{ steps.build.outputs.digest }} \
+            docker:ghcr.io/apesensei/nightbff-backend@${{ steps.build.outputs.digest }} \
             -o spdx-json > sbom.spdx.json
 
       - name: Upload SBOM
