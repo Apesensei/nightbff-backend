@@ -82,7 +82,7 @@ jobs:
             -e SYFT_REGISTRY_AUTH_PASSWORD \
             -v /var/run/docker.sock:/var/run/docker.sock \
             anchore/syft:latest \
-            ghcr.io/${{ toLower(github.repository_owner) }}/nightbff-backend@${{ steps.build.outputs.digest }} \
+            docker:ghcr.io/${{ toLower(github.repository_owner) }}/nightbff-backend@${{ steps.build.outputs.digest }} \
             -o spdx-json > sbom.spdx.json
 
       - name: Upload SBOM
