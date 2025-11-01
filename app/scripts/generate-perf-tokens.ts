@@ -159,8 +159,10 @@ async function generatePerfTokens() {
   console.log(`Generated ${tokens.length} tokens.`);
 
   // --- Output Files ---
-  const outputDir = path.resolve(__dirname, '..', '..', 'performance-testing', 'k6-scripts');
-  const tokensFilePath = path.join(outputDir, 'loadtest_tokens.json');
+  // Respect OUTPUT_PATH env var if provided (for CI integration), otherwise use default path
+  const outputPath = process.env.OUTPUT_PATH || path.join(path.resolve(__dirname, '..', '..', 'performance-testing', 'k6-scripts'), 'loadtest_tokens.json');
+  const outputDir = path.dirname(outputPath);
+  const tokensFilePath = outputPath;
   const userIdsFilePath = path.join(outputDir, 'loadtest_user_ids.txt');
 
   try {
